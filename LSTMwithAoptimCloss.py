@@ -71,7 +71,7 @@ lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
 dense_layer = nn.Linear(hidden_size, output_size)
 
 # Initialize the hidden state
-batch_size = len(padded_tensors)
+batch_size = len(datalist)
 hidden = (
     torch.zeros(num_layers, batch_size, hidden_size).float(),
     torch.zeros(num_layers, batch_size, hidden_size).float(),
@@ -83,7 +83,7 @@ loss_fn = nn.CrossEntropyLoss()
 # Define the optimizer
 learning_rate = 0.001
 optimizer = optim.Adam(
-    lstm.parameters(),
+    list(lstm.parameters()) + list(dense_layer.parameters()),
     learning_rate,
 )
 

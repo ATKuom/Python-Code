@@ -3,6 +3,7 @@
 import numpy as np
 import random as random
 from itertools import repeat
+import pandas as pd
 
 
 RESTRICTED_EQUIP = ["a", "b", "1", "2", "-1", "-2"]
@@ -66,4 +67,6 @@ def numberofstrings(N):
 
 if __name__ == "__main__":
     randomly_generated_strings = np.array(numberofstrings(100000))
-    np.save("randomgstrings.npy", randomly_generated_strings)
+    pd.DataFrame(randomly_generated_strings).to_csv(
+        "randomly_gstrings.csv", header=None, index=None
+    )
