@@ -132,5 +132,8 @@ def numberofstrings(N):
 
 
 if __name__ == "__main__":
-    semirandomly_generated_strings = np.array(numberofstrings(100000))
-    np.save("semirandomgstrings.npy", semirandomly_generated_strings)
+    semirandomly_generated_strings = np.array(numberofstrings(100000), dtype=object)
+    np.save(
+        "semirandomgstrings.npy",
+        semirandomly_generated_strings,
+    )

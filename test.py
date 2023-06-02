@@ -1,21 +1,68 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
+from torch.nn.utils.rnn import pad_sequence
 import numpy as np
+import pandas as pd
+import torch.nn.functional as F
+import csv
 
-a = torch.tensor(
-    [
-        0.0881,
-        0.0817,
-        0.0999,
-        0.0691,
-        0.0773,
-        0.0684,
-        0.0793,
-        0.1011,
-        0.0741,
-        0.0892,
-        0.0818,
-        0.0899,
-    ]
-)
-print(sum(a))
+# datalist = np.load("D0test.npy", allow_pickle=True)
+# print(datalist)
+# for ind in range(len(datalist)):
+#     datalist[ind] = "G" + datalist[ind] + "E"
+
+# classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
+# # datalist = np.array(
+# #     [
+
+# #             "GTaACaHE",
+# #             "GTaAC-1H1a1HE",
+# #             "GTaACH-1H1a1HE",
+# #             "GTa1bAC-2H2b2-1aT1HE",
+
+# #     ]
+# # )
+
+
+# def one_hot_encoding(datalist):
+#     one_hot_tensors = []
+#     for sequence in datalist:
+#         # Perform one-hot encoding for the sequence
+#         one_hot_encoded = []
+#         i = 0
+#         while i < len(sequence):
+#             char = sequence[i]
+#             vector = [0] * len(classes)  # Initialize with zeros
+
+#             if char == "-":
+#                 next_char = sequence[i + 1]
+#                 unit = char + next_char
+#                 if unit in classes:
+#                     vector[classes.index(unit)] = 1
+#                     i += 1  # Skip the next character since it forms a unit
+#             elif char in classes:
+#                 vector[classes.index(char)] = 1
+
+#             one_hot_encoded.append(vector)
+#             i += 1
+
+#         # Convert the list to a PyTorch tensor
+#         one_hot_tensor = torch.tensor(one_hot_encoded)
+#         one_hot_tensors.append(one_hot_tensor)
+
+#     return one_hot_tensors
+
+
+# def padding(one_hot_tensors):
+#     # Pad the one-hot tensors to have the same length
+#     padded_tensors = pad_sequence(
+#         one_hot_tensors, batch_first=True, padding_value=0
+#     ).float()
+
+#     return padded_tensors
+
+
+# one_hot_tensors = one_hot_encoding(datalist)
+# padded_tensors = padding(one_hot_tensors)
+
+print(np.load("D0test.npy", allow_pickle=True))

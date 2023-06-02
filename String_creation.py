@@ -3,10 +3,18 @@
 import numpy as np
 import random as random
 from itertools import repeat
-import pandas as pd
 
 
-RESTRICTED_EQUIP = ["a", "b", "1", "2", "-1", "-2"]
+RESTRICTED_EQUIP = [
+    "a",
+    "b",
+    "1",
+    # "2",
+    "-1",
+    # "-2",
+    # "3", "4", "5", "-3","-4", "-5"
+    # "c", "d"
+]
 BASIC_LIST = ["T", "A", "C", "H"]
 
 
@@ -66,7 +74,7 @@ def numberofstrings(N):
 
 
 if __name__ == "__main__":
-    randomly_generated_strings = np.array(numberofstrings(100000))
-    pd.DataFrame(randomly_generated_strings).to_csv(
-        "randomly_gstrings.csv", header=None, index=None
-    )
+    randomly_generated_strings = np.array(numberofstrings(5000), dtype=object)
+    print("Longest string character length:", len(np.max(randomly_generated_strings)))
+    print(len(randomly_generated_strings))
+    np.save("r_g_strings.npy", randomly_generated_strings)

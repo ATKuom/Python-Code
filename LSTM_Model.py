@@ -4,6 +4,18 @@ from torch.nn.utils.rnn import pad_sequence
 import torch.nn as nn
 import torch.optim as optim
 
+classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
+
+# df = pd.read_csv("valid_random_strings.csv")
+datalist = np.array(
+    [
+        "GTaACaHE",
+        "GTaAC-1H1a1HE",
+        "GTaACH-1H1a1HE",
+        "GTa1bAC-2H2b2-1aT1HE",
+    ]
+)
+
 
 def one_hot_encoding(datalist):
     one_hot_tensors = []
@@ -43,66 +55,56 @@ def padding(one_hot_tensors):
     return padded_tensors
 
 
-# Specify your classes
-classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
+class LSTMtry(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes):
+        super(LSTMtry, self).__init__()
+        # self.lstm1 = nn.LSTM(input_size, hidden_size)
+        # self.lstm2 = nn.LSTM(hidden_size, hidden_size)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers=2, batch_first=True)
+        self.dlayer = nn.Linear(hidden_size, num_classes)
 
+    def forward(self, x):
+        # out, hidden = self.lstm1(x)
+        # out, _ = self.lstm2(out, hidden)
+        out, _ = self.lstm(x)
+        out = self.dlayer(out)
 
-# df = pd.read_csv("valid_random_strings.csv")
-datalist = np.array(
-    [
-        "GTaACaHE",
-        "GTaAC-1H1a1HE",
-        "GTaACH-1H1a1HE",
-        "GTa1bAC-2H2b2-1aT1HE",
-    ]
-)
+        return out
+
 
 one_hot_tensors = one_hot_encoding(datalist)
 padded_tensors = padding(one_hot_tensors)
 
+
 # Define the LSTM model
-input_size = len(classes)
-hidden_size = 32
-num_layers = 2
-output_size = len(classes)
-lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
 
-# Define the dense output layer
-dense_layer = nn.Linear(hidden_size, output_size)
+model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
 
-# Initialize the hidden state
-batch_size = len(datalist)
-hidden = (
-    torch.zeros(num_layers, batch_size, hidden_size).float(),
-    torch.zeros(num_layers, batch_size, hidden_size).float(),
-)
-
-# Define the loss function
-loss_fn = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss()
 
 # Define the optimizer
 learning_rate = 0.001
 optimizer = optim.Adam(
-    list(lstm.parameters()) + list(dense_layer.parameters()),
+    model.parameters(),
     learning_rate,
 )
 
 # Training loop
-num_epochs = 10
+num_epochs = 501
 for epoch in range(num_epochs):
+    model.train()
     # Forward pass
-    output, hidden = lstm(padded_tensors, hidden)
-
-    output = dense_layer(output)
-
+    output = model(padded_tensors)
     # Calculate the loss
-    loss = loss_fn(output, torch.argmax(padded_tensors, axis=1))
+
+    loss = criterion(output.permute(0, 2, 1), torch.argmax(padded_tensors, axis=2))
 
     # # Backward pass and optimization
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
-    # # Print the loss for every epoch
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
-
-# Print the final output and hidden state
+    # # Printing the loss
+    if epoch % 100 == 0:
+        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
+        print(f"{torch.argmax(output, axis= 2)}")
+print(torch.argmax(padded_tensors, axis=2))

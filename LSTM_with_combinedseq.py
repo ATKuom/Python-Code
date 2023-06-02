@@ -52,7 +52,7 @@ def padding(one_hot_tensors):
         one_hot_tensors, batch_first=True, padding_value=0
     ).float()
 
-    return padded_tensors
+    return padded_tensors.view(-1, len(classes))
 
 
 class LSTMtry(nn.Module):
@@ -60,7 +60,7 @@ class LSTMtry(nn.Module):
         super(LSTMtry, self).__init__()
         # self.lstm1 = nn.LSTM(input_size, hidden_size)
         # self.lstm2 = nn.LSTM(hidden_size, hidden_size)
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers=2, batch_first=True)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers=2, batch_first=False)
         self.dlayer = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x):
@@ -90,22 +90,21 @@ optimizer = optim.Adam(
 )
 
 # Training loop
-num_epochs = 501
+num_epochs = 500
 for epoch in range(num_epochs):
     model.train()
     # Forward pass
     output = model(padded_tensors)
-
     # Calculate the loss
     # breakpoint()
-    loss = criterion(output.permute(0, 2, 1), torch.argmax(padded_tensors, axis=2))
+    loss = criterion(output, torch.argmax(padded_tensors, axis=1))
 
     # # Backward pass and optimization
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
     # # Printing the loss
-    if epoch % 100 == 0:
+    if (epoch + 1) % 100 == 0:
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
-        print(f"{torch.argmax(output, axis= 2)}")
-print(torch.argmax(padded_tensors, axis=2))
+        print(f"{torch.argmax(output, axis= 1)}")
+print(torch.argmax(padded_tensors, axis=1))

@@ -1,9 +1,8 @@
 #
 from collections import Counter
 from designs import arr_expert
-from str_creation_equalprob import BASIC_LIST
+from String_creation import BASIC_LIST
 import numpy as np
-import pandas as pd
 
 
 def basic_structure(sequence):
@@ -67,11 +66,15 @@ def HX_restrictions(sequence, char_occur_dict):
 def splitter_restrictions(sequence, char_occur_dict):
     if "1" in char_occur_dict and char_occur_dict["1"] != 3:
         return False
+    if "1" in char_occur_dict and sequence.count("-1") != 1:
+        return False
 
     if "1" not in char_occur_dict and "2" in char_occur_dict:
         return False
 
     if "2" in char_occur_dict and char_occur_dict["2"] != 3:
+        return False
+    if "2" in char_occur_dict and sequence.count("-2") != 1:
         return False
 
     if (
@@ -82,7 +85,7 @@ def splitter_restrictions(sequence, char_occur_dict):
     ):
         return False
 
-    if sequence.count("-1") == 2 or sequence.count("-2") == 2:
+    if sequence.count("-1") > 1 or sequence.count("-2") > 1:
         return False
 
     return True
@@ -103,14 +106,9 @@ def validity(datalist):
 
 
 if __name__ == "__main__":
-    # datalist = expert_designs
-    # datalist = np.load("randomgstrings.npy")
-    datalist = np.load("semirandomgstrings.npy")
-    valid_strings = np.unique(np.array(validity(datalist)))
+    # datalist = arr_expert
+    datalist = np.load("r_g_strings.npy", allow_pickle=True)
+    valid_strings = np.unique(np.array(validity(datalist), dtype=object))
+    print(valid_strings)
     print(len(valid_strings))
-    DF = pd.DataFrame(valid_strings)
-    DF.to_csv("valid_semirandom_strings.csv")
-    # valid_strings = np.append(valid_strings, arr_expert)
-    # print(valid_strings)
-    # print(len(valid_strings))
-    # np.save('D0test.npy',valid_strings)
+    # np.save("D0test.npy", valid_strings)
