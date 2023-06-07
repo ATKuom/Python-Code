@@ -81,7 +81,7 @@ padded_tensors = padding(one_hot_tensors)
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
 
 criterion = nn.CrossEntropyLoss()
-
+# s
 # Define the optimizer
 learning_rate = 0.001
 optimizer = optim.Adam(
