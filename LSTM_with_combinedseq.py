@@ -107,4 +107,5 @@ for epoch in range(num_epochs):
     if (epoch + 1) % 100 == 0:
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
         print(f"{torch.argmax(output, axis= 1)}")
+print("Ground Truths")
 print(torch.argmax(padded_tensors, axis=1))
