@@ -65,4 +65,4 @@ import csv
 # one_hot_tensors = one_hot_encoding(datalist)
 # padded_tensors = padding(one_hot_tensors)
 
-print(np.load("D0test.npy", allow_pickle=True))
+# print(np.load("D0test.npy", allow_pickle=True))

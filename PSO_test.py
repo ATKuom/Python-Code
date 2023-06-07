@@ -4,8 +4,21 @@ import matplotlib.pyplot as plt
 
 # ------------------------------------------------------------------------------
 def objective_function(O):
-    x = O[0]
-    y = O[1]
+    t1 = O[0]
+    t2 = O[1]
+    t3 = O[2]
+    t4 = O[3]
+    t5 = O[4]
+    t6 = O[5]
+    tur_pratio = O[6]
+    comp_pratio = O[7]
+    m = O[8]
+    p1 = O[9]
+    p2 = O[10]
+    p3 = O[11]
+    p4 = O[12]
+    p5 = O[13]
+    p6 = O[14]
     nonlinear_constraint = (x - 1) ** 3 - y + 1
     linear_constraint = x + y - 2
     if nonlinear_constraint > 0:
@@ -22,7 +35,23 @@ def objective_function(O):
     return z
 
 
-bounds = [(-1.5, 1.5), (-0.5, 2.5)]  # upper and lower bounds of variables
+bounds = [
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (0, 25),
+    (0, 25),
+    (0, 10e6),
+    (1e6, 250e6),
+    (1e6, 250e6),
+    (1e6, 250e6),
+    (1e6, 250e6),
+    (1e6, 250e6),
+    (1e6, 250e6),
+]  # upper and lower bounds of variables
 nv = 2  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
 
