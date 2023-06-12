@@ -3,6 +3,7 @@
 import numpy as np
 import random as random
 from itertools import repeat
+import config
 
 
 RESTRICTED_EQUIP = [
@@ -74,7 +75,7 @@ def numberofstrings(N):
 
 
 if __name__ == "__main__":
-    randomly_generated_strings = np.array(numberofstrings(5000), dtype=object)
+    randomly_generated_strings = np.array(numberofstrings(50), dtype=object)
     print("Longest string character length:", len(np.max(randomly_generated_strings)))
     print(len(randomly_generated_strings))
-    np.save("r_g_strings.npy", randomly_generated_strings)
+    np.save(config.DATA_DIRECTORY / "r_g_strings.npy", randomly_generated_strings)
