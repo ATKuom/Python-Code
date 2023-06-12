@@ -3,18 +3,15 @@ import numpy as np
 from torch.nn.utils.rnn import pad_sequence
 import torch.nn as nn
 import torch.optim as optim
+import config
 
 classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
 
-# df = pd.read_csv("valid_random_strings.csv")
-datalist = np.array(
-    [
-        "GTaACaHE",
-        "GTaAC-1H1a1HE",
-        "GTaACH-1H1a1HE",
-        "GTa1bAC-2H2b2-1aT1HE",
-    ]
-)
+
+def gandetoken(datalist):
+    for ind in range(len(datalist)):
+        datalist[ind] = "G" + datalist[ind] + "E"
+    return datalist
 
 
 def one_hot_encoding(datalist):
@@ -72,12 +69,6 @@ class LSTMtry(nn.Module):
         return out
 
 
-one_hot_tensors = one_hot_encoding(datalist)
-padded_tensors = padding(one_hot_tensors)
-
-
-# Define the LSTM model
-
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
 
 criterion = nn.CrossEntropyLoss()
@@ -89,23 +80,39 @@ optimizer = optim.Adam(
     learning_rate,
 )
 
-# Training loop
-num_epochs = 500
-for epoch in range(num_epochs):
-    model.train()
-    # Forward pass
-    output = model(padded_tensors)
-    # Calculate the loss
-    # breakpoint()
-    loss = criterion(output, torch.argmax(padded_tensors, axis=1))
 
-    # # Backward pass and optimization
-    loss.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-    # # Printing the loss
-    if (epoch + 1) % 100 == 0:
-        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
-        print(f"{torch.argmax(output, axis= 1)}")
-print("Ground Truths")
-print(torch.argmax(padded_tensors, axis=1))
+if __name__ == "__main__":
+    # datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
+
+    datalist = np.array(
+        [
+            "TaACaH",
+            "TaAC-1H1a1H",
+            "TaACH-1H1a1H",
+            "Ta1bAC-2H2b2-1aT1H",
+        ],
+        dtype=object,
+    )
+    datalist = gandetoken(datalist)
+    one_hot_tensors = one_hot_encoding(datalist)
+    padded_tensors = padding(one_hot_tensors)
+    print(len(one_hot_tensors))
+    print(len(padded_tensors))
+
+    # Training loop
+    num_epochs = 500
+    for epoch in range(num_epochs):
+        # Forward pass
+        output = model(padded_tensors)
+        # Calculate the loss
+        loss = criterion(output, torch.argmax(padded_tensors, axis=1))
+        # # Backward pass and optimization
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        # # Printing the loss
+        if (epoch + 1) % 250 == 0:
+            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
+            print(f"{torch.argmax(output, axis= 1)[:11]}")
+    print("Ground Truths")
+    print(torch.argmax(padded_tensors, axis=1)[:11])

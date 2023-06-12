@@ -3,6 +3,7 @@ from collections import Counter
 from designs import arr_expert
 from String_creation import BASIC_LIST
 import numpy as np
+import config
 
 
 def basic_structure(sequence):
@@ -107,8 +108,8 @@ def validity(datalist):
 
 if __name__ == "__main__":
     # datalist = arr_expert
-    datalist = np.load("r_g_strings.npy", allow_pickle=True)
+    datalist = np.load(config.DATA_DIRECTORY / "r_g_strings.npy", allow_pickle=True)
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
     print(valid_strings)
     print(len(valid_strings))
-    # np.save("D0test.npy", valid_strings)
+    np.save(config.DATA_DIRECTORY / "D0test.npy", valid_strings)

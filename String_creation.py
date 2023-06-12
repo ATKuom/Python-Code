@@ -8,7 +8,7 @@ import config
 
 RESTRICTED_EQUIP = [
     "a",
-    "b",
+    # "b",
     "1",
     # "2",
     "-1",
@@ -75,7 +75,10 @@ def numberofstrings(N):
 
 
 if __name__ == "__main__":
-    randomly_generated_strings = np.array(numberofstrings(50), dtype=object)
-    print("Longest string character length:", len(np.max(randomly_generated_strings)))
+    randomly_generated_strings = np.array(numberofstrings(10000), dtype=object)
+    print(
+        "Longest string character length:",
+        len(max(randomly_generated_strings, key=len)),
+    )
     print(len(randomly_generated_strings))
     np.save(config.DATA_DIRECTORY / "r_g_strings.npy", randomly_generated_strings)
