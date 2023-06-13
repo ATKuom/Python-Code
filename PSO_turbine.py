@@ -6,7 +6,7 @@ from exergy_calculation import enthalpy_entropy, h0, s0, T0, K
 # ------------------------------------------------------------------------------
 def objective_function(O):
     t6 = O[0]
-    t1 = O[1]
+    # t1 = O[1]
     tur_pratio = O[2]
     m = O[3]
     p6 = O[4]

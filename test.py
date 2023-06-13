@@ -67,3 +67,5 @@ import config
 # padded_tensors = padding(one_hot_tensors)
 
 # print(np.load("D0test.npy", allow_pickle=True))
+
+print(2 * 2**0)

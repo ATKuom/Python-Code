@@ -1,6 +1,7 @@
 import random
 import matplotlib.pyplot as plt
-from exergy_calculation import enthalpy_entropy, h0, s0, T0, K
+import numpy as np
+from functions import enthalpy_entropy, h0, s0, T0, K
 
 
 # ------------------------------------------------------------------------------
@@ -16,39 +17,60 @@ def objective_function(O):
     p2 = O[8]
     p4 = O[9]
     p5 = O[10]
-
-    (h1, s1, _) = enthalpy_entropy(t1, p1)
-    (h2, s2, _) = enthalpy_entropy(t2, p2)
-    (h4, s4, _) = enthalpy_entropy(t4, p4)
-    (h5, s5, _) = enthalpy_entropy(t5, p5)
+    slack1 = O[11]
+    slack2 = O[12]
+    U_hx = 500
+    (h1, s1) = enthalpy_entropy(t1, p1)
+    (h2, s2) = enthalpy_entropy(t2, p2)
+    (h4, s4) = enthalpy_entropy(t4, p4)
+    (h5, s5) = enthalpy_entropy(t5, p5)
 
     e1 = m * (h1 - h0 - T0 * (s1 - s0))
     e2 = m * (h2 - h0 - T0 * (s2 - s0))
     e4 = m * (h4 - h0 - T0 * (s4 - s0))
     e5 = m * (h5 - h0 - T0 * (s5 - s0))
     fuel_HX = e1 - e2
-    prod_HX = e5 - e4
+    prod_HX = max(e5 - e4, 0.1)
 
+    q_hx = h1 - h2
+    q_hx = h5 - h4
+    dt1 = max(t1 - t5, 0.1)
+    dt2 = max(t2 - t4, 0.1)
+
+    def lmtd(dt1, dt2):
+        return (dt1 - dt2) / np.log(dt1 - dt2)
+
+    A_hx = q_hx / (U_hx * lmtd(dt1, dt2))
+    p2 = p1 - 1e6
+    p5 = p4 - 1e6
+    t1 = t5 + 5 + slack2
+    t2 = t4 + 5 + slack1
     if t1 > 550:
-        ft = 1 + 1.106e-4 * (t6 - 550) ** 2
+        ft_hx = 1 + 0.02141 * (t6 - 550)
     else:
-        ft = 1
-    cost_tur = 182600 * (wt**0.5561) * ft
-    cost_prod_execo_tur = (fuel_tur + cost_tur) / wt
-    z = cost_prod_execo_tur
-    # print(t6, p6 / 1e6, t1, p1 / 1e6, wt / 1e6)
+        ft_hx = 1
+    cost_hx = 49.45 * U_hx * (A_hx**0.7544) * ft_hx
+    cost_prod_hx = (fuel_HX + cost_hx) / prod_HX
+    z = cost_prod_hx + slack1 + slack2
+    print(t1, t2, t4, t5, p1 / 1e6, p2 / 1e6, p4 / 1e6, p5 / 1e6)
 
     return z
 
 
 bounds = [
-    (250, 560),
     (35, 560),
-    (1, 25),
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (35, 560),
     (0.1, 100),
     (74e6, 250e6),
     (74e6, 250e6),
-    # (0.1, 1e15),
+    (74e6, 250e6),
+    (74e6, 250e6),
+    (74e6, 250e6),
+    (0.1, 1e15),
+    (0.1, 1e15),
 ]  # upper and lower bounds of variables
 nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
