@@ -1,25 +1,25 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-from functions import enthalpy_entropy, h0, s0, T0, K
+from functions import lmtd, enthalpy_entropy, h0, s0, T0, K
 
 
 # ------------------------------------------------------------------------------
 def objective_function(O):
-    t6 = O[0]
-    t1 = O[1]
-    t2 = O[2]
-    t4 = O[3]
-    t5 = O[4]
-    m = O[5]
-    p6 = O[6]
-    p1 = O[7]
-    p2 = O[8]
-    p4 = O[9]
-    p5 = O[10]
-    slack1 = O[11]
-    slack2 = O[12]
+    t1 = O[0]
+    t2 = O[1]
+    t4 = O[2]
+    t5 = O[3]
+    m = O[4]
+    p1 = O[5]
+    p2 = O[6]
+    p4 = O[7]
+    p5 = O[8]
+    slack1 = O[9]
+    slack2 = O[10]
+
     U_hx = 500
+
     (h1, s1) = enthalpy_entropy(t1, p1)
     (h2, s2) = enthalpy_entropy(t2, p2)
     (h4, s4) = enthalpy_entropy(t4, p4)
@@ -29,16 +29,14 @@ def objective_function(O):
     e2 = m * (h2 - h0 - T0 * (s2 - s0))
     e4 = m * (h4 - h0 - T0 * (s4 - s0))
     e5 = m * (h5 - h0 - T0 * (s5 - s0))
+
     fuel_HX = e1 - e2
-    prod_HX = max(e5 - e4, 0.1)
+    prod_HX = e5 - e4
 
     q_hx = h1 - h2
-    q_hx = h5 - h4
-    dt1 = max(t1 - t5, 0.1)
-    dt2 = max(t2 - t4, 0.1)
-
-    def lmtd(dt1, dt2):
-        return (dt1 - dt2) / np.log(dt1 - dt2)
+    h5 = h4 + q_hx
+    dt1 = max(t1 - t5, 1)
+    dt2 = max(t2 - t4, 1)
 
     A_hx = q_hx / (U_hx * lmtd(dt1, dt2))
     p2 = p1 - 1e6
@@ -46,13 +44,19 @@ def objective_function(O):
     t1 = t5 + 5 + slack2
     t2 = t4 + 5 + slack1
     if t1 > 550:
-        ft_hx = 1 + 0.02141 * (t6 - 550)
+        ft_hx = 1 + 0.02141 * (t1 - 550)
+    elif t5 > 550:
+        ft_hx = 1 + 0.02141 * (t5 - 550)
     else:
         ft_hx = 1
     cost_hx = 49.45 * U_hx * (A_hx**0.7544) * ft_hx
     cost_prod_hx = (fuel_HX + cost_hx) / prod_HX
-    z = cost_prod_hx + slack1 + slack2
-    print(t1, t2, t4, t5, p1 / 1e6, p2 / 1e6, p4 / 1e6, p5 / 1e6)
+    z = cost_hx + slack1 + slack2
+
+    print(
+        "%3.0f,%3.0f,%3.0f,%3.0f,%3.0f,%3.0f, %3.0f, %3.0f"
+        % (t1, t2, t4, t5, p1 / 1e6, p2 / 1e6, p4 / 1e6, p5 / 1e6)
+    )
 
     return z
 
@@ -62,9 +66,7 @@ bounds = [
     (35, 560),
     (35, 560),
     (35, 560),
-    (35, 560),
     (0.1, 100),
-    (74e6, 250e6),
     (74e6, 250e6),
     (74e6, 250e6),
     (74e6, 250e6),
@@ -76,7 +78,7 @@ nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
 
 # PARAMETERS OF PSO
-particle_size = 7  # number of particles
+particle_size = 14  # number of particles
 iterations = 30  # max number of iterations
 w = 0.8  # inertia constant
 c1 = 1  # cognative constant

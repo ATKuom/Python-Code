@@ -1,26 +1,27 @@
 import random
 import matplotlib.pyplot as plt
 from functions import temperature, lmtd, enthalpy_entropy, h0, s0, T0, K
+import time
 
 
 # ------------------------------------------------------------------------------
-def objective_function(O):
+def objective_function(x):
     ##Variables
     # t1 = O[0]
-    t2 = O[1]
-    t3 = O[2]
+    t2 = x[1]
+    t3 = x[2]
     # t4 = O[3]
-    # t5 = O[4]
-    t6 = O[5]
-    tur_pratio = O[6]
-    comp_pratio = O[7]
-    m = O[8]
+    # t5 = x[4]
+    t6 = x[5]
+    tur_pratio = x[6]
+    comp_pratio = x[7]
+    m = x[8]
     # p1 = O[9]
     # p2 = O[10]
     # p3 = O[11]
     # p4 = O[12]
     # p5 = O[13]
-    p6 = O[14]
+    p6 = x[14]
 
     ##Parameters
     ntur = 0.93  # turbine efficiency     2019 Nabil
@@ -30,8 +31,6 @@ def objective_function(O):
     U_c = U_hx
     cw_temp = 15
     cp_gas = 11514  # j/kgK
-    ##Exergy Calculation
-
     total_cost = 0
 
     (h6, s6) = enthalpy_entropy(t6, p6)
@@ -62,14 +61,14 @@ def objective_function(O):
     p2 = p1 - 1e5
     (h2, s2) = enthalpy_entropy(t2, p2)
     e2 = m * (h2 - h0 - T0 * (s2 - s0))
-    q_hx = h1 - h2
+    q_hx = max(h1 - h2, 0.1)
     fuel_HX = e1 - e2
 
     ##Cooler
     p3 = p2 - 0.5e5
     (h3, s3) = enthalpy_entropy(t3, p3)
     e3 = m * (h3 - h0 - T0 * (s3 - s0))
-    q_c = h2 - h3
+    q_c = max(h2 - h3, 0.1)
     fuel_cooler = q_c
     prod_cooler = e2 - e3
     dt1_cooler = t2 - cw_temp
@@ -89,7 +88,7 @@ def objective_function(O):
     cost_comp = 1230000 * w_comp**0.3992
     total_cost += cost_comp
 
-    ##Heat Exchanger Cold Side
+    # ##Heat Exchanger Cold Side
     p5 = p4 - 1e5
     h5 = h4 + q_hx
     t5 = temperature(h5, p5)
@@ -97,7 +96,9 @@ def objective_function(O):
     e5 = m * (h5 - h0 - T0 * (s5 - s0))
     dt1_hx = t1 - t5
     dt2_hx = t2 - t4
-    A_hx = q_hx / (U_hx * lmtd(dt1_hx, dt2_hx))
+    # print(dt1_hx, dt2_hx)
+    A_hx = 100
+    # q_hx / (U_hx * lmtd(dt1_hx, dt2_hx))
     if t1 > 550:
         ft_hx = 1 + 0.02141 * (t1 - 550)
     elif t5 > 550:
@@ -121,7 +122,6 @@ def objective_function(O):
         ft_heater = 1
     cost_heater = 820800 * q_heater**0.7327 * ft_heater
     total_cost += cost_heater
-
     z = total_cost
     return z
 
@@ -147,8 +147,8 @@ nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
 
 # PARAMETERS OF PSO
-particle_size = 7  # number of particles
-iterations = 30  # max number of iterations
+particle_size = 40  # number of particles
+iterations = 5  # max number of iterations
 w = 0.8  # inertia constant
 c1 = 1  # cognative constant
 c2 = 2  # social constant

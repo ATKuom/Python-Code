@@ -68,4 +68,5 @@ import config
 
 # print(np.load("D0test.npy", allow_pickle=True))
 
-print(2 * 2**0)
+
+print(np.log(0.1))

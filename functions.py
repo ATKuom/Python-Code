@@ -3,7 +3,7 @@ import numpy as np
 
 
 def lmtd(dt1, dt2):
-    return (dt1 - dt2) / np.log(abs(dt1 - dt2))
+    return (dt1 - dt2) / np.log(dt1 / dt2)
 
 
 def enthalpy_entropy(T, P):
@@ -36,3 +36,7 @@ def temperature(h, P):
         Input.enthalpy(h), Input.pressure(P)
     )
     return substance.temperature
+
+
+print(enthalpy_entropy(560, 250e6))
+print(temperature(1091129.2381446492, 250e6))

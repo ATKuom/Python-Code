@@ -1,48 +1,52 @@
 import random
 import matplotlib.pyplot as plt
-from exergy_calculation import enthalpy_entropy, h0, s0, T0, K
+from functions import enthalpy_entropy, h0, s0, T0, K
 
 
 # ------------------------------------------------------------------------------
 def objective_function(O):
     t6 = O[0]
-    # t1 = O[1]
-    tur_pratio = O[2]
-    m = O[3]
-    p6 = O[4]
-    p1 = O[5]
-    # wt = O[6]
-    nt = 0.93
+    tur_pratio = O[1]
+    m = O[2]
+    p6 = O[3]
+    p1 = O[4]
+    ntur = 0.93
     gamma = 1.28
+    total_cost = 0
 
-    t1 = (t6 + K) - nt * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
+    (h6, s6) = enthalpy_entropy(t6, p6)
+    e6 = m * (h6 - h0 - T0 * (s6 - s0))
+    t1 = max(
+        (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K,
+        35,
+    )
     p1 = p6 / tur_pratio
-    (hin, sin, _) = enthalpy_entropy(t6, p6)
-    (hout, sout, _) = enthalpy_entropy(t1, p1)
-    ein_tur = m * (hin - h0 - T0 * (sin - s0))
-    eout_tur = m * (hout - h0 - T0 * (sout - s0))
-    wt = max(m * (hin - hout), 0.1)
-    fuel_tur = ein_tur - eout_tur
+    (h1, s1) = enthalpy_entropy(t1, p1)
+    e1 = m * (h1 - h0 - T0 * (s1 - s0))
+    w_tur = max(m * (h6 - h1), 0.01)
+    fuel_tur = e6 - e1
+    prod_tur = w_tur
     if t6 > 550:
-        ft = 1 + 1.106e-4 * (t6 - 550) ** 2
+        ft_tur = 1 + 1.106e-4 * (t6 - 550) ** 2
+    elif t1 > 550:
+        ft_tur = 1 + 1.106e-4 * (t1 - 550) ** 2
     else:
-        ft = 1
-    cost_tur = 182600 * (wt**0.5561) * ft
-    cost_prod_execo_tur = (fuel_tur + cost_tur) / wt
+        ft_tur = 1
+    cost_tur = 182600 * (w_tur**0.5561) * ft_tur
+    total_cost += cost_tur
+    cost_prod_execo_tur = (fuel_tur + cost_tur) / w_tur
     z = cost_prod_execo_tur
-    # print(t6, p6 / 1e6, t1, p1 / 1e6, wt / 1e6)
+    print(t6, p6 / 1e6, t1, p1 / 1e6, w_tur / 1e6)
 
     return z
 
 
 bounds = [
     (250, 560),
-    (35, 560),
     (1, 25),
     (0.1, 100),
     (74e6, 250e6),
     (74e6, 250e6),
-    # (0.1, 1e15),
 ]  # upper and lower bounds of variables
 nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
