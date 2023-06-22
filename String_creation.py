@@ -75,7 +75,7 @@ def numberofstrings(N):
 
 
 if __name__ == "__main__":
-    randomly_generated_strings = np.array(numberofstrings(50), dtype=object)
+    randomly_generated_strings = np.array(numberofstrings(100), dtype=object)
     print("Longest string character length:", len(np.max(randomly_generated_strings)))
     print(len(randomly_generated_strings))
     np.save(config.DATA_DIRECTORY / "r_g_strings.npy", randomly_generated_strings)
