@@ -1,128 +1,63 @@
 import random
 import matplotlib.pyplot as plt
-from functions import temperature, lmtd, enthalpy_entropy, h0, s0, T0, K
-import time
+import numpy as np
+from functions import lmtd, enthalpy_entropy, h0, s0, T0, K
 
 
 # ------------------------------------------------------------------------------
-def objective_function(x):
-    ##Variables
-    # t1 = O[0]
-    t2 = x[1]
-    t3 = x[2]
-    # t4 = O[3]
-    # t5 = x[4]
-    t6 = x[5]
-    tur_pratio = x[6]
-    comp_pratio = x[7]
-    m = x[8]
-    # p1 = O[9]
-    # p2 = O[10]
-    # p3 = O[11]
-    # p4 = O[12]
-    # p5 = O[13]
-    p6 = x[14]
+def objective_function(O):
+    t1 = O[0]
+    t2 = O[1]
+    t4 = O[2]
+    t5 = O[3]
+    m = O[4]
+    p1 = O[5]
+    p2 = O[6]
+    p4 = O[7]
+    p5 = O[8]
+    slack1 = O[9]
+    slack2 = O[10]
 
-    ##Parameters
-    ntur = 0.93  # turbine efficiency     2019 Nabil
-    ncomp = 0.89  # compressor efficiency 2019 Nabil
-    gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
-    U_hx = 500  # Mean estimation from engineering toolbox
-    U_c = U_hx
-    cw_temp = 15
-    cp_gas = 11514  # j/kgK
-    total_cost = 0
+    U_hx = 500
 
-    (h6, s6) = enthalpy_entropy(t6, p6)
-    e6 = m * (h6 - h0 - T0 * (s6 - s0))
-
-    ##Turbine
-    t1 = max(
-        (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K,
-        35,
-    )
-    p1 = p6 / tur_pratio
     (h1, s1) = enthalpy_entropy(t1, p1)
-    e1 = m * (h1 - h0 - T0 * (s1 - s0))
-    w_tur = max(m * (h6 - h1), 0.01)
-    fuel_tur = e6 - e1
-    prod_tur = w_tur
-    if t6 > 550:
-        ft_tur = 1 + 1.106e-4 * (t6 - 550) ** 2
-    elif t1 > 550:
-        ft_tur = 1 + 1.106e-4 * (t1 - 550) ** 2
-    else:
-        ft_tur = 1
-    cost_tur = 182600 * (w_tur**0.5561) * ft_tur
-    total_cost += cost_tur
-    cost_prod_execo_tur = (fuel_tur + cost_tur) / w_tur
-
-    ##Heat Exchanger Hot side
-    p2 = p1 - 1e5
     (h2, s2) = enthalpy_entropy(t2, p2)
-    e2 = m * (h2 - h0 - T0 * (s2 - s0))
-    q_hx = max(h1 - h2, 0.1)
-    fuel_HX = e1 - e2
-
-    ##Cooler
-    p3 = p2 - 0.5e5
-    (h3, s3) = enthalpy_entropy(t3, p3)
-    e3 = m * (h3 - h0 - T0 * (s3 - s0))
-    q_c = max(h2 - h3, 0.1)
-    fuel_cooler = q_c
-    prod_cooler = e2 - e3
-    dt1_cooler = t2 - cw_temp
-    dt2_cooler = t3 - cw_temp
-    A_cooler = q_c / (U_c * lmtd(dt1_cooler, dt2_cooler))
-    cost_cooler = 32.88 * U_c * A_cooler**0.75
-    total_cost += cost_cooler
-
-    ##Compressor
-    t4 = (t3 + K) + ((t3 + K) * (tur_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
-    p4 = p3 * comp_pratio
     (h4, s4) = enthalpy_entropy(t4, p4)
-    e4 = m * (h4 - h0 - T0 * (s4 - s0))
-    w_comp = m * (h4 - h3)
-    fuel_comp = w_comp
-    prod_comp = e4 - e3
-    cost_comp = 1230000 * w_comp**0.3992
-    total_cost += cost_comp
-
-    # ##Heat Exchanger Cold Side
-    p5 = p4 - 1e5
-    h5 = h4 + q_hx
-    t5 = temperature(h5, p5)
     (h5, s5) = enthalpy_entropy(t5, p5)
+
+    e1 = m * (h1 - h0 - T0 * (s1 - s0))
+    e2 = m * (h2 - h0 - T0 * (s2 - s0))
+    e4 = m * (h4 - h0 - T0 * (s4 - s0))
     e5 = m * (h5 - h0 - T0 * (s5 - s0))
-    dt1_hx = t1 - t5
-    dt2_hx = t2 - t4
-    # print(dt1_hx, dt2_hx)
-    A_hx = 100
-    # q_hx / (U_hx * lmtd(dt1_hx, dt2_hx))
+
+    fuel_HX = e1 - e2
+    prod_HX = e5 - e4
+
+    q_hx = h1 - h2
+    h5 = h4 + q_hx
+    dt1 = max(t1 - t5, 1)
+    dt2 = max(t2 - t4, 1)
+
+    A_hx = q_hx / (U_hx * lmtd(dt1, dt2))
+    p2 = p1 - 1e6
+    p5 = p4 - 1e6
+    t1 = t5 + 5 + slack2
+    t2 = t4 + 5 + slack1
     if t1 > 550:
         ft_hx = 1 + 0.02141 * (t1 - 550)
     elif t5 > 550:
         ft_hx = 1 + 0.02141 * (t5 - 550)
     else:
         ft_hx = 1
-    cost_HX = 49.45 * U_hx * A_hx**0.7544 * ft_hx
-    total_cost += cost_HX
+    cost_hx = 49.45 * U_hx * (A_hx**0.7544) * ft_hx
+    cost_prod_hx = (fuel_HX + cost_hx) / prod_HX
+    z = cost_hx + slack1 + slack2
 
-    ##Heater
-    p6 = p5 - 1e5
-    q_heater = (
-        935 * cp_gas * (630 - 110)
-    )  # 630 from the exhaust 110 is just a number. It should be based on the dew point ass
-    h6 = h5 + q_heater
-    if t6 > 550:
-        ft_heater = 1 + 5.4e-5 * (t6 - 550) ** 2
-    elif t5 > 550:
-        ft_heater = 1 + 5.4e-5 * (t5 - 550) ** 2
-    else:
-        ft_heater = 1
-    cost_heater = 820800 * q_heater**0.7327 * ft_heater
-    total_cost += cost_heater
-    z = total_cost
+    print(
+        "%3.0f,%3.0f,%3.0f,%3.0f,%3.0f,%3.0f, %3.0f, %3.0f"
+        % (t1, t2, t4, t5, p1 / 1e6, p2 / 1e6, p4 / 1e6, p5 / 1e6)
+    )
+
     return z
 
 
@@ -131,24 +66,20 @@ bounds = [
     (35, 560),
     (35, 560),
     (35, 560),
-    (35, 560),
-    (35, 560),
-    (1, 25),
-    (1, 25),
-    (0.1, 1e6),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
+    (0.1, 100),
+    (74e6, 250e6),
+    (74e6, 250e6),
+    (74e6, 250e6),
+    (74e6, 250e6),
+    (0.1, 1e15),
+    (0.1, 1e15),
 ]  # upper and lower bounds of variables
 nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
 
 # PARAMETERS OF PSO
-particle_size = 40  # number of particles
-iterations = 5  # max number of iterations
+particle_size = 14  # number of particles
+iterations = 30  # max number of iterations
 w = 0.8  # inertia constant
 c1 = 1  # cognative constant
 c2 = 2  # social constant
@@ -288,7 +219,7 @@ class PSO:
             # Visualization
             # ax.plot(A, color="r")
             # fig.canvas.draw()
-            # ax.set_xlim(left_tur=max(0, i - iterations), right=i + 3)
+            # ax.set_xlim(left=max(0, i - iterations), right=i + 3)
         print("Result:")
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)

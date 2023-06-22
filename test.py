@@ -1,15 +1,16 @@
 import torch
-from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils.rnn import pad_sequence
 import numpy as np
-import pandas as pd
 import torch.nn.functional as F
-import csv
+import config
 
-# datalist = np.load("D0test.npy", allow_pickle=True)
-# print(datalist)
-# for ind in range(len(datalist)):
-#     datalist[ind] = "G" + datalist[ind] + "E"
+# datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
+# example = max(datalist, key=len)
+# print(example, len(example))
+
+# ex2 = max(datalist, key=len)
+# print(ex2, len(ex2))
+# np.save(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
 
 # classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
 # # datalist = np.array(
@@ -66,3 +67,6 @@ import csv
 # padded_tensors = padding(one_hot_tensors)
 
 # print(np.load("D0test.npy", allow_pickle=True))
+
+
+print(np.log(0.1))
