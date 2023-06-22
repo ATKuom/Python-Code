@@ -82,25 +82,23 @@ optimizer = optim.Adam(
 
 
 if __name__ == "__main__":
-    # datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
+    datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
 
-    datalist = np.array(
-        [
-            "TaACaH",
-            "TaAC-1H1a1H",
-            "TaACH-1H1a1H",
-            "Ta1bAC-2H2b2-1aT1H",
-        ],
-        dtype=object,
-    )
+    # datalist = np.array(
+    #     [
+    #         "TaACaH",
+    #         "TaAC-1H1a1H",
+    #         "TaACH-1H1a1H",
+    #         "Ta1bAC-2H2b2-1aT1H",
+    #     ],
+    #     dtype=object,
+    # )
     datalist = gandetoken(datalist)
     one_hot_tensors = one_hot_encoding(datalist)
     padded_tensors = padding(one_hot_tensors)
-    print(len(one_hot_tensors))
-    print(len(padded_tensors))
 
     # Training loop
-    num_epochs = 500
+    num_epochs = 1000
     for epoch in range(num_epochs):
         # Forward pass
         output = model(padded_tensors)
@@ -113,6 +111,6 @@ if __name__ == "__main__":
         # # Printing the loss
         if (epoch + 1) % 250 == 0:
             print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
-            print(f"{torch.argmax(output, axis= 1)[:11]}")
+            print(f"{torch.argmax(output, axis= 1)[:13]}")
     print("Ground Truths")
-    print(torch.argmax(padded_tensors, axis=1)[:11])
+    print(torch.argmax(padded_tensors, axis=1)[:13])
