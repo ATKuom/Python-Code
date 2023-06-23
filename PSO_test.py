@@ -1,7 +1,6 @@
 import random
 import matplotlib.pyplot as plt
 from functions import temperature, lmtd, enthalpy_entropy, h0, s0, T0, K
-import time
 
 
 # ------------------------------------------------------------------------------
