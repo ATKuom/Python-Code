@@ -1,0 +1,251 @@
+import random
+import matplotlib.pyplot as plt
+import numpy as np
+from functions import temperature, lmtd, enthalpy_entropy, h0, s0, T0, K
+from econ import economics
+
+
+# ------------------------------------------------------------------------------
+def objective_function(x):
+    ##Variables
+    # t1 = O[0]
+    t2 = x[1]
+    t3 = x[2]
+    # t4 = O[3]
+    # t5 = x[4]
+    t6 = x[5]
+    tur_pratio = x[6]
+    comp_pratio = x[7]
+    m = x[8]
+    # p1 = O[9]
+    # p2 = O[10]
+    # p3 = O[11]
+    # p4 = O[12]
+    # p5 = O[13]
+    p6 = x[14]
+
+    ##Parameters
+    ntur = 0.93  # turbine efficiency     2019 Nabil
+    ncomp = 0.89  # compressor efficiency 2019 Nabil
+    gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
+    U_hx = 500  # Mean estimation from engineering toolbox
+    U_c = U_hx
+    cw_temp = 15
+    cp_gas = 1151  # j/kgK
+    pec = list()
+
+    ##Exergy Analysis
+
+    # Turbine
+    t1 = (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
+    p1 = p6 / tur_pratio
+    (h1, s1) = enthalpy_entropy(t1, p1)
+    (h6, s6) = enthalpy_entropy(t6, p6)
+    w_tur = m * (h6 - h1)
+    ##Heat Exchanger Hot side
+    p2 = p1 - 1e5
+    (h2, s2) = enthalpy_entropy(t2, p2)
+    q_hx = h1 - h2
+    ##Cooler
+    p3 = p2 - 0.5e5
+    (h3, s3) = enthalpy_entropy(t3, p3)
+    q_c = h2 - h3
+    ##Compressor
+    t4 = (t3 + K) + ((t3 + K) * (tur_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
+    p4 = p3 * comp_pratio
+    (h4, s4) = enthalpy_entropy(t4, p4)
+    w_comp = m * (h4 - h3)
+    ##Heat Exchanger Cold Side
+    p5 = p4 - 1e5
+    h5 = h4 + q_hx
+    t5 = temperature(h5, p5)
+    ##Heater
+    p6 = p5 - 1e5
+
+    q_heater = (
+        935 * cp_gas * (630 - 90)
+    )  # 630 from the exhaust 90 is just a number. It should be based on the dew point ass
+
+    return z
+
+
+bounds = [
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (35, 560),
+    (1, 25),
+    (1, 25),
+    (0.1, 1e6),
+    (74e5, 250e5),
+    (74e5, 250e5),
+    (74e5, 250e5),
+    (74e5, 250e5),
+    (74e5, 250e5),
+    (74e5, 250e5),
+]  # upper and lower bounds of variables
+nv = len(bounds)  # number of variables
+mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
+
+# PARAMETERS OF PSO
+particle_size = 40  # number of particles
+iterations = 5  # max number of iterations
+w = 0.72984  # inertia constant
+c1 = 2.05  # cognative constant
+c2 = 2.05  # social constant
+
+# Visualization
+fig = plt.figure()
+ax = fig.add_subplot()
+fig.show()
+plt.title("Evolutionary process of the objective function value")
+plt.xlabel("Iteration")
+plt.ylabel("Objective function")
+
+
+# ------------------------------------------------------------------------------
+class Particle:
+    def __init__(self, bounds):
+        self.particle_position = []
+        self.particle_velocity = []
+        self.local_best_particle_position = []
+        self.fitness_local_best_particle_position = (
+            initial_fitness  # objective function value of the best particle position
+        )
+        self.fitness_particle_position = (
+            initial_fitness  # objective function value of the particle position
+        )
+
+        for i in range(nv):
+            self.particle_position.append(
+                random.uniform(bounds[i][0], bounds[i][1])
+            )  # generate random initial position
+            self.particle_velocity.append(
+                random.uniform(-1, 1)
+            )  # generate random initial velocity
+
+    def evaluate(self, objective_function):
+        self.fitness_particle_position = objective_function(self.particle_position)
+        if mm == -1:
+            if (
+                self.fitness_particle_position
+                < self.fitness_local_best_particle_position
+            ):
+                self.local_best_particle_position = (
+                    self.particle_position
+                )  # update particle's local best poition
+                self.fitness_local_best_particle_position = (
+                    self.fitness_particle_position
+                )  # update fitness at particle's local best position
+        if mm == 1:
+            if (
+                self.fitness_particle_position
+                > self.fitness_local_best_particle_position
+            ):
+                self.local_best_particle_position = (
+                    self.particle_position
+                )  # update particle's local best position
+                self.fitness_local_best_particle_position = (
+                    self.fitness_particle_position
+                )  # update fitness at particle's local best position
+
+    def update_velocity(self, global_best_particle_position):
+        for i in range(nv):
+            r1 = random.random()
+            r2 = random.random()
+
+            # local explorative position displacement component
+            cognitive_velocity = (
+                c1
+                * r1
+                * (self.local_best_particle_position[i] - self.particle_position[i])
+            )
+
+            # position displacement component towards global best
+            social_velocity = (
+                c2 * r2 * (global_best_particle_position[i] - self.particle_position[i])
+            )
+
+            self.particle_velocity[i] = (
+                w * self.particle_velocity[i] + cognitive_velocity + social_velocity
+            )
+
+    def update_position(self, bounds):
+        for i in range(nv):
+            self.particle_position[i] = (
+                self.particle_position[i] + self.particle_velocity[i]
+            )
+
+            # check and repair to satisfy the upper bounds
+            if self.particle_position[i] > bounds[i][1]:
+                self.particle_position[i] = bounds[i][1]
+            # check and repair to satisfy the lower bounds
+            if self.particle_position[i] < bounds[i][0]:
+                self.particle_position[i] = bounds[i][0]
+
+
+class PSO:
+    def __init__(self, objective_function, bounds, particle_size, iterations):
+        fitness_global_best_particle_position = initial_fitness
+        global_best_particle_position = []
+        swarm_particle = []
+        for i in range(particle_size):
+            swarm_particle.append(Particle(bounds))
+        A = []
+
+        for i in range(iterations):
+            for j in range(particle_size):
+                swarm_particle[j].evaluate(objective_function)
+
+                if mm == -1:
+                    if (
+                        swarm_particle[j].fitness_particle_position
+                        < fitness_global_best_particle_position
+                    ):
+                        global_best_particle_position = list(
+                            swarm_particle[j].particle_position
+                        )
+                        fitness_global_best_particle_position = float(
+                            swarm_particle[j].fitness_particle_position
+                        )
+                if mm == 1:
+                    if (
+                        swarm_particle[j].fitness_particle_position
+                        > fitness_global_best_particle_position
+                    ):
+                        global_best_particle_position = list(
+                            swarm_particle[j].particle_position
+                        )
+                        fitness_global_best_particle_position = float(
+                            swarm_particle[j].fitness_particle_position
+                        )
+
+            for j in range(particle_size):
+                swarm_particle[j].update_velocity(global_best_particle_position)
+                swarm_particle[j].update_position(bounds)
+
+            A.append(fitness_global_best_particle_position)  # record the best fitness
+
+            # Visualization
+            # ax.plot(A, color="r")
+            # fig.canvas.draw()
+            # ax.set_xlim(left_tur=max(0, i - iterations), right=i + 3)
+        print("Result:")
+        print("Optimal solutions:", global_best_particle_position)
+        print("Objective function value:", fitness_global_best_particle_position)
+        plt.plot(A)
+
+
+# ------------------------------------------------------------------------------
+if mm == -1:
+    initial_fitness = float("inf")  # for minimization problem
+
+if mm == 1:
+    initial_fitness = -float("inf")  # for maximization problem
+
+# ------------------------------------------------------------------------------
+# Main PSO
+PSO(objective_function, bounds, particle_size, iterations)
+plt.show()
