@@ -1,6 +1,8 @@
 import random
 import matplotlib.pyplot as plt
+import numpy as np
 from functions import temperature, lmtd, enthalpy_entropy, h0, s0, T0, K
+from econ import economics
 
 
 # ------------------------------------------------------------------------------
@@ -29,9 +31,10 @@ def objective_function(x):
     U_hx = 500  # Mean estimation from engineering toolbox
     U_c = U_hx
     cw_temp = 15
-    cp_gas = 1151  # j/kgK
-    total_cost = 0
+    cp_gas = 11514  # j/kgK
+    pec = list()
 
+    ##Exergy Analysis
     (h6, s6) = enthalpy_entropy(t6, p6)
     e6 = m * (h6 - h0 - T0 * (s6 - s0))
 
@@ -53,7 +56,6 @@ def objective_function(x):
     else:
         ft_tur = 1
     cost_tur = 182600 * (w_tur**0.5561) * ft_tur
-    total_cost += cost_tur
     cost_prod_execo_tur = (fuel_tur + cost_tur) / w_tur
 
     ##Heat Exchanger Hot side
@@ -74,7 +76,6 @@ def objective_function(x):
     dt2_cooler = t3 - cw_temp
     A_cooler = q_c / (U_c * lmtd(dt1_cooler, dt2_cooler))
     cost_cooler = 32.88 * U_c * A_cooler**0.75
-    total_cost += cost_cooler
 
     ##Compressor
     t4 = (t3 + K) + ((t3 + K) * (tur_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
@@ -85,7 +86,6 @@ def objective_function(x):
     fuel_comp = w_comp
     prod_comp = e4 - e3
     cost_comp = 1230000 * w_comp**0.3992
-    total_cost += cost_comp
 
     # ##Heat Exchanger Cold Side
     p5 = p4 - 1e5
@@ -105,7 +105,6 @@ def objective_function(x):
     else:
         ft_hx = 1
     cost_HX = 49.45 * U_hx * A_hx**0.7544 * ft_hx
-    total_cost += cost_HX
 
     ##Heater
     p6 = p5 - 1e5
@@ -120,8 +119,41 @@ def objective_function(x):
     else:
         ft_heater = 1
     cost_heater = 820800 * q_heater**0.7327 * ft_heater
-    total_cost += cost_heater
-    z = total_cost
+    ##Economic Analysis
+    pec.append(cost_tur)
+    pec.append(cost_HX)
+    pec.append(cost_cooler)
+    pec.append(cost_comp)
+    pec.append(cost_heater)
+    prod_capacity = (w_tur - w_comp) / 1e6
+    zk, cftot = economics(pec, prod_capacity)
+    ##Exergoeconomic Analysis
+    # [c1,c2,c3,c4,c5,c6,cw_tur,cw_comp,cf]
+    m1 = np.array(
+        [
+            [e1 - e6, 0, 0, 0, 0, 0, w_tur, 0, 0],
+            [-e1 + e2, 0, 0, -e4, e5, 0, 0, 0, 0],
+            [0, e2, -e3, 0, 0, 0, 0, 0, 0],
+            [0, 0, -e3, e4, 0, 0, 0, w_comp, 0],
+            [0, 0, 0, 0, -e5, e6, 0, 0, q_heater],
+            [1, 0, 0, 0, 0, -1, 0, 0, 0],
+            [1, -1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1],
+        ]
+    )
+    m2 = np.asarray(zk).reshape(5, 1)
+    np.append(
+        m2,
+        [
+            0,
+            0,
+            0,
+        ],
+    )
+    costs = np.linalg.solve(m1, m2)
+    breakpoint()
+    z = cost_comp
     return z
 
 

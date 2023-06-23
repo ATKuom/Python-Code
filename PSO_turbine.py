@@ -1,6 +1,7 @@
 import random
 import matplotlib.pyplot as plt
 from functions import enthalpy_entropy, h0, s0, T0, K
+from econ import economics
 
 
 # ------------------------------------------------------------------------------
@@ -12,7 +13,6 @@ def objective_function(O):
     p1 = O[4]
     ntur = 0.93
     gamma = 1.28
-    total_cost = 0
 
     (h6, s6) = enthalpy_entropy(t6, p6)
     e6 = m * (h6 - h0 - T0 * (s6 - s0))
@@ -33,9 +33,12 @@ def objective_function(O):
     else:
         ft_tur = 1
     cost_tur = 182600 * (w_tur**0.5561) * ft_tur
-    total_cost += cost_tur
+    pec = [cost_tur]
     cost_prod_execo_tur = (fuel_tur + cost_tur) / w_tur
-    z = cost_prod_execo_tur
+    prod_capacity = w_tur / 1e6
+    zk = economics(pec, prod_capacity)
+
+    z = zk[0]
     print(t6, p6 / 1e6, t1, p1 / 1e6, w_tur / 1e6)
 
     return z
