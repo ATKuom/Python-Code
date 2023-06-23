@@ -30,7 +30,7 @@ def objective_function(x):
     U_hx = 500  # Mean estimation from engineering toolbox
     U_c = U_hx
     cw_temp = 15
-    cp_gas = 11514  # j/kgK
+    cp_gas = 1151  # j/kgK
     total_cost = 0
 
     (h6, s6) = enthalpy_entropy(t6, p6)
