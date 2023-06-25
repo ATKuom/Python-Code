@@ -2,6 +2,8 @@ from pyfluids import Fluid, FluidsList, Input
 import numpy as np
 
 
+##Specific heat calculation works fine with DT similar to estimate h2-h1
+##However, h2 =/= cp*t2
 def lmtd(dt1, dt2):
     return (dt1 - dt2) / np.log(dt1 / dt2)
 
@@ -17,6 +19,13 @@ def enthalpy_entropy(T, P):
         Input.pressure(P), Input.temperature(T)
     )
     return (substance.enthalpy, substance.entropy)
+
+
+def specific_heat(T, P):
+    substance = Fluid(FluidsList.CarbonDioxide).with_state(
+        Input.pressure(P), Input.temperature(T)
+    )
+    return substance.specific_heat
 
 
 T0 = 15
@@ -36,7 +45,3 @@ def temperature(h, P):
         Input.enthalpy(h), Input.pressure(P)
     )
     return substance.temperature
-
-
-print(enthalpy_entropy(560, 250e6))
-print(temperature(1091129.2381446492, 250e6))
