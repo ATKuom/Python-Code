@@ -7,22 +7,12 @@ from econ import economics
 
 # ------------------------------------------------------------------------------
 def objective_function(x):
-    ##Variables
-    # t1 = x[0]
-    # t2 = x[1]
-    t3 = x[2]
-    # t4 = x[3]
-    # t5 = x[4]
-    t6 = x[5]
-    tur_pratio = x[6]
-    comp_pratio = x[7]
-    m = x[8]
-    # p1 = x[9]
-    # p2 = x[10]
-    # p3 = x[11]
-    # p4 = x[12]
-    # p5 = x[13]
-    p6 = x[14]
+    t3 = x[0]
+    t6 = x[1]
+    tur_pratio = x[2]
+    comp_pratio = x[3]
+    m = x[4]
+    p6 = x[5]
 
     ##Parameters
     ntur = 0.93  # turbine efficiency     2019 Nabil
@@ -42,15 +32,23 @@ def objective_function(x):
     p6 = p5 - 1e5
 
     # Turbine
+    (h6, s6) = enthalpy_entropy(t6, p6)
     t1 = (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
     (h1, s1) = enthalpy_entropy(t1, p1)
+    w_tur = m * (h6 - h1)
+    if w_tur < 0:
+        return float(1e6)
     ##Compressor
-    t4 = (t3 + K) + ((t3 + K) * (tur_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
+    (h3, s3) = enthalpy_entropy(t3, p3)
+    t4 = (t3 + K) + ((t3 + K) * (comp_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
     (h4, s4) = enthalpy_entropy(t4, p4)
+    w_comp = m * (h4 - h3)
+    if w_comp < 0:
+        return float(1e6)
     ##Heat Exchanger
     t2 = [t2 for t2 in range(int(t4) + 5, int(t1))]
     if len(t2) == 0:
-        return float("inf")
+        return float(1e6)
     h2 = list()
     for temp in t2:
         a, _ = enthalpy_entropy(temp, p2)
@@ -59,7 +57,7 @@ def objective_function(x):
     q_hx1 = m * h1 - m * h2
     t5 = [t2 for t2 in range(int(t4), int(t1) - 5)]
     if len(t5) == 0:
-        return float("inf")
+        return float(1e6)
     h5 = list()
     for temp in t5:
         a, _ = enthalpy_entropy(temp, p5)
@@ -68,14 +66,22 @@ def objective_function(x):
     q_hx2 = m * h5 - m * h4
     q_hx = q_hx1 - q_hx2
     index = np.where(q_hx[:-1] * q_hx[1:] < 0)[0]
+    if len(index) == 0:
+        return float(1e6)
     t2 = t2[index[0]]
-    (h2, s2) = enthalpy_entropy(t2, p2)
     t5 = t5[index[0]]
-    (h5, s5) = enthalpy_entropy(t5, p5)
-    ##Heater
+    (h2, s2) = enthalpy_entropy(t2, p2)
+    q_hx = h1 - h2
 
-    (h3, s3) = enthalpy_entropy(t3, p3)
-    (h6, s6) = enthalpy_entropy(t6, p6)
+    ##Cooler
+    if t3 > t2:
+        return float(1e6)
+    q_c = h2 - h3
+
+    ##Heater
+    (h5, s5) = enthalpy_entropy(t5, p5)
+    q_heater = m * (h6 - h5)
+
     e1 = m * (h1 - h0 - T0 * (s1 - s0))
     e2 = m * (h2 - h0 - T0 * (s2 - s0))
     e3 = m * (h3 - h0 - T0 * (s3 - s0))
@@ -84,7 +90,7 @@ def objective_function(x):
     e6 = m * (h6 - h0 - T0 * (s6 - s0))
 
     # Economic Analysis
-    w_tur = m * (h6 - h1)
+
     if t6 > 550:
         ft_tur = 1 + 1.106e-4 * (t6 - 550) ** 2
     elif t1 > 550:
@@ -93,16 +99,13 @@ def objective_function(x):
         ft_tur = 1
     cost_tur = 182600 * (w_tur**0.5561) * ft_tur
 
-    q_c = h2 - h3
     dt1_cooler = t2 - cw_temp
     dt2_cooler = t3 - cw_temp
     A_cooler = q_c / (U_c * lmtd(dt1_cooler, dt2_cooler))
     cost_cooler = 32.88 * U_c * A_cooler**0.75
 
-    w_comp = m * (h4 - h3)
     cost_comp = 1230000 * w_comp**0.3992
 
-    q_heater = m * (h6 - h5)
     if t6 > 550:
         ft_heater = 1 + 5.4e-5 * (t6 - 550) ** 2
     elif t5 > 550:
@@ -111,7 +114,6 @@ def objective_function(x):
         ft_heater = 1
     cost_heater = 820800 * q_heater**0.7327 * ft_heater
 
-    q_hx = h1 - h2
     dt1_hx = t1 - t5
     dt2_hx = t2 - t4
     A_hx = q_hx / (U_hx * lmtd(dt1_hx, dt2_hx))
@@ -121,75 +123,69 @@ def objective_function(x):
         ft_hx = 1 + 0.02141 * (t5 - 550)
     else:
         ft_hx = 1
-    cost_HX = 49.45 * U_hx * A_hx**0.7544 * ft_hx
+    cost_hx = 49.45 * U_hx * A_hx**0.7544 * ft_hx
 
     pec.append(cost_tur)
-    pec.append(cost_HX)
+    pec.append(cost_hx)
     pec.append(cost_cooler)
     pec.append(cost_heater)
     pec.append(cost_comp)
     prod_capacity = (w_tur - w_comp) / 1e6
+    if w_tur < w_comp:
+        return float(1e6)
     zk, cftot = economics(pec, prod_capacity)
-
-    # [c1,c2,c3,c4,c5,c6,cw,cheat]
+    # [c1,c2,c3,c4,c5,c6,cw]
     m1 = np.array(
         [
-            [e1, 0, 0, 0, 0, -e6, w_tur, 0],
-            [e1, e2, 0, -e4, e5, 0, 0, 0],
-            [0, e2, -e3, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0, q_heater],
-            [0, 0, -e3, e4, 0, 0, -w_comp, 0],
-            [1, 0, 0, 0, 0, -1, 0, 0],
-            [1, -1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1],
+            [e1, 0, 0, 0, 0, -e6, w_tur],
+            [e1, e2, 0, -e4, e5, 0, 0],
+            [0, e2, -e3, 0, 0, 0, 0],
+            [0, 0, 0, 0, -e5, e6, 0],
+            [0, 0, -e3, e4, 0, 0, -w_comp],
+            [1, 0, 0, 0, 0, -1, 0],
+            [1, -1, 0, 0, 0, 0, 0],
         ]
     )
-
-    m2 = np.asarray(zk + [0, 0, cftot]).reshape(8, 1)
-    costs = np.linalg.solve(m1, m2)
+    m2 = np.asarray(zk + [0, 0]).reshape(7, 1)
+    costs = np.real(np.linalg.solve(m1, m2))
     Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3
     Cf = cftot * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2
-    Zk = sum(zk)
-    Cl = Cp - Cf - Zk
+    Ztot = sum(zk)
+    Cl = Cp - Cf - Ztot
     Ep = w_tur + e2 + e6 + -2e3
-    z = Cp / Ep
-    return z
+    c = Cp / Ep
+    Pressure = [p1 / 1e6, p2 / 1e6, p3 / 1e6, p4 / 1e6, p5 / 1e6, p6 / 1e6]
+    unit_energy = [w_tur, w_comp, q_heater, q_c, q_hx]
+    # print(unit_energy)
+    # print(costs)
+    return c
 
 
 bounds = [
     (35, 560),
-    (35, 560),
-    (35, 560),
-    (35, 560),
-    (35, 560),
-    (235, 560),
+    (250, 560),
     (1, 25),
     (1, 25),
     (50, 200),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
-    (74e5, 250e5),
+    (78e5, 250e5),
 ]  # upper and lower bounds of variables
 nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
 
 # PARAMETERS OF PSO
-particle_size = 40  # number of particles
-iterations = 5  # max number of iterations
+particle_size = 42  # number of particles
+iterations = 10  # max number of iterations
 w = 0.72984  # inertia constant
 c1 = 2.05  # cognative constant
 c2 = 2.05  # social constant
 
 # Visualization
-fig = plt.figure()
-ax = fig.add_subplot()
-fig.show()
-plt.title("Evolutionary process of the objective function value")
-plt.xlabel("Iteration")
-plt.ylabel("Objective function")
+# fig = plt.figure()
+# ax = fig.add_subplot()
+# fig.show()
+# plt.title("Evolutionary process of the objective function value")
+# plt.xlabel("Iteration")
+# plt.ylabel("Objective function")
 
 
 # ------------------------------------------------------------------------------
