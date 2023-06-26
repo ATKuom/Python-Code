@@ -49,11 +49,7 @@ def objective_function(x):
     t2 = [t2 for t2 in range(int(t4) + 5, int(t1))]
     if len(t2) == 0:
         return float(1e6)
-    h2 = list()
-    for temp in t2:
-        a, _ = enthalpy_entropy(temp, p2)
-        h2.append(a)
-    h2 = np.asarray(h2)
+    h2 = np.asarray([enthalpy_entropy(temp, p2)[0] for temp in t2])
     q_hx1 = m * h1 - m * h2
     t5 = [t2 for t2 in range(int(t4), int(t1) - 5)]
     if len(t5) == 0:
@@ -147,7 +143,10 @@ def objective_function(x):
         ]
     )
     m2 = np.asarray(zk + [0, 0]).reshape(7, 1)
-    costs = np.real(np.linalg.solve(m1, m2))
+    try:
+        costs = np.real(np.linalg.solve(m1, m2))
+    except:
+        breakpoint()
     Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3
     Cf = cftot * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2
     Ztot = sum(zk)
@@ -164,7 +163,7 @@ def objective_function(x):
 bounds = [
     (35, 560),
     (250, 560),
-    (1, 25),
+    (1.1, 25),
     (1, 25),
     (50, 200),
     (78e5, 250e5),

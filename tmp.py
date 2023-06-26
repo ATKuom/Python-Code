@@ -45,3 +45,27 @@ if FIRST_RUN:
         t6 = ???
         FIRST_RUN = False
     else:
+
+
+# class ConstraintsViolatedError(ValueError):
+    #     pass
+
+    # def function(...):
+    #     y = ...
+    #     if constraints_are_violated(y):
+    #         raise ConstraintsViolatedError
+    #     ...
+    #     return ...
+
+    # if constraints_are_met(x):
+    #     try:
+    #         result = scipy.optimize.minimize(function, x0, )
+    #     except ConstraintsViolatedError:
+    #         return PENALTY_VALUE
+    # else:
+    #     return PENALTY_VALUE
+    
+     # 0. pec = [cost_tur, ...]
+    # 1. pec += [cost_tur, ...]
+    # 2. pec.extend([cost_tur, ...])
+    # 3.
