@@ -68,5 +68,5 @@ import config
 
 # print(np.load("D0test.npy", allow_pickle=True))
 
-
-print(np.log(0.1))
+t2 = [t2 for t2 in range(int(0.1) + 2, 5)]
+print(len(t2))
