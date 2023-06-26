@@ -77,3 +77,10 @@ if t1 > 550:
     costs = np.linalg.solve(m1, m2)
     breakpoint()
     z = cost_comp
+(h2, s2) = enthalpy_entropy(t2, p2)
+q_hx = h1 - h2
+w_tur = m * (h6 - h1)
+(h1, s1) = enthalpy_entropy(t1, p1)
+    (h6, s6) = enthalpy_entropy(t6, p6)
+
+    q_c = h2 - h3

@@ -39,17 +39,11 @@ def objective_function(x):
     # Turbine
     t1 = (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
     p1 = p6 / tur_pratio
-    (h1, s1) = enthalpy_entropy(t1, p1)
-    (h6, s6) = enthalpy_entropy(t6, p6)
-    w_tur = m * (h6 - h1)
     ##Heat Exchanger Hot side
     p2 = p1 - 1e5
-    (h2, s2) = enthalpy_entropy(t2, p2)
-    q_hx = h1 - h2
     ##Cooler
     p3 = p2 - 0.5e5
     (h3, s3) = enthalpy_entropy(t3, p3)
-    q_c = h2 - h3
     ##Compressor
     t4 = (t3 + K) + ((t3 + K) * (tur_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
     p4 = p3 * comp_pratio
@@ -57,14 +51,12 @@ def objective_function(x):
     w_comp = m * (h4 - h3)
     ##Heat Exchanger Cold Side
     p5 = p4 - 1e5
-    h5 = h4 + q_hx
+
     t5 = temperature(h5, p5)
     ##Heater
     p6 = p5 - 1e5
 
-    q_heater = (
-        935 * cp_gas * (630 - 90)
-    )  # 630 from the exhaust 90 is just a number. It should be based on the dew point ass
+    q_heater = 935 * cp_gas * (630 - 90)  # 90 stack temperature
 
     return z
 
@@ -78,7 +70,7 @@ bounds = [
     (35, 560),
     (1, 25),
     (1, 25),
-    (0.1, 1e6),
+    (10, 150),
     (74e5, 250e5),
     (74e5, 250e5),
     (74e5, 250e5),
