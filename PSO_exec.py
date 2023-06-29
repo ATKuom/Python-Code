@@ -1,7 +1,17 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-from functions import specific_heat, temperature, lmtd, enthalpy_entropy, h0, s0, T0, K
+from functions import (
+    pressure_calculation,
+    specific_heat,
+    temperature,
+    lmtd,
+    enthalpy_entropy,
+    h0,
+    s0,
+    T0,
+    K,
+)
 from econ import economics
 
 
@@ -12,7 +22,6 @@ def objective_function(x):
     tur_pratio = x[2]
     comp_pratio = x[3]
     m = x[4]
-    p6 = x[5]
 
     ##Parameters
     ntur = 0.93  # turbine efficiency     2019 Nabil
@@ -22,14 +31,12 @@ def objective_function(x):
     U_c = U_hx
     cw_temp = 15
     cp_gas = 1151  # j/kgK
+    PENALTY_VALUE = float(1e9)
     pec = list()
 
-    p1 = p6 / tur_pratio
-    p2 = p1 - 1e5
-    p3 = p2 - 0.5e5
-    p4 = p3 * comp_pratio
-    p5 = p4 - 1e5
-    p6 = p5 - 1e5
+    p1, p2, p3, p4, p5, p6 = pressure_calculation(tur_pratio, comp_pratio)
+    if p1 <= 74e5:
+        return PENALTY_VALUE
 
     # Turbine
     (h6, s6) = enthalpy_entropy(t6, p6)
@@ -37,23 +44,27 @@ def objective_function(x):
     (h1, s1) = enthalpy_entropy(t1, p1)
     w_tur = m * (h6 - h1)
     if w_tur < 0:
-        return float(1e6)
+        return PENALTY_VALUE
     ##Compressor
     (h3, s3) = enthalpy_entropy(t3, p3)
     t4 = (t3 + K) + ((t3 + K) * (comp_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
     (h4, s4) = enthalpy_entropy(t4, p4)
     w_comp = m * (h4 - h3)
     if w_comp < 0:
-        return float(1e6)
+        return PENALTY_VALUE
     ##Heat Exchanger
     t2 = [t2 for t2 in range(int(t4) + 5, int(t1))]
     if len(t2) == 0:
-        return float(1e6)
-    h2 = np.asarray([enthalpy_entropy(temp, p2)[0] for temp in t2])
+        return PENALTY_VALUE
+    h2 = list()
+    for temp in t2:
+        a, _ = enthalpy_entropy(temp, p2)
+        h2.append(a)
+    h2 = np.asarray(h2)
     q_hx1 = m * h1 - m * h2
     t5 = [t2 for t2 in range(int(t4), int(t1) - 5)]
     if len(t5) == 0:
-        return float(1e6)
+        return PENALTY_VALUE
     h5 = list()
     for temp in t5:
         a, _ = enthalpy_entropy(temp, p5)
@@ -63,7 +74,7 @@ def objective_function(x):
     q_hx = q_hx1 - q_hx2
     index = np.where(q_hx[:-1] * q_hx[1:] < 0)[0]
     if len(index) == 0:
-        return float(1e6)
+        return PENALTY_VALUE
     t2 = t2[index[0]]
     t5 = t5[index[0]]
     (h2, s2) = enthalpy_entropy(t2, p2)
@@ -71,7 +82,7 @@ def objective_function(x):
 
     ##Cooler
     if t3 > t2:
-        return float(1e6)
+        return PENALTY_VALUE
     q_c = h2 - h3
 
     ##Heater
@@ -128,7 +139,7 @@ def objective_function(x):
     pec.append(cost_comp)
     prod_capacity = (w_tur - w_comp) / 1e6
     if w_tur < w_comp:
-        return float(1e6)
+        return PENALTY_VALUE
     zk, cftot = economics(pec, prod_capacity)
     # [c1,c2,c3,c4,c5,c6,cw]
     m1 = np.array(
@@ -143,40 +154,37 @@ def objective_function(x):
         ]
     )
     m2 = np.asarray(zk + [0, 0]).reshape(7, 1)
-    try:
-        costs = np.real(np.linalg.solve(m1, m2))
-    except:
-        breakpoint()
+    costs = np.real(np.linalg.solve(m1, m2))
     Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3
     Cf = cftot * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2
     Ztot = sum(zk)
-    Cl = Cp - Cf - Ztot
+    Cl = Cf - Cp - Ztot
     Ep = w_tur + e2 + e6 + -2e3
     c = Cp / Ep
     Pressure = [p1 / 1e6, p2 / 1e6, p3 / 1e6, p4 / 1e6, p5 / 1e6, p6 / 1e6]
     unit_energy = [w_tur, w_comp, q_heater, q_c, q_hx]
     # print(unit_energy)
     # print(costs)
+    # print(Pressure)
     return c
 
 
 bounds = [
     (35, 560),
     (250, 560),
-    (1.1, 25),
+    (1.001, 25),
     (1, 25),
     (50, 200),
-    (78e5, 250e5),
 ]  # upper and lower bounds of variables
 nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
 
 # PARAMETERS OF PSO
 particle_size = 42  # number of particles
-iterations = 10  # max number of iterations
-w = 0.72984  # inertia constant
-c1 = 2.05  # cognative constant
-c2 = 2.05  # social constant
+iterations = 30  # max number of iterations
+w = 0.75  # 0.72984  # inertia constant
+c1 = 1  # 2.05  # cognative constant
+c2 = 2  # 2.05  # social constant
 
 # Visualization
 # fig = plt.figure()

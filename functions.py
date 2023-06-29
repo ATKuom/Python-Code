@@ -3,7 +3,7 @@ import numpy as np
 
 
 ##Specific heat calculation works fine with DT similar to estimate h2-h1
-##However, h2 =/= cp*t2
+##However, h2 =/= cp*T_hotout
 def lmtd(dthin, dt2):
     return (dthin - dt2) / np.log(dthin / dt2)
 
@@ -47,27 +47,56 @@ def temperature(h, P):
     return substance.temperature
 
 
-def pinch_calculation(thin, tcin, phout, pcout, m, hhin, hcin):
-    t2 = [t2 for t2 in range(int(tcin) + 5, int(thin))]
-    if len(t2) == 0:
-        return float(1e6)
+def pinch_calculation(T_hin, H_hotin, T_coldin, H_coldin, P_hotout, P_coldout, m):
+    list_T_hotout = [T_hotout for T_hotout in range(int(T_coldin) + 5, int(T_hin))]
+    if len(list_T_hotout) == 0:
+        return (0, 0)
     h2 = list()
-    for temp in t2:
-        a, _ = enthalpy_entropy(temp, phout)
+    for temp in list_T_hotout:
+        a, _ = enthalpy_entropy(temp, P_hotout)
         h2.append(a)
     h2 = np.asarray(h2)
-    q_hx1 = m * hhin - m * h2
-    t5 = [t2 for t2 in range(int(tcin), int(thin) - 5)]
-    if len(t5) == 0:
-        return float(1e6)
+    q_hx1 = m * H_hotin - m * h2
+    list_T_coldout = [T_coldout for T_coldout in range(int(T_coldin), int(T_hin) - 5)]
+    if len(list_T_coldout) == 0:
+        return (0, 0)
     h5 = list()
-    for temp in t5:
-        a, _ = enthalpy_entropy(temp, pcout)
+    for temp in list_T_coldout:
+        a, _ = enthalpy_entropy(temp, P_coldout)
         h5.append(a)
     h5 = np.asarray(h5)
-    q_hx2 = m * h5 - m * hcin
+    q_hx2 = m * h5 - m * H_coldin
     q_hx = q_hx1 - q_hx2
     index = np.where(q_hx[:-1] * q_hx[1:] < 0)[0]
-    t2 = t2[index[0]]
-    t5 = t5[index[0]]
-    return (t2, t5)
+    T_hotout = list_T_hotout[index[0]]
+    T_coldout = list_T_coldout[index[0]]
+    return (T_hotout, T_coldout)
+
+
+def pressure_calculation(tur_pratio, comp_pratio):
+    # [p1,p2,p3,p4,p5,p6]
+    pres = np.array(
+        [
+            [1, 0, 0, 0, 0, -1 / tur_pratio],
+            [1, -1, 0, 0, 0, 0],
+            [0, 1, -1, 0, 0, 0],
+            [0, 0, comp_pratio, -1, 0, 0],
+            [0, 0, 0, 1, -1, 0],
+            [0, 0, 0, 0, 1, -1],
+        ]
+    )
+    dp = np.array([0, 1e5, 0.5e5, 0, 1e5, 1e5]).reshape(6, 1)
+    try:
+        pressures = np.linalg.solve(pres, dp)
+    except:
+        print("singular matrix", tur_pratio, comp_pratio)
+        return [0, 0, 0, 0, 0, 0]
+    p1 = pressures.item(0)
+    if p1 < 0:
+        return [0, 0, 0, 0, 0, 0]
+    p2 = pressures.item(1)
+    p3 = pressures.item(2)
+    p4 = pressures.item(3)
+    p5 = pressures.item(4)
+    p6 = pressures.item(5)
+    return (p1, p2, p3, p4, p5, p6)

@@ -14,7 +14,7 @@ def economics(pec, prod_capacity):
     wacc = equity_frac * equity_roi + debt_frac * debt_roi
     tax_rate = 0.38
     mfuel = 22.3  # kg/s PhDthes_103
-    # prod_capacity = 30  # It should be obtained from the layout (MW)
+    prod_capacity += 450  # It should be obtained from the layout (MW)
     annual_om = 9.839  # $/MWhe in 2023$
 
     total_pec = sum(pec)

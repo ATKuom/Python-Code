@@ -68,5 +68,9 @@ import config
 
 # print(np.load("D0test.npy", allow_pickle=True))
 
-t2 = [t2 for t2 in range(int(0.1) + 2, 5)]
-print(len(t2))
+comp = np.linspace(5, 25)
+tur = np.linspace(1.01, 25)
+p6 = (-1.5e5 * comp - 2e5) / (1 + comp / tur)
+print(p6)
+p1 = (+1.5e5 * comp + 2e5) / (comp - tur)
+print(p1)
