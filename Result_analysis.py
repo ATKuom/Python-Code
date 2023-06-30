@@ -2,7 +2,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 from functions import (
-    pressure_calculation,
+    Pressure_calculation,
     pinch_calculation,
     specific_heat,
     temperature,
@@ -18,13 +18,7 @@ from econ import economics
 
 # ------------------------------------------------------------------------------
 def objective_function(x):
-    x = [
-        40.437420737374424,
-        363.8453002035542,
-        2.000007378862756,
-        2.0007648397650426,
-        50,
-    ]
+    x = [422.7297351545009, 560, 1.001, 1.0010240596110296, 200]
     t3 = x[0]
     t6 = x[1]
     tur_pratio = x[2]
@@ -42,7 +36,7 @@ def objective_function(x):
     PENALTY_VALUE = float(1e9)
     pec = list()
 
-    p1, p2, p3, p4, p5, p6 = pressure_calculation(tur_pratio, comp_pratio)
+    p1, p2, p3, p4, p5, p6 = Pressure_calculation(tur_pratio, comp_pratio)
     if p1 == 0:
         return PENALTY_VALUE
 
@@ -87,20 +81,20 @@ def objective_function(x):
         ft_tur = 1 + 1.106e-4 * (t6 - 550) ** 2
     else:
         ft_tur = 1
-    cost_tur = 182600 * (w_tur**0.5561) * ft_tur
+    cost_tur = 182600 * ((w_tur / 1e6) ** 0.5561) * ft_tur
 
     dt1_cooler = t2 - cw_temp
     dt2_cooler = t3 - cw_temp
     A_cooler = q_c / (U_c * lmtd(dt1_cooler, dt2_cooler))
     cost_cooler = 32.88 * U_c * A_cooler**0.75
 
-    cost_comp = 1230000 * w_comp**0.3992
+    cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992
 
     if t6 > 550:
         ft_heater = 1 + 5.4e-5 * (t6 - 550) ** 2
     else:
         ft_heater = 1
-    cost_heater = 820800 * q_heater**0.7327 * ft_heater
+    cost_heater = 820800 * (q_heater / 1e6) ** 0.7327 * ft_heater
 
     dt1_hx = t1 - t5
     dt2_hx = t2 - t4
@@ -140,19 +134,20 @@ def objective_function(x):
     Cl = Cf - Cp - Ztot
     Ep = w_tur + e2 + e6 + -2e3
     c = Cp / Ep
-    Pressure = [p1 / 1e6, p2 / 1e6, p3 / 1e6, p4 / 1e6, p5 / 1e6, p6 / 1e6]
+    Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [w_tur / 1e6, w_comp / 1e6, q_heater / 1e6, q_c / 1e6, q_hx / 1e6]
     print(
         f"""
-        p6 = {Pressure[5]:.2f} MPa
-        p1 = {Pressure[0]:.2f} MPa
+        p6 = {Pressure[5]:.2f} bar
+        p1 = {Pressure[0]:.2f} bar
         Turbine Pratio = {tur_pratio:.2f}
         Turbine output = {unit_energy[0]:.2f} MW
-        p3 = {Pressure[2]:.2f} MPa
-        p4 = {Pressure[3]:.2f} MPa
+        p3 = {Pressure[2]:.2f} bar
+        p4 = {Pressure[3]:.2f} bar
         Compressor Pratio = {comp_pratio:.2f}
         Compressor Input = {unit_energy[1]:.2f} MW
-        {t1,t2,t3,t4,t5,t6}
+        Temperatures = {t1,t2,t3,t4,t5,t6}
+        Equipment Cost = {cost_tur,cost_hx,cost_cooler,cost_comp,cost_heater}
         
         """
     )
@@ -162,8 +157,8 @@ def objective_function(x):
 bounds = [
     (35, 560),
     (250, 560),
-    (1.001, 25),
-    (1, 25),
+    (1.001, 4),
+    (1, 4),
     (50, 200),
 ]  # upper and lower bounds of variables
 nv = len(bounds)  # number of variables
