@@ -68,12 +68,14 @@ def pinch_calculation(T_hin, H_hotin, T_coldin, H_coldin, P_hotout, P_coldout, m
     q_hx2 = m * h5 - m * H_coldin
     q_hx = q_hx1 - q_hx2
     index = np.where(q_hx[:-1] * q_hx[1:] < 0)[0]
+    if len(index) == 0:
+        return (0, 0)
     T_hotout = list_T_hotout[index[0]]
     T_coldout = list_T_coldout[index[0]]
     return (T_hotout, T_coldout)
 
 
-def pressure_calculation(tur_pratio, comp_pratio):
+def Pressure_calculation(tur_pratio, comp_pratio):
     # [p1,p2,p3,p4,p5,p6]
     pres = np.array(
         [
@@ -85,15 +87,21 @@ def pressure_calculation(tur_pratio, comp_pratio):
             [0, 0, 0, 0, 1, -1],
         ]
     )
-    dp = np.array([0, 1e5, 0.5e5, 0, 1e5, 1e5]).reshape(6, 1)
+    dp = np.array([0, 1e5, 0.5e5, 0, 1e5, 1e5]).reshape(-1, 1)
     try:
         pressures = np.linalg.solve(pres, dp)
     except:
-        print("singular matrix", tur_pratio, comp_pratio)
+        # print("singular matrix", tur_pratio, comp_pratio)
         return [0, 0, 0, 0, 0, 0]
     p1 = pressures.item(0)
     if p1 < 0:
+        # print("negative Pressure")
         return [0, 0, 0, 0, 0, 0]
+    ub = 300e5 / max(pressures)
+    lb = 74e5 / max(pressures)
+    pres_coeff = np.random.uniform(lb, ub)
+    pressures = pres_coeff * pressures
+    p1 = pressures.item(0)
     p2 = pressures.item(1)
     p3 = pressures.item(2)
     p4 = pressures.item(3)

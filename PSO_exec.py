@@ -1,8 +1,10 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+from econ import economics
 from functions import (
-    pressure_calculation,
+    Pressure_calculation,
+    pinch_calculation,
     specific_heat,
     temperature,
     lmtd,
@@ -12,7 +14,6 @@ from functions import (
     T0,
     K,
 )
-from econ import economics
 
 
 # ------------------------------------------------------------------------------
@@ -34,8 +35,9 @@ def objective_function(x):
     PENALTY_VALUE = float(1e9)
     pec = list()
 
-    p1, p2, p3, p4, p5, p6 = pressure_calculation(tur_pratio, comp_pratio)
-    if p1 <= 74e5:
+    p1, p2, p3, p4, p5, p6 = Pressure_calculation(tur_pratio, comp_pratio)
+    if p6 > 300e5 or p3 < 74e5:
+        # print(p1 / 1e5, p6 / 1e5, "Out of bounds pressures")
         return PENALTY_VALUE
 
     # Turbine
@@ -44,6 +46,7 @@ def objective_function(x):
     (h1, s1) = enthalpy_entropy(t1, p1)
     w_tur = m * (h6 - h1)
     if w_tur < 0:
+        # print("negative turbine work")
         return PENALTY_VALUE
     ##Compressor
     (h3, s3) = enthalpy_entropy(t3, p3)
@@ -51,37 +54,20 @@ def objective_function(x):
     (h4, s4) = enthalpy_entropy(t4, p4)
     w_comp = m * (h4 - h3)
     if w_comp < 0:
+        # print("negative compressor work")
         return PENALTY_VALUE
     ##Heat Exchanger
-    t2 = [t2 for t2 in range(int(t4) + 5, int(t1))]
-    if len(t2) == 0:
+    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m)
+    if t2 == 0 or t5 == 0:
+        # print(t1, t4)
+        # print("t2 or t5 = 0 ")
         return PENALTY_VALUE
-    h2 = list()
-    for temp in t2:
-        a, _ = enthalpy_entropy(temp, p2)
-        h2.append(a)
-    h2 = np.asarray(h2)
-    q_hx1 = m * h1 - m * h2
-    t5 = [t2 for t2 in range(int(t4), int(t1) - 5)]
-    if len(t5) == 0:
-        return PENALTY_VALUE
-    h5 = list()
-    for temp in t5:
-        a, _ = enthalpy_entropy(temp, p5)
-        h5.append(a)
-    h5 = np.asarray(h5)
-    q_hx2 = m * h5 - m * h4
-    q_hx = q_hx1 - q_hx2
-    index = np.where(q_hx[:-1] * q_hx[1:] < 0)[0]
-    if len(index) == 0:
-        return PENALTY_VALUE
-    t2 = t2[index[0]]
-    t5 = t5[index[0]]
     (h2, s2) = enthalpy_entropy(t2, p2)
     q_hx = h1 - h2
 
     ##Cooler
     if t3 > t2:
+        # print("negative cooler work")
         return PENALTY_VALUE
     q_c = h2 - h3
 
@@ -104,14 +90,14 @@ def objective_function(x):
         ft_tur = 1 + 1.106e-4 * (t1 - 550) ** 2
     else:
         ft_tur = 1
-    cost_tur = 182600 * (w_tur**0.5561) * ft_tur
+    cost_tur = 182600 * ((w_tur / 1e6) ** 0.5561) * ft_tur
 
     dt1_cooler = t2 - cw_temp
     dt2_cooler = t3 - cw_temp
     A_cooler = q_c / (U_c * lmtd(dt1_cooler, dt2_cooler))
     cost_cooler = 32.88 * U_c * A_cooler**0.75
 
-    cost_comp = 1230000 * w_comp**0.3992
+    cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992
 
     if t6 > 550:
         ft_heater = 1 + 5.4e-5 * (t6 - 550) ** 2
@@ -119,7 +105,7 @@ def objective_function(x):
         ft_heater = 1 + 5.4e-5 * (t5 - 550) ** 2
     else:
         ft_heater = 1
-    cost_heater = 820800 * q_heater**0.7327 * ft_heater
+    cost_heater = 820800 * (q_heater / 1e6) ** 0.7327 * ft_heater
 
     dt1_hx = t1 - t5
     dt2_hx = t2 - t4
@@ -161,10 +147,10 @@ def objective_function(x):
     Cl = Cf - Cp - Ztot
     Ep = w_tur + e2 + e6 + -2e3
     c = Cp / Ep
-    Pressure = [p1 / 1e6, p2 / 1e6, p3 / 1e6, p4 / 1e6, p5 / 1e6, p6 / 1e6]
+    Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [w_tur, w_comp, q_heater, q_c, q_hx]
     # print(unit_energy)
-    # print(costs)
+    print(costs)
     # print(Pressure)
     return c
 
@@ -172,19 +158,19 @@ def objective_function(x):
 bounds = [
     (35, 560),
     (250, 560),
-    (1.001, 25),
-    (1, 25),
+    (1, 4),
+    (1, 4),
     (50, 200),
 ]  # upper and lower bounds of variables
 nv = len(bounds)  # number of variables
 mm = -1  # if minimization mm, mm = -1; if maximization mm, mm = 1
 
 # PARAMETERS OF PSO
-particle_size = 42  # number of particles
+particle_size = 100  # number of particles
 iterations = 30  # max number of iterations
-w = 0.75  # 0.72984  # inertia constant
-c1 = 1  # 2.05  # cognative constant
-c2 = 2  # 2.05  # social constant
+w = 0.8  # 0.75  # 0.72984  # inertia constant
+c1 = 3.5  # 2  # 2.05  # cognative constant
+c2 = 0.5  # 1  # 2.05  # social constant
 
 # Visualization
 # fig = plt.figure()
@@ -338,4 +324,4 @@ if mm == 1:
 # ------------------------------------------------------------------------------
 # Main PSO
 PSO(objective_function, bounds, particle_size, iterations)
-plt.show()
+# plt.show()
