@@ -28,8 +28,6 @@ def objective_function(x):
     ntur = 0.93  # turbine efficiency     2019 Nabil
     ncomp = 0.89  # compressor efficiency 2019 Nabil
     gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
-    U_hx = 500  # Mean estimation from engineering toolbox
-    U_c = U_hx
     cw_temp = 15
     cp_gas = 1151  # j/kgK
     PENALTY_VALUE = float(1e9)
@@ -94,8 +92,8 @@ def objective_function(x):
 
     dt1_cooler = t2 - cw_temp
     dt2_cooler = t3 - cw_temp
-    A_cooler = q_c / (U_c * lmtd(dt1_cooler, dt2_cooler))
-    cost_cooler = 32.88 * U_c * A_cooler**0.75
+    UA_cooler = q_c / lmtd(dt1_cooler, dt2_cooler)
+    cost_cooler = 32.88 * UA_cooler**0.75
 
     cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992
 
@@ -109,14 +107,14 @@ def objective_function(x):
 
     dt1_hx = t1 - t5
     dt2_hx = t2 - t4
-    A_hx = q_hx / (U_hx * lmtd(dt1_hx, dt2_hx))
+    UA_hx = q_hx / lmtd(dt1_hx, dt2_hx)
     if t1 > 550:
         ft_hx = 1 + 0.02141 * (t1 - 550)
     elif t5 > 550:
         ft_hx = 1 + 0.02141 * (t5 - 550)
     else:
         ft_hx = 1
-    cost_hx = 49.45 * U_hx * A_hx**0.7544 * ft_hx
+    cost_hx = 49.45 * UA_hx**0.7544 * ft_hx
 
     pec.append(cost_tur)
     pec.append(cost_hx)
