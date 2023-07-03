@@ -20,12 +20,12 @@ K = 273.15
 (h0, s0, c0) = enthalpy_entropy(T0, P0)
 
 if __name__ == "__main__":
-    t = 350
-    p = 2e6
+    t = 297.62
+    p = 78.55e5
     (hl, sl, c1) = enthalpy_entropy(t, p)
-    Exergy_stream = hl - h0 - T0 * (sl - s0)
-    # print(c1, c0)
-    print(hl, c1 * (t + 273.15))
-    # Exergy_with_cp = c1 * (T + 273.15) - c0 * (T0 + 273.15) - (T0 + 273.15) * (sl - s0)
-    # print(Exergy_stream, Exergy_with_cp)
-    print(h0)
+    Exergy_stream = hl - h0 - (T0 + K) * (sl - s0)
+    print(
+        hl / 1e3,
+        sl / 1e3,
+        Exergy_stream / 1e3,
+    )
