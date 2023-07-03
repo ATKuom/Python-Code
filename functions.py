@@ -97,10 +97,10 @@ def Pressure_calculation(tur_pratio, comp_pratio):
     if p1 < 0:
         # print("negative Pressure")
         return [0, 0, 0, 0, 0, 0]
-    ub = 300e5 / max(pressures)
-    lb = 74e5 / max(pressures)
-    pres_coeff = np.random.uniform(lb, ub)
-    pressures = pres_coeff * pressures
+    # ub = 300e5 / max(pressures)
+    # lb = 74e5 / max(pressures)
+    # pres_coeff = np.random.uniform(lb, ub)
+    # pressures = pres_coeff * pressures
     p1 = pressures.item(0)
     p2 = pressures.item(1)
     p3 = pressures.item(2)
@@ -108,3 +108,6 @@ def Pressure_calculation(tur_pratio, comp_pratio):
     p5 = pressures.item(4)
     p6 = pressures.item(5)
     return (p1, p2, p3, p4, p5, p6)
+
+
+Pressure_calculation(238.9 / 78.5, 241.3 / 77)
