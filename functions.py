@@ -108,6 +108,3 @@ def Pressure_calculation(tur_pratio, comp_pratio):
     p5 = pressures.item(4)
     p6 = pressures.item(5)
     return (p1, p2, p3, p4, p5, p6)
-
-
-Pressure_calculation(238.9 / 78.5, 241.3 / 77)
