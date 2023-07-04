@@ -74,3 +74,7 @@ p6 = (-1.5e5 * comp - 2e5) / (1 + comp / tur)
 print(p6)
 p1 = (+1.5e5 * comp + 2e5) / (comp - tur)
 print(p1)
+
+# w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
+#             c1 = -3 * (i / iterations) + 3.5
+#             c2 = 3 * (i / iterations) + 0.5
