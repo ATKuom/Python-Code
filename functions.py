@@ -47,8 +47,12 @@ def temperature(h, P):
     return substance.temperature
 
 
-def pinch_calculation(T_hin, H_hotin, T_coldin, H_coldin, P_hotout, P_coldout, m):
-    list_T_hotout = [T_hotout for T_hotout in range(int(T_coldin) + 5, int(T_hin))]
+def pinch_calculation(
+    T_hin, H_hotin, T_coldin, H_coldin, P_hotout, P_coldout, m, pinch_temp
+):
+    list_T_hotout = [
+        T_hotout for T_hotout in range(int(T_coldin) + int(pinch_temp), int(T_hin))
+    ]
     if len(list_T_hotout) == 0:
         return (0, 0)
     h2 = list()
@@ -57,7 +61,9 @@ def pinch_calculation(T_hin, H_hotin, T_coldin, H_coldin, P_hotout, P_coldout, m
         h2.append(a)
     h2 = np.asarray(h2)
     q_hx1 = m * H_hotin - m * h2
-    list_T_coldout = [T_coldout for T_coldout in range(int(T_coldin), int(T_hin) - 5)]
+    list_T_coldout = [
+        T_coldout for T_coldout in range(int(T_coldin), int(T_hin) - int(pinch_temp))
+    ]
     if len(list_T_coldout) == 0:
         return (0, 0)
     h5 = list()

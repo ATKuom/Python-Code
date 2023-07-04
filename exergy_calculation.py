@@ -8,7 +8,7 @@ def enthalpy_entropy(T, P):
     Return: Enthalpy (J/kg), Entropy (J/kgK), Specific Heat (J/kgK)
 
     """
-    substance = Fluid(FluidsList.CarbonDioxide).with_state(
+    substance = Fluid(FluidsList.TypicalNaturalGas).with_state(
         Input.pressure(P), Input.temperature(T)
     )
     return (substance.enthalpy, substance.entropy, substance.specific_heat)
@@ -20,12 +20,12 @@ K = 273.15
 (h0, s0, c0) = enthalpy_entropy(T0, P0)
 
 if __name__ == "__main__":
-    t = 297.62
-    p = 78.55e5
+    t = 15
+    p = 18.20e5
     (hl, sl, c1) = enthalpy_entropy(t, p)
     Exergy_stream = hl - h0 - (T0 + K) * (sl - s0)
     print(
-        hl / 1e3,
-        sl / 1e3,
-        Exergy_stream / 1e3,
+        hl / 1e6,
+        sl / 1e6,
+        1.26 * Exergy_stream / 1e6,
     )

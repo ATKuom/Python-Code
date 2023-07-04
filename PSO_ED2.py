@@ -14,29 +14,10 @@ from functions import (
     K,
 )
 
-bounds = [
-    (35, 560),
-    (250, 560),
-    (1, 300 / 74),
-    (1, 300 / 74),
-    (50, 200),
-    (5, 10),
-]  # upper and lower bounds of variables
-
-# PARAMETERS OF PSO
-particle_size = 7 * len(bounds)  # number of particles
-iterations = 10  # max number of iterations
-nv = len(bounds)  # number of variables
-
 
 # ------------------------------------------------------------------------------
 def objective_function(x):
-    t3 = x[0]
-    t6 = x[1]
-    tur_pratio = x[2]
-    comp_pratio = x[3]
-    m = x[4]
-    pinch_temp = x[5]
+    tur_pratio1 = x[0]
 
     ##Parameters
     ntur = 0.93  # turbine efficiency     2019 Nabil
@@ -79,7 +60,7 @@ def objective_function(x):
         return PENALTY_VALUE
 
     ##Heat Exchanger
-    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m, pinch_temp)  # °C
+    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m)  # °C
     if t2 == 0 or t5 == 0:
         # print(t1, t4)
         # print("t2 or t5 = 0 ")
@@ -147,7 +128,7 @@ def objective_function(x):
     pec.append(cost_heater)
     pec.append(cost_comp)
     prod_capacity = (w_tur - w_comp) / 1e6  # MW
-    zk, cfuel = economics(pec, prod_capacity)  # $/h
+    zk, cftot = economics(pec, prod_capacity)  # $/h
     # [c1,c2,c3,c4,c5,c6,cw]
     m1 = np.array(
         [
@@ -165,20 +146,27 @@ def objective_function(x):
         costs = np.linalg.solve(m1, m2)  # $/Wh
     except:
         return PENALTY_VALUE
-    """
-    fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
-    fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
-    Efuel = fuel_chem_ex + fuel_phys_ex  # MW
-    Lcoe=cfuel*Efuel -
-    """
     Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3  # $/h
-    Cf = cfuel * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2  # $/h
+    Cf = cftot * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2  # $/h
     Ztot = sum(zk)  # $/h
     Cl = Cf - Cp - Ztot  # $/h
     Ep = (w_tur + e2 + e6 + -2 * e3) / 1e6  # MW
     c = Cp / Ep  # $/MWh
     return c
 
+
+bounds = [
+    (35, 560),
+    (250, 560),
+    (1, 300 / 74),
+    (1, 300 / 74),
+    (50, 200),
+]  # upper and lower bounds of variables
+nv = len(bounds)  # number of variables
+
+# PARAMETERS OF PSO
+particle_size = 7 * len(bounds)  # number of particles
+iterations = 100  # max number of iterations
 
 # Visualization
 fig = plt.figure()

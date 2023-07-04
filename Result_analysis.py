@@ -23,6 +23,7 @@ def result_analyses(x):
     tur_pratio = x[2]
     comp_pratio = x[3]
     m = x[4]
+    pinch_temp = x[5]
 
     ##Parameters
     ntur = 0.93  # turbine efficiency     2019 Nabil
@@ -58,7 +59,7 @@ def result_analyses(x):
         return PENALTY_VALUE
 
     ##Heat Exchanger
-    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m)
+    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m, pinch_temp)
     (h2, s2) = enthalpy_entropy(t2, p2)
     q_hx = m * (h1 - h2)
 
