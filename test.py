@@ -68,12 +68,12 @@ import config
 
 # print(np.load("D0test.npy", allow_pickle=True))
 
-comp = np.linspace(5, 25)
-tur = np.linspace(1.01, 25)
-p6 = (-1.5e5 * comp - 2e5) / (1 + comp / tur)
-print(p6)
-p1 = (+1.5e5 * comp + 2e5) / (comp - tur)
-print(p1)
+# comp = np.linspace(5, 25)
+# tur = np.linspace(1.01, 25)
+# p6 = (-1.5e5 * comp - 2e5) / (1 + comp / tur)
+# print(p6)
+# p1 = (+1.5e5 * comp + 2e5) / (comp - tur)
+# print(p1)
 
 # w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
 #             c1 = -3 * (i / iterations) + 3.5
