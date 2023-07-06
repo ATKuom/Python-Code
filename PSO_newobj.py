@@ -24,18 +24,18 @@ bounds = [
 ]  # upper and lower bounds of variables
 
 # PARAMETERS OF PSO
-particle_size = 7 * len(bounds)  # number of particles
-iterations = 10  # max number of iterations
+particle_size = 1 * len(bounds)  # number of particles
+iterations = 1  # max number of iterations
 nv = len(bounds)  # number of variables
 
 
 # ------------------------------------------------------------------------------
 def objective_function(x):
-    t3 = x[0]
-    t6 = x[1]
-    tur_pratio = x[2]
-    comp_pratio = x[3]
-    m = x[4]
+    t3 = 32.3
+    t6 = 411.4
+    tur_pratio = 238.9 / 78.5
+    comp_pratio = 241.3 / 77.8
+    m = 93.2
     pinch_temp = x[5]
 
     ##Parameters
@@ -43,22 +43,25 @@ def objective_function(x):
     ncomp = 0.89  # compressor efficiency 2019 Nabil
     gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
     air_temp = 15  # °C
-    exhaust_Tin = 630  # °C
-    exhaust_m = 935  # kg/s
+    exhaust_Tin = 539.76  # 630  # °C
+    exhaust_m = 68.75  # 935  # kg/s
     cp_gas = 1151  # j/kgK
     PENALTY_VALUE = float(1e6)
     pec = list()
 
-    p1, p2, p3, p4, p5, p6 = Pressure_calculation(tur_pratio, comp_pratio)
-    if p6 > 300e5 or p3 < 74e5:
-        # print(p1 / 1e5, p6 / 1e5, "Out of bounds pressures")
-        return PENALTY_VALUE
+    p1 = 78.5e5
+    p2 = 77.8e5
+    p3 = 77e5
+    p4 = 241.3e5
+    p5 = 238.9e5
+    p6 = 238.9e5
 
     # Turbine
     (h6, s6) = enthalpy_entropy(t6, p6)  # J/kg, J/kgK = °C,Pa
     t1 = (
         (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
     )  # °C
+
     (h1, s1) = enthalpy_entropy(t1, p1)
     w_tur = m * (h6 - h1)  # W = kg/s*J/kg
 
@@ -125,6 +128,9 @@ def objective_function(x):
 
     dt1_heater = exhaust_Tin - t6  # °C
     dt2_heater = exhaust_Tout - t5  # °C
+    if dt1_heater < 0 or dt2_heater < 0:
+        print(dt1_heater, dt2_heater)
+        return PENALTY_VALUE
     UA_heater = q_heater / lmtd(dt1_heater, dt2_heater)  # W / °C
     if t6 > 550:
         ft_heater = 1 + 0.02141 * (t6 - 550)
@@ -149,20 +155,156 @@ def objective_function(x):
     prod_capacity = (w_tur - w_comp) / 1e6  # MW
     zk, cfuel = economics(pec, prod_capacity)  # $/h
     # [c1,c2,c3,c4,c5,c6,cw]
+    e7 = 40.08e6  # e6
+    e8 = 28.98e6  # e1
+    e9 = 20.39e6  # e2
+    e10 = 18.77e6  # e3
+    e11 = 21.12e6  # e4
+    e12 = 27.79e6  # e5
+    e13 = 0.52e6
+    e14 = 1.33e6
+    e1 = 0.08e6
+    e2 = 27.62e6
+    e3 = 65.4e6
+    e4 = 73.97e6
+    e5 = 18.02e6
+    e6 = 4.43e6
+    e101 = 29.72e6
+    e102 = 22.85e6
+    e103 = 2.77e6
+    e104 = 10.20e6
+    e105 = 22.4e6
+    e106 = 2.77e6
+    e107 = 9.69e6
+    e108 = 29.3126e6
     m1 = np.array(
         [
-            [e1, 0, 0, 0, 0, -e6, w_tur],
-            [e1, e2, 0, -e4, e5, 0, 0],
-            [0, e2, -e3, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0],
-            [0, 0, -e3, e4, 0, 0, -w_comp],
-            [1, 0, 0, 0, 0, -1, 0],
-            [1, -1, 0, 0, 0, 0, 0],
+            [e1, -e2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, e101, 0, 0, 0, 0, 0, 0, 0],
+            [0, e2, 0, -e4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [
+                0,
+                0,
+                0,
+                e4,
+                -e5,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -e101,
+                -e102,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, e102, 0, 0, -e105, 0, 0, 0],
+            [0, 0, 0, 0, e5, -e6, -e7, 0, 0, 0, 0, e12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, e7, -e8, 0, 0, 0, 0, 0, 0, 0, 0, 0, -e104, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, e8, -e9, 0, e11, -e12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                e9,
+                -e10,
+                0,
+                0,
+                e13,
+                -e14,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, e10, -e11, 0, 0, 0, 0, 0, e103, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, e104, 0, 0, -e107, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -e103, 0, 0, e106, 0, 0],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                e105,
+                -e106,
+                e107,
+                -e108,
+            ],
+            [0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ]
     )  # W
-    m2 = np.asarray(zk + [0, 0]).reshape(7, 1)
+    m1 = m1 / 1e6
+    m2 = np.array(
+        [
+            -191.31,
+            -127.54,
+            -255.08,
+            -63.77,
+            -165.54,
+            -170.85,
+            -76.94,
+            -82.92,
+            -121.17,
+            -44.91,
+            -26.15,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0.00379 * 3.6,
+        ]
+    ).reshape(
+        22, 1
+    )  # $/h
+
     try:
         costs = np.linalg.solve(m1, m2)  # $/Wh
+        breakpoint()
     except:
         return PENALTY_VALUE
     """
@@ -185,12 +327,12 @@ def objective_function(x):
 
 
 # Visualization
-fig = plt.figure()
-ax = fig.add_subplot()
-fig.show()
-plt.title("Evolutionary process of the objective function value")
-plt.xlabel("Iteration")
-plt.ylabel("Objective function ($/MWh)")
+# fig = plt.figure()
+# ax = fig.add_subplot()
+# fig.show()
+# plt.title("Evolutionary process of the objective function value")
+# plt.xlabel("Iteration")
+# plt.ylabel("Objective function ($/MWh)")
 
 
 # ------------------------------------------------------------------------------
@@ -299,6 +441,7 @@ class PSO:
                 swarm_particle[j].update_position(bounds)
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
+            print("Best position:", global_best_particle_position)
         print("Result:")
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)
@@ -310,4 +453,4 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 PSO(objective_function, bounds, particle_size, iterations)
-plt.show()
+# plt.show()

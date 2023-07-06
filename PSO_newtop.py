@@ -43,8 +43,8 @@ def objective_function(x):
     ncomp = 0.89  # compressor efficiency 2019 Nabil
     gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
     air_temp = 15  # °C
-    exhaust_Tin = 630  # °C
-    exhaust_m = 935  # kg/s
+    exhaust_Tin = 539  # °C
+    exhaust_m = 68.75  # kg/s
     cp_gas = 1151  # j/kgK
     PENALTY_VALUE = float(1e6)
     pec = list()
@@ -118,6 +118,8 @@ def objective_function(x):
 
     dt1_cooler = t2 - air_temp  # °C
     dt2_cooler = t3 - air_temp  # °C
+    if dt2_cooler < 0 or dt1_cooler < 0:
+        return PENALTY_VALUE
     UA_cooler = q_c / lmtd(dt1_cooler, dt2_cooler)  # W / °C
     cost_cooler = 32.88 * UA_cooler**0.75
 
@@ -125,6 +127,8 @@ def objective_function(x):
 
     dt1_heater = exhaust_Tin - t6  # °C
     dt2_heater = exhaust_Tout - t5  # °C
+    if dt2_heater < 0 or dt1_heater < 0:
+        return PENALTY_VALUE
     UA_heater = q_heater / lmtd(dt1_heater, dt2_heater)  # W / °C
     if t6 > 550:
         ft_heater = 1 + 0.02141 * (t6 - 550)

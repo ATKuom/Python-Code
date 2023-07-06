@@ -8,7 +8,7 @@ def enthalpy_entropy(T, P):
     Return: Enthalpy (J/kg), Entropy (J/kgK), Specific Heat (J/kgK)
 
     """
-    substance = Fluid(FluidsList.TypicalNaturalGas).with_state(
+    substance = Fluid(FluidsList.CarbonDioxide).with_state(
         Input.pressure(P), Input.temperature(T)
     )
     return (substance.enthalpy, substance.entropy, substance.specific_heat)

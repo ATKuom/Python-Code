@@ -29,56 +29,71 @@ def result_analyses(x):
     ntur = 0.93  # turbine efficiency     2019 Nabil
     ncomp = 0.89  # compressor efficiency 2019 Nabil
     gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
-    air_temp = 15
+    air_temp = 15  # °C
     exhaust_Tin = 630  # °C
     exhaust_m = 935  # kg/s
     cp_gas = 1151  # j/kgK
-    PENALTY_VALUE = float(1e9)
+    PENALTY_VALUE = float(1e6)
     pec = list()
 
     p1, p2, p3, p4, p5, p6 = Pressure_calculation(tur_pratio, comp_pratio)
-    if p1 == 0:
+    if p6 > 300e5 or p3 < 74e5:
+        # print(p1 / 1e5, p6 / 1e5, "Out of bounds pressures")
         return PENALTY_VALUE
 
     # Turbine
-    (h6, s6) = enthalpy_entropy(t6, p6)
-    t1 = (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
+    (h6, s6) = enthalpy_entropy(t6, p6)  # J/kg, J/kgK = °C,Pa
+    t1 = (
+        (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
+    )  # °C
     (h1, s1) = enthalpy_entropy(t1, p1)
-    w_tur = m * (h6 - h1)
+    w_tur = m * (h6 - h1)  # W = kg/s*J/kg
 
     if w_tur < 0:
+        # print("negative turbine work")
         return PENALTY_VALUE
 
     ##Compressor
     (h3, s3) = enthalpy_entropy(t3, p3)
-    t4 = (t3 + K) + ((t3 + K) * (comp_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
+    t4 = (
+        (t3 + K) + ((t3 + K) * (comp_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
+    )  # °C
     (h4, s4) = enthalpy_entropy(t4, p4)
-    w_comp = m * (h4 - h3)
+    w_comp = m * (h4 - h3)  # W = kg/s*J/kg
 
     if w_comp < 0:
+        # print("negative compressor work")
         return PENALTY_VALUE
 
     ##Heat Exchanger
-    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m, pinch_temp)
+    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m, pinch_temp)  # °C
+    if t2 == 0 or t5 == 0:
+        # print(t1, t4)
+        # print("t2 or t5 = 0 ")
+        return PENALTY_VALUE
+
     (h2, s2) = enthalpy_entropy(t2, p2)
-    q_hx = m * (h1 - h2)
+    q_hx = m * (h1 - h2)  # W = kg/s*J/kg
 
     ##Cooler
     if t3 > t2:
+        # print("negative cooler work")
         return PENALTY_VALUE
-    q_c = m * (h2 - h3)
+    q_c = m * (h2 - h3)  # W = kg/s*J/kg
 
     ##Heater
     (h5, s5) = enthalpy_entropy(t5, p5)
-    q_heater = m * (h6 - h5)
-    exhaust_Tout = exhaust_Tin - q_heater / (exhaust_m * cp_gas)
+    q_heater = m * (h6 - h5)  # W = kg/s*J/kg
+    exhaust_Tout = exhaust_Tin - q_heater / (
+        exhaust_m * cp_gas
+    )  # °C = °C - W/(kg/s*J/kgK)
 
-    e1 = m * (h1 - h0 - (T0 + K) * (s1 - s0))
-    e2 = m * (h2 - h0 - (T0 + K) * (s2 - s0))
-    e3 = m * (h3 - h0 - (T0 + K) * (s3 - s0))
-    e4 = m * (h4 - h0 - (T0 + K) * (s4 - s0))
-    e5 = m * (h5 - h0 - (T0 + K) * (s5 - s0))
-    e6 = m * (h6 - h0 - (T0 + K) * (s6 - s0))
+    e1 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
+    e2 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
+    e3 = m * ((h3 - h0) - (T0 + K) * (s3 - s0))
+    e4 = m * ((h4 - h0) - (T0 + K) * (s4 - s0))
+    e5 = m * ((h5 - h0) - (T0 + K) * (s5 - s0))
+    e6 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
 
     # Economic Analysis
 
@@ -86,41 +101,40 @@ def result_analyses(x):
         ft_tur = 1 + 1.106e-4 * (t6 - 550) ** 2
     else:
         ft_tur = 1
-    cost_tur = 182600 * ((w_tur / 1e6) ** 0.5561) * ft_tur
+    cost_tur = 182600 * ((w_tur / 1e6) ** 0.5561) * ft_tur  # $
 
-    dt1_cooler = t2 - air_temp
-    dt2_cooler = t3 - air_temp
-    UA_cooler = q_c / lmtd(dt1_cooler, dt2_cooler)
+    dt1_cooler = t2 - air_temp  # °C
+    dt2_cooler = t3 - air_temp  # °C
+    UA_cooler = q_c / lmtd(dt1_cooler, dt2_cooler)  # W / °C
     cost_cooler = 32.88 * UA_cooler**0.75
 
-    cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992
+    cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992  # $
 
-    dt1_heater = exhaust_Tin - t6
-    dt2_heater = exhaust_Tout - t5
-    UA_heater = q_heater / lmtd(dt1_heater, dt2_heater)
+    dt1_heater = exhaust_Tin - t6  # °C
+    dt2_heater = exhaust_Tout - t5  # °C
+    UA_heater = q_heater / lmtd(dt1_heater, dt2_heater)  # W / °C
     if t6 > 550:
         ft_heater = 1 + 0.02141 * (t6 - 550)
     else:
         ft_heater = 1
-    cost_heater = 49.45 * UA_heater**0.7544 * ft_heater
+    cost_heater = 49.45 * UA_heater**0.7544 * ft_heater  # $
 
-    dt1_hx = t1 - t5
-    dt2_hx = t2 - t4
-    UA_hx = q_hx / lmtd(dt1_hx, dt2_hx)
+    dt1_hx = t1 - t5  # °C
+    dt2_hx = t2 - t4  # °C
+    UA_hx = q_hx / lmtd(dt1_hx, dt2_hx)  # W / °C
     if t1 > 550:
         ft_hx = 1 + 0.02141 * (t1 - 550)
     else:
         ft_hx = 1
-    cost_hx = 49.45 * UA_hx**0.7544 * ft_hx
+    cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
+
     pec.append(cost_tur)
     pec.append(cost_hx)
     pec.append(cost_cooler)
     pec.append(cost_heater)
     pec.append(cost_comp)
-    prod_capacity = (w_tur - w_comp) / 1e6
-    if w_tur < w_comp:
-        return PENALTY_VALUE
-    zk, cftot = economics(pec, prod_capacity)
+    prod_capacity = (w_tur - w_comp) / 1e6  # MW
+    zk, cfuel = economics(pec, prod_capacity)  # $/h
     # [c1,c2,c3,c4,c5,c6,cw]
     m1 = np.array(
         [
@@ -132,15 +146,28 @@ def result_analyses(x):
             [1, 0, 0, 0, 0, -1, 0],
             [1, -1, 0, 0, 0, 0, 0],
         ]
-    )
+    )  # W
     m2 = np.asarray(zk + [0, 0]).reshape(7, 1)
-    costs = np.linalg.solve(m1, m2)
-    Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3
-    Cf = cftot * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2
-    Ztot = sum(zk)
-    Cl = Cf - Cp - Ztot
-    Ep = (w_tur + e2 + e6 + -2 * e3) / 1e6
-    c = Cp / Ep
+    try:
+        costs = np.linalg.solve(m1, m2)  # $/Wh
+    except:
+        return PENALTY_VALUE
+    """
+    fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
+    fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
+    Efuel = fuel_chem_ex + fuel_phys_ex  # MW
+    Cp=cfuel*Efuel  + Ztot # $/h
+    Ep = 22.4 + w_tur/1e6 - w_comp/1e6 # MW
+    Cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
+    Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
+    Ep = (w_tur - w_comp) / 1e6  # MW
+    """
+    Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3  # $/h
+    Cf = cfuel * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2  # $/h
+    Ztot = sum(zk)  # $/h
+    Cl = Cf - Cp - Ztot  # $/h
+    Ep = (w_tur + e2 + e6 + -2 * e3) / 1e6  # MW
+    c = Cp / Ep  # $/MWh
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [w_tur / 1e6, w_comp / 1e6, q_heater / 1e6, q_c / 1e6, q_hx / 1e6]
     print(
@@ -162,9 +189,17 @@ def result_analyses(x):
         
         """
     )
+
     return c
 
 
 if __name__ == "__main__":
-    x = [436.574327553335, 557.9441293295541, 1, 1.0271463264317666, 200]
+    x = [
+        269.4448276308468,
+        398.44366265180946,
+        1.0061199175070978,
+        1.039274265893608,
+        199.57024170357587,
+        4.585682698722277,
+    ]
     result_analyses(x)
