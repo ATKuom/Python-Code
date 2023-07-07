@@ -114,3 +114,38 @@ def Pressure_calculation(tur_pratio, comp_pratio):
     p5 = pressures.item(4)
     p6 = pressures.item(5)
     return (p1, p2, p3, p4, p5, p6)
+
+
+def h_s_fg(T, P):
+    nitrogen = Fluid(FluidsList.Nitrogen).with_state(
+        Input.pressure(P), Input.temperature(T)
+    )
+    oxygen = Fluid(FluidsList.Oxygen).with_state(
+        Input.pressure(P), Input.temperature(T)
+    )
+    water = Fluid(FluidsList.Water).with_state(Input.pressure(P), Input.temperature(T))
+    carbon_dioxide = Fluid(FluidsList.CarbonDioxide).with_state(
+        Input.pressure(P), Input.temperature(T)
+    )
+    h = (
+        nitrogen.enthalpy * 0.753
+        + oxygen.enthalpy * 0.1553
+        + carbon_dioxide.enthalpy * 0.0505
+        + water.enthalpy * 0.0412
+    )
+    s = (
+        nitrogen.entropy * 0.753
+        + oxygen.entropy * 0.1553
+        + carbon_dioxide.entropy * 0.0505
+        + water.entropy * 0.0412
+    )
+    cp = (
+        nitrogen.specific_heat * 0.753
+        + oxygen.specific_heat * 0.1553
+        + carbon_dioxide.specific_heat * 0.0505
+        + water.specific_heat * 0.0412
+    )
+    return (h, s, cp)
+
+
+h0_fg, s0_fg, cp0_fg = h_s_fg(T0, P0)

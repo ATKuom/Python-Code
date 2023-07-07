@@ -1,19 +1,34 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+from econ import economics
 from functions import (
     Pressure_calculation,
     pinch_calculation,
-    specific_heat,
-    temperature,
     lmtd,
     enthalpy_entropy,
+    h_s_fg,
+    h0_fg,
+    s0_fg,
     h0,
     s0,
     T0,
     K,
 )
-from econ import economics
+
+bounds = [
+    (35, 560),
+    (250, 560),
+    (1, 300 / 74),
+    (1, 300 / 74),
+    (50, 200),
+    (4, 10),
+]  # upper and lower bounds of variables
+
+# PARAMETERS OF PSO
+particle_size = 7 * len(bounds)  # number of particles
+iterations = 10  # max number of iterations
+nv = len(bounds)  # number of variables
 
 
 # ------------------------------------------------------------------------------
@@ -30,8 +45,8 @@ def result_analyses(x):
     ncomp = 0.89  # compressor efficiency 2019 Nabil
     gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
     air_temp = 15  # °C
-    exhaust_Tin = 630  # °C
-    exhaust_m = 935  # kg/s
+    exhaust_Tin = 539  # °C
+    exhaust_m = 68.75  # kg/s
     cp_gas = 1151  # j/kgK
     PENALTY_VALUE = float(1e6)
     pec = list()
@@ -87,6 +102,10 @@ def result_analyses(x):
     exhaust_Tout = exhaust_Tin - q_heater / (
         exhaust_m * cp_gas
     )  # °C = °C - W/(kg/s*J/kgK)
+    if exhaust_Tout < 90:
+        return PENALTY_VALUE
+    h_exhaust_Tin, s_exhaust_Tin, cp_exhaust_Tin = h_s_fg(exhaust_Tin, 1.01e5)
+    h_exhaust_Tout, s_exhaust_Tout, cp_exhaust_Tout = h_s_fg(exhaust_Tout, 1.01e5)
 
     e1 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
     e2 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
@@ -94,7 +113,10 @@ def result_analyses(x):
     e4 = m * ((h4 - h0) - (T0 + K) * (s4 - s0))
     e5 = m * ((h5 - h0) - (T0 + K) * (s5 - s0))
     e6 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
-
+    e_exin = exhaust_m * ((h_exhaust_Tin - h0_fg) - (T0 + K) * (s_exhaust_Tin - s0_fg))
+    e_exout = exhaust_m * (
+        (h_exhaust_Tout - h0_fg) - (T0 + K) * (s_exhaust_Tout - s0_fg)
+    )
     # Economic Analysis
 
     if t6 > 550:
@@ -105,14 +127,18 @@ def result_analyses(x):
 
     dt1_cooler = t2 - air_temp  # °C
     dt2_cooler = t3 - air_temp  # °C
-    UA_cooler = q_c / lmtd(dt1_cooler, dt2_cooler)  # W / °C
+    if dt2_cooler < 0 or dt1_cooler < 0:
+        return PENALTY_VALUE
+    UA_cooler = (q_c / 1e3) / lmtd(dt1_cooler, dt2_cooler)  # W / °C
     cost_cooler = 32.88 * UA_cooler**0.75
 
     cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992  # $
 
     dt1_heater = exhaust_Tin - t6  # °C
     dt2_heater = exhaust_Tout - t5  # °C
-    UA_heater = q_heater / lmtd(dt1_heater, dt2_heater)  # W / °C
+    if dt2_heater < 0 or dt1_heater < 0:
+        return PENALTY_VALUE
+    UA_heater = (q_heater / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
     if t6 > 550:
         ft_heater = 1 + 0.02141 * (t6 - 550)
     else:
@@ -121,7 +147,7 @@ def result_analyses(x):
 
     dt1_hx = t1 - t5  # °C
     dt2_hx = t2 - t4  # °C
-    UA_hx = q_hx / lmtd(dt1_hx, dt2_hx)  # W / °C
+    UA_hx = (q_hx / 1e3) / lmtd(dt1_hx, dt2_hx)  # W / °C
     if t1 > 550:
         ft_hx = 1 + 0.02141 * (t1 - 550)
     else:
@@ -138,18 +164,20 @@ def result_analyses(x):
     # [c1,c2,c3,c4,c5,c6,cw]
     m1 = np.array(
         [
-            [e1, 0, 0, 0, 0, -e6, w_tur],
-            [e1, e2, 0, -e4, e5, 0, 0],
-            [0, e2, -e3, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0],
-            [0, 0, -e3, e4, 0, 0, -w_comp],
-            [1, 0, 0, 0, 0, -1, 0],
-            [1, -1, 0, 0, 0, 0, 0],
+            [e1, 0, 0, 0, 0, -e6, w_tur, 0],
+            [e1, e2, 0, -e4, e5, 0, 0, 0],
+            [0, e2, -e3, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, -e5, e6, 0, -(e_exin - e_exout)],
+            [0, 0, -e3, e4, 0, 0, -w_comp, 0],
+            [1, 0, 0, 0, 0, -1, 0, 0],
+            [1, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],
         ]
     )  # W
-    m2 = np.asarray(zk + [0, 0]).reshape(7, 1)
+    m2 = np.asarray(zk + [0, 0, 8.7e-9 * 3600]).reshape(8, 1)
     try:
         costs = np.linalg.solve(m1, m2)  # $/Wh
+        print(costs)
     except:
         return PENALTY_VALUE
     """
@@ -162,11 +190,12 @@ def result_analyses(x):
     Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
     Ep = (w_tur - w_comp) / 1e6  # MW
     """
-    Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3  # $/h
-    Cf = cfuel * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2  # $/h
+
+    Cl = costs[7] * e_exout  # $/h
+    Cf = costs[7] * e_exin  # $/h
     Ztot = sum(zk)  # $/h
-    Cl = Cf - Cp - Ztot  # $/h
-    Ep = (w_tur + e2 + e6 + -2 * e3) / 1e6  # MW
+    Cp = Cf + Ztot - Cl  # $/h
+    Ep = (w_tur - w_comp) / 1e6 + 22.4  # MW
     c = Cp / Ep  # $/MWh
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [w_tur / 1e6, w_comp / 1e6, q_heater / 1e6, q_c / 1e6, q_hx / 1e6]
@@ -195,11 +224,11 @@ def result_analyses(x):
 
 if __name__ == "__main__":
     x = [
-        269.4448276308468,
-        398.44366265180946,
-        1.0061199175070978,
-        1.039274265893608,
-        199.57024170357587,
-        4.585682698722277,
+        65.1151235042964,
+        416.7310849607642,
+        3.5361168139975496,
+        3.6315270940040905,
+        89.37649239419957,
+        4.269153203414328,
     ]
     result_analyses(x)
