@@ -1,21 +1,21 @@
-import sys
+# import sys
 
-MY_COOL_RESULT = None
-
-
-def main(arg):
-    print(arg)
-    first_run = True
-
-    def f(x):
-        return x + first_run
-
-    global MY_COOL_RESULT
-    MY_COOL_RESULT = 1
+# MY_COOL_RESULT = None
 
 
-main(sys.argv[0])
-print(sys.argv)
+# def main(arg):
+#     print(arg)
+#     first_run = True
+
+#     def f(x):
+#         return x + first_run
+
+#     global MY_COOL_RESULT
+#     MY_COOL_RESULT = 1
+
+
+# main(sys.argv[0])
+# print(sys.argv)
 
 # 1. Edit config.py locally (and ignore changes)
 # 2. Create default data path where you control it (but still ignore that)

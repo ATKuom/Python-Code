@@ -11,7 +11,7 @@ def enthalpy_entropy(T, P):
     substance = Fluid(FluidsList.CarbonDioxide).with_state(
         Input.pressure(P), Input.temperature(T)
     )
-    return (substance.enthalpy, substance.entropy)
+    return (substance.enthalpy, substance.entropy, substance.specific_heat)
 
     # def h_s_fg(T, P):
     nitrogen = Fluid(FluidsList.Nitrogen).with_state(
@@ -60,22 +60,30 @@ def h_s_fg(T, P):
 T0 = 15
 P0 = 101325
 K = 273.15
-(h0, s0) = enthalpy_entropy(T0, P0)
+(h0, s0, c0) = enthalpy_entropy(T0, P0)
 
 if __name__ == "__main__":
     t = 539.76  # 217.99
     p = 1.01e5
-    (h1, s1) = enthalpy_entropy(t, p)
     # Exergy_stream = h1 - h0 - (T0 + K) * (s1 - s0)
     hfg0, sfg0, cp0 = h_s_fg(T0, P0)
     hfg1, sfg1, cp1 = h_s_fg(t, p)
     Exergy_stream = hfg1 - hfg0 - (T0 + K) * (sfg1 - sfg0)
+    h1, s1, c1 = enthalpy_entropy(70.6, 241.3e5)
+    h2, s2, c2 = enthalpy_entropy(32.3, 77e5)
+    h3, s3, c3 = enthalpy_entropy(411.4, 238.9e5)
+    h4, s4, c4 = enthalpy_entropy(297.6, 78.5e5)
     print(
-        h1 / 1e3,
-        s1 / 1e3,
-        # 1.26 * Exergy_stream / 1e6,
-        hfg1 / 1e3,
-        sfg1 / 1e3,
-        68.75 * Exergy_stream / 1e6,
-        cp1,
+        # h1 / 1e3,
+        # s1 / 1e3,
+        # # 1.26 * Exergy_stream / 1e6,
+        # hfg1 / 1e3,
+        # sfg1 / 1e3,
+        # 68.75 * Exergy_stream / 1e6,
+        # cp1,
+        # c0,
+        c1 / (c1 - 189),
+        c2 / (c2 - 189),
+        c3 / (c3 - 189),
+        c4 / (c4 - 189),
     )

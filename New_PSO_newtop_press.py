@@ -1,13 +1,17 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-from Result_analysis import result_analyses
+from New_RS import result_analyses
 from econ import economics
 from functions import (
     Pressure_calculation,
     pinch_calculation,
     lmtd,
     enthalpy_entropy,
+    turbine,
+    compressor,
+    cooler,
+    heater,
     h_s_fg,
     h0_fg,
     s0_fg,
@@ -20,15 +24,15 @@ from functions import (
 bounds = [
     (35, 560),
     (250, 560),
-    (1, 300 / 74),
-    (1, 300 / 74),
+    (74e5, 300e5),
+    (74e5, 300e5),
     (50, 200),
     (4, 10),
 ]  # upper and lower bounds of variables
 
 # PARAMETERS OF PSO
-particle_size = 7 * len(bounds)  # number of particles
-iterations = 10  # max number of iterations
+particle_size = 10 * len(bounds)  # number of particles
+iterations = 1  # max number of iterations
 nv = len(bounds)  # number of variables
 
 
@@ -36,51 +40,36 @@ nv = len(bounds)  # number of variables
 def objective_function(x):
     t3 = x[0]
     t6 = x[1]
-    tur_pratio = x[2]
-    comp_pratio = x[3]
+    p1 = x[2]
+    p4 = x[3]
     m = x[4]
     pinch_temp = x[5]
 
     ##Parameters
-    ntur = 0.93  # turbine efficiency     2019 Nabil
-    ncomp = 0.89  # compressor efficiency 2019 Nabil
-    gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
+    ntur = 85  # turbine efficiency     2019 Nabil
+    ncomp = 82  # compressor efficiency 2019 Nabil
     air_temp = 15  # °C
     exhaust_Tin = 539  # °C
     exhaust_m = 68.75  # kg/s
     cp_gas = 1151  # j/kgK
+    cooler_pdrop = 0.5e5
+    heater_pdrop = 0
+    hx_pdrop = 1e5
     PENALTY_VALUE = float(1e6)
     pec = list()
 
-    p1, p2, p3, p4, p5, p6 = Pressure_calculation(tur_pratio, comp_pratio)
-    if p4 > 300e5 or p3 < 74e5:
-        # print(p1 / 1e5, p6 / 1e5, "Out of bounds pressures")
+    p2 = p1 - hx_pdrop
+    p3 = p2 - cooler_pdrop
+    p5 = p4 - hx_pdrop
+    p6 = p5
+    tur_pratio = p6 / p1
+    comp_pratio = p4 / p3
+    if tur_pratio < 1 or comp_pratio < 1:
         return PENALTY_VALUE
-
     # Turbine
-    (h6, s6) = enthalpy_entropy(t6, p6)  # J/kg, J/kgK = °C,Pa
-    t1 = (
-        (t6 + K) - ntur * ((t6 + K) - (t6 + K) / (tur_pratio ** (1 - 1 / gamma))) - K
-    )  # °C
-    (h1, s1) = enthalpy_entropy(t1, p1)
-    w_tur = m * (h6 - h1)  # W = kg/s*J/kg
-
-    if w_tur < 0:
-        # print("negative turbine work")
-        return PENALTY_VALUE
-
+    h1, s1, t1, p1c = turbine(t6, p6, p1, ntur)
     ##Compressor
-    (h3, s3) = enthalpy_entropy(t3, p3)
-    t4 = (
-        (t3 + K) + ((t3 + K) * (comp_pratio ** (1 - 1 / gamma)) - (t3 + K)) / ncomp - K
-    )  # °C
-    (h4, s4) = enthalpy_entropy(t4, p4)
-    w_comp = m * (h4 - h3)  # W = kg/s*J/kg
-
-    if w_comp > w_tur:
-        # print("negative compressor work")
-        return PENALTY_VALUE
-
+    h4, s4, t4, p4c = compressor(t3, p3, p4, ncomp)
     ##Heat Exchanger
     t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m, pinch_temp)  # °C
     if t2 == 0 or t5 == 0:
@@ -88,18 +77,28 @@ def objective_function(x):
         # print("t2 or t5 = 0 ")
         return PENALTY_VALUE
 
-    (h2, s2) = enthalpy_entropy(t2, p2)
-    q_hx = m * (h1 - h2)  # W = kg/s*J/kg
-
     ##Cooler
     if t3 > t2:
         # print("negative cooler work")
         return PENALTY_VALUE
-    q_c = m * (h2 - h3)  # W = kg/s*J/kg
-
+    h3, s3, t3c, p3 = cooler(t2, p2, t3, cooler_pdrop)
     ##Heater
+    h6, s6, t6c, p6 = heater(t5, p5, t6, heater_pdrop)
+    breakpoint()
     (h5, s5) = enthalpy_entropy(t5, p5)
+    (h2, s2) = enthalpy_entropy(t2, p2)
+    q_hx = m * (h1 - h2)  # W = kg/s*J/kg
     q_heater = m * (h6 - h5)  # W = kg/s*J/kg
+    q_c = m * (h2 - h3)  # W = kg/s*J/kg
+    w_tur = m * (h6 - h1)  # W = kg/s*J/kg
+    if w_tur < 0:
+        # print("negative turbine work")
+        return PENALTY_VALUE
+    (h4, s4) = enthalpy_entropy(t4, p4)
+    w_comp = m * (h4 - h3)  # W = kg/s*J/kg
+    if w_comp > w_tur:
+        # print("negative compressor work")
+        return PENALTY_VALUE
     exhaust_Tout = exhaust_Tin - q_heater / (
         exhaust_m * cp_gas
     )  # °C = °C - W/(kg/s*J/kgK)

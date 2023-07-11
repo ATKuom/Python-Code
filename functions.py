@@ -1,4 +1,4 @@
-from pyfluids import Fluid, FluidsList, Input
+from pyfluids import Fluid, FluidsList, Input, Mixture
 import numpy as np
 
 
@@ -21,11 +21,20 @@ def enthalpy_entropy(T, P):
     return (substance.enthalpy, substance.entropy)
 
 
-def specific_heat(T, P):
+def specificheat(T, P):
     substance = Fluid(FluidsList.CarbonDioxide).with_state(
         Input.pressure(P), Input.temperature(T)
     )
     return substance.specific_heat
+
+
+def gammacalc(T, P):
+    substance = Fluid(FluidsList.CarbonDioxide).with_state(
+        Input.pressure(P), Input.temperature(T)
+    )
+    R = 189
+    gamma = substance.specific_heat / (substance.specific_heat - R)
+    return gamma
 
 
 T0 = 15
@@ -148,4 +157,104 @@ def h_s_fg(T, P):
     return (h, s, cp)
 
 
+def exhaust():
+    exhaust_mass_flow = 68.75
+    exhaust_inlet_T = 539.8
+    exhaust_inlet_P = 10e5
+    flue_gas = Mixture(
+        [
+            FluidsList.Nitrogen,
+            FluidsList.Oxygen,
+            FluidsList.CarbonDioxide,
+            FluidsList.Water,
+        ],
+        [75.3, 15.53, 05.05, 04.12],
+    )
+    exhaust_inlet = flue_gas.with_state(
+        Input.temperature(exhaust_inlet_T), Input.pressure(exhaust_inlet_P)
+    )
+    exhaust_inlet_h = exhaust_inlet.enthalpy
+    print(exhaust_inlet_h)
+
+
+def turbine(tin, pin, pout, ntur):
+    turb_out = (
+        Fluid(FluidsList.CarbonDioxide)
+        .with_state(Input.temperature(tin), Input.pressure(pin))
+        .expansion_to_pressure(pout, ntur)
+    )
+    turb_inlet = Fluid(FluidsList.CarbonDioxide).with_state(
+        Input.temperature(tin), Input.pressure(pin)
+    )
+    delta_h = turb_inlet.enthalpy - turb_out.enthalpy
+    return (
+        turb_out.enthalpy,
+        turb_out.entropy,
+        turb_out.temperature,
+        turb_out.pressure,
+        delta_h,
+    )
+
+
+def compressor(tin, pin, pout, ncomp):
+    comp_out = (
+        Fluid(FluidsList.CarbonDioxide)
+        .with_state(Input.temperature(tin), Input.pressure(pin))
+        .compression_to_pressure(pout, ncomp)
+    )
+    comp_inlet = Fluid(FluidsList.CarbonDioxide).with_state(
+        Input.temperature(tin), Input.pressure(pin)
+    )
+    delta_h = comp_out.enthalpy - comp_inlet.enthalpy
+    return (
+        comp_out.enthalpy,
+        comp_out.entropy,
+        comp_out.temperature,
+        comp_out.pressure,
+        delta_h,
+    )
+
+
+def cooler(tin, pin, tout, pdrop):
+    cooler_out = (
+        Fluid(FluidsList.CarbonDioxide)
+        .with_state(Input.temperature(tin), Input.pressure(pin))
+        .cooling_to_temperature(tout, pdrop)
+    )
+    cooler_inlet = Fluid(FluidsList.CarbonDioxide).with_state(
+        Input.temperature(tin), Input.pressure(pin)
+    )
+    delta_h = cooler_inlet.enthalpy - cooler_out.enthalpy
+    return (
+        cooler_out.enthalpy,
+        cooler_out.entropy,
+        cooler_out.temperature,
+        cooler_out.pressure,
+        delta_h,
+    )
+
+
+def heater(tin, pin, tout, pdrop):
+    heater_out = (
+        Fluid(FluidsList.CarbonDioxide)
+        .with_state(Input.temperature(tin), Input.pressure(pin))
+        .heating_to_temperature(tout, pdrop)
+    )
+    heater_inlet = Fluid(FluidsList.CarbonDioxide).with_state(
+        Input.temperature(tin), Input.pressure(pin)
+    )
+    delta_h = heater_out.enthalpy - heater_inlet.enthalpy
+    return (
+        heater_out.enthalpy,
+        heater_out.entropy,
+        heater_out.temperature,
+        heater_out.pressure,
+        delta_h,
+    )
+
+
+# T0 = 15
+exhaust()
 h0_fg, s0_fg, cp0_fg = h_s_fg(T0, P0)
+h_fg, s_fg, cp_fg = h_s_fg(539, 1.01e5)
+print(h_s_fg(539, 1.01e5))
