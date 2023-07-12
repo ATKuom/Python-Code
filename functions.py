@@ -1,5 +1,7 @@
 from pyfluids import Fluid, FluidsList, Input, Mixture
 import numpy as np
+import scipy.optimize as opt
+import CoolProp.CoolProp as CP
 
 
 ##Specific heat calculation works fine with DT similar to estimate h2-h1
@@ -19,41 +21,6 @@ def enthalpy_entropy(T, P):
         Input.pressure(P), Input.temperature(T)
     )
     return (substance.enthalpy, substance.entropy)
-
-
-def specificheat(T, P):
-    substance = Fluid(FluidsList.CarbonDioxide).with_state(
-        Input.pressure(P), Input.temperature(T)
-    )
-    return substance.specific_heat
-
-
-def gammacalc(T, P):
-    substance = Fluid(FluidsList.CarbonDioxide).with_state(
-        Input.pressure(P), Input.temperature(T)
-    )
-    R = 189
-    gamma = substance.specific_heat / (substance.specific_heat - R)
-    return gamma
-
-
-T0 = 15
-P0 = 101325
-K = 273.15
-(h0, s0) = enthalpy_entropy(T0, P0)
-
-
-def temperature(h, P):
-    """
-    Takes the the temperature and pressure of a CO2 stream and gives enthalpy, entropy and specific heat values at that temperature
-    Temperature input is C, Pressure input is pa
-    Return: Enthalpy (J/kg), Entropy (J/kgK), Specific Heat (J/kgK)
-
-    """
-    substance = Fluid(FluidsList.CarbonDioxide).with_state(
-        Input.enthalpy(h), Input.pressure(P)
-    )
-    return substance.temperature
 
 
 def pinch_calculation(
@@ -125,56 +92,16 @@ def Pressure_calculation(tur_pratio, comp_pratio):
     return (p1, p2, p3, p4, p5, p6)
 
 
-def h_s_fg(T, P):
-    nitrogen = Fluid(FluidsList.Nitrogen).with_state(
-        Input.pressure(P), Input.temperature(T)
+def h_s_fg(t, p):
+    h, s = CP.PropsSI(
+        ["H", "S"],
+        "P|gas",
+        p,
+        "T",
+        t + K,
+        "Nitrogen[0.7643]&Oxygen[0.1382]&Water[0.0650]&CarbonDioxide[0.0325]",
     )
-    oxygen = Fluid(FluidsList.Oxygen).with_state(
-        Input.pressure(P), Input.temperature(T)
-    )
-    water = Fluid(FluidsList.Water).with_state(Input.pressure(P), Input.temperature(T))
-    carbon_dioxide = Fluid(FluidsList.CarbonDioxide).with_state(
-        Input.pressure(P), Input.temperature(T)
-    )
-    h = (
-        nitrogen.enthalpy * 0.753
-        + oxygen.enthalpy * 0.1553
-        + carbon_dioxide.enthalpy * 0.0505
-        + water.enthalpy * 0.0412
-    )
-    s = (
-        nitrogen.entropy * 0.753
-        + oxygen.entropy * 0.1553
-        + carbon_dioxide.entropy * 0.0505
-        + water.entropy * 0.0412
-    )
-    cp = (
-        nitrogen.specific_heat * 0.753
-        + oxygen.specific_heat * 0.1553
-        + carbon_dioxide.specific_heat * 0.0505
-        + water.specific_heat * 0.0412
-    )
-    return (h, s, cp)
-
-
-def exhaust():
-    exhaust_mass_flow = 68.75
-    exhaust_inlet_T = 539.8
-    exhaust_inlet_P = 10e5
-    flue_gas = Mixture(
-        [
-            FluidsList.Nitrogen,
-            FluidsList.Oxygen,
-            FluidsList.CarbonDioxide,
-            FluidsList.Water,
-        ],
-        [75.3, 15.53, 05.05, 04.12],
-    )
-    exhaust_inlet = flue_gas.with_state(
-        Input.temperature(exhaust_inlet_T), Input.pressure(exhaust_inlet_P)
-    )
-    exhaust_inlet_h = exhaust_inlet.enthalpy
-    print(exhaust_inlet_h)
+    return (h, s)
 
 
 def turbine(tin, pin, pout, ntur):
@@ -253,8 +180,35 @@ def heater(tin, pin, tout, pdrop):
     )
 
 
-# T0 = 15
-exhaust()
-h0_fg, s0_fg, cp0_fg = h_s_fg(T0, P0)
-h_fg, s_fg, cp_fg = h_s_fg(539, 1.01e5)
-print(h_s_fg(539, 1.01e5))
+def fg_calculation(heater_DH):
+    fg_in_h = CP.PropsSI(
+        "H",
+        "P|gas",
+        101325,
+        "T",
+        539.76 + K,
+        "Nitrogen[0.7643]&Oxygen[0.1382]&Water[0.0650]&CarbonDioxide[0.0325]",
+    )
+
+    def objective(T):
+        fg_out_h = CP.PropsSI(
+            "H",
+            "P|gas",
+            101325,
+            "T",
+            T + K,
+            "Nitrogen[0.7643]&Oxygen[0.1382]&Water[0.0650]&CarbonDioxide[0.0325]",
+        )
+        return fg_in_h - heater_DH - fg_out_h
+
+    fg_tout = opt.newton(objective, T0 + K)
+    return fg_tout
+
+
+T0 = 15
+P0 = 101325
+K = 273.15
+h0, s0 = enthalpy_entropy(T0, P0)
+h0_fg, s0_fg = h_s_fg(T0, P0)
+hin_fg, sin_fg = h_s_fg(539.76, 101325)
+exergy_new = hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)

@@ -3,21 +3,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 from econ import economics
 from functions import (
-    Pressure_calculation,
     pinch_calculation,
     lmtd,
     enthalpy_entropy,
-    gammacalc,
     turbine,
     compressor,
     cooler,
     heater,
     h_s_fg,
+    fg_calculation,
     h0_fg,
     s0_fg,
+    hin_fg,
+    sin_fg,
     h0,
     s0,
     T0,
+    P0,
     K,
 )
 
@@ -49,9 +51,8 @@ def result_analyses(x):
     ntur = 85  # turbine efficiency     2019 Nabil
     ncomp = 82  # compressor efficiency 2019 Nabil
     air_temp = 15  # °C
-    exhaust_Tin = 539  # °C
-    exhaust_m = 68.75  # kg/s
-    cp_gas = 1151  # j/kgK
+    fg_tin = 539  # °C
+    fg_m = 68.75  # kg/s
     cooler_pdrop = 0.5e5
     heater_pdrop = 0
     hx_pdrop = 1e5
@@ -76,7 +77,6 @@ def result_analyses(x):
         # print(t1, t4)
         # print("t2 or t5 = 0 ")
         return PENALTY_VALUE
-
     ##Cooler
     if t3 > t2:
         # print("negative cooler work")
@@ -89,6 +89,7 @@ def result_analyses(x):
     if w_tur < 0:
         # print("negative turbine work")
         return PENALTY_VALUE
+    (h2, s2) = enthalpy_entropy(t2, p2)
     q_hx = m * (h1 - h2)  # W = kg/s*J/kg
     q_c = m * cooler_DH  # W = kg/s*J/kg
     w_comp = m * comp_DH  # W = kg/s*J/kg
@@ -96,25 +97,21 @@ def result_analyses(x):
         # print("negative compressor work")
         return PENALTY_VALUE
     q_heater = m * heater_DH  # W = kg/s*J/kg
+    fg_tout = fg_calculation(heater_DH)
+    hout_fg, sout_fg = h_s_fg(fg_tout, P0)
 
-    exhaust_Tout = exhaust_Tin - q_heater / (
-        exhaust_m * cp_gas
-    )  # °C = °C - W/(kg/s*J/kgK)
-    if exhaust_Tout < 90:
+    if fg_tout < 90:
         return PENALTY_VALUE
-    h_exhaust_Tin, s_exhaust_Tin, cp_exhaust_Tin = h_s_fg(exhaust_Tin, 1.01e5)
-    h_exhaust_Tout, s_exhaust_Tout, cp_exhaust_Tout = h_s_fg(exhaust_Tout, 1.01e5)
-
+    (h5, s5) = enthalpy_entropy(t5, p5)
     e1 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
     e2 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
     e3 = m * ((h3 - h0) - (T0 + K) * (s3 - s0))
     e4 = m * ((h4 - h0) - (T0 + K) * (s4 - s0))
     e5 = m * ((h5 - h0) - (T0 + K) * (s5 - s0))
     e6 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
-    e_exin = exhaust_m * ((h_exhaust_Tin - h0_fg) - (T0 + K) * (s_exhaust_Tin - s0_fg))
-    e_exout = exhaust_m * (
-        (h_exhaust_Tout - h0_fg) - (T0 + K) * (s_exhaust_Tout - s0_fg)
-    )
+    e_fgin = fg_m * ((hin_fg - h0_fg) - (T0 + K) * (sin_fg - s0_fg))
+    e_fgout = fg_m * ((hout_fg - h0_fg) - (T0 + K) * (sout_fg - s0_fg))
+
     # Economic Analysis
 
     if t6 > 550:
@@ -132,8 +129,8 @@ def result_analyses(x):
 
     cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992  # $
 
-    dt1_heater = exhaust_Tin - t6  # °C
-    dt2_heater = exhaust_Tout - t5  # °C
+    dt1_heater = fg_tin - t6  # °C
+    dt2_heater = fg_tout - t5  # °C
     if dt2_heater < 0 or dt1_heater < 0:
         return PENALTY_VALUE
     UA_heater = (q_heater / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
@@ -165,7 +162,7 @@ def result_analyses(x):
             [e1, 0, 0, 0, 0, -e6, w_tur, 0],
             [e1, e2, 0, -e4, e5, 0, 0, 0],
             [0, e2, -e3, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0, -(e_exin - e_exout)],
+            [0, 0, 0, 0, -e5, e6, 0, -(e_fgin - e_fgout)],
             [0, 0, -e3, e4, 0, 0, -w_comp, 0],
             [1, 0, 0, 0, 0, -1, 0, 0],
             [1, -1, 0, 0, 0, 0, 0, 0],
@@ -189,8 +186,8 @@ def result_analyses(x):
     Ep = (w_tur - w_comp) / 1e6  # MW
     """
 
-    Cl = costs[7] * e_exout  # $/h
-    Cf = costs[7] * e_exin  # $/h
+    Cl = costs[7] * e_fgout  # $/h
+    Cf = costs[7] * e_fgin  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
     Ep = (w_tur - w_comp) / 1e6 + 22.4  # MW
@@ -207,7 +204,7 @@ def result_analyses(x):
         p4 = {Pressure[3]:.2f} bar
         Compressor Pratio = {comp_pratio:.2f}
         Compressor Input = {unit_energy[1]:.2f} MW
-        Temperatures = t1={t1:.0f}  t2={t2:.0f} t3={t3:.0f} t4={t4:.0f} t5={t5:.0f} t6={t6:.0f} Tstack = {exhaust_Tout:.0f}
+        Temperatures = t1={t1:.0f}  t2={t2:.0f} t3={t3:.0f} t4={t4:.0f} t5={t5:.0f} t6={t6:.0f} Tstack = {fg_tout:.0f}
         Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
         Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
         Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW
