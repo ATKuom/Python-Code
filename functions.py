@@ -249,6 +249,16 @@ def HX_calculation(t1, p1, h1, t4, p4, h4, dt, hx_pdrop):
     )
 
 
+def cw_Tout(q_cooler):
+    m_cw = 200  # kg/s
+    cw = Fluid(FluidsList.Water).with_state(
+        Input.temperature(19), Input.pressure(101325)
+    )
+    cw_outlet = cw.heating_to_enthalpy(cw.enthalpy + q_cooler / m_cw, 0)
+    return cw_outlet.temperature
+
+
+print(cw_Tout(17.3e6))
 T0 = 15
 P0 = 101325
 K = 273.15

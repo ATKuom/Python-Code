@@ -13,6 +13,7 @@ from functions import (
     h_s_fg,
     fg_calculation,
     HX_calculation,
+    cw_Tout,
     h0_fg,
     s0_fg,
     hin_fg,
@@ -51,7 +52,7 @@ def result_analyses(x):
     ##Parameters
     ntur = 85  # turbine efficiency     2019 Nabil
     ncomp = 82  # compressor efficiency 2019 Nabil
-    air_temp = 15  # °C
+    cw_temp = 19  # °C
     fg_tin = 539  # °C
     fg_m = 68.75  # kg/s
     cooler_pdrop = 1e5
@@ -92,7 +93,7 @@ def result_analyses(x):
         # print("negative cooler work")
         return PENALTY_VALUE
     h3, s3, t3c, p3, cooler_DH = cooler(t2, p2, t3, cooler_pdrop)
-    q_c = m * cooler_DH  # W = kg/s*J/kg
+    q_cooler = m * cooler_DH  # W = kg/s*J/kg
 
     ##Heater
     h6, s6, t6c, p6, heater_DH = heater(t5, p5, t6, heater_pdrop)
@@ -115,17 +116,21 @@ def result_analyses(x):
 
     # Economic Analysis
     if t6 > 550:
-        ft_tur = 1 + 1.106e-4 * (t6 - 550) ** 2
+        ft_tur = 1 + 1.137e-5 * (t6 - 550) ** 2
     else:
         ft_tur = 1
-    cost_tur = 182600 * ((w_tur / 1e6) ** 0.5561) * ft_tur  # $
+    cost_tur = 406200 * ((w_tur / 1e6) ** 0.8) * ft_tur  # $
 
-    dt1_cooler = t2 - air_temp  # °C
-    dt2_cooler = t3 - air_temp  # °C
+    dt1_cooler = t3 - cw_temp  # °C
+    dt2_cooler = t2 - cw_Tout(q_cooler)  # °C
     if dt2_cooler < 0 or dt1_cooler < 0:
         return PENALTY_VALUE
-    UA_cooler = (q_c / 1e3) / lmtd(dt1_cooler, dt2_cooler)  # W / °C
-    cost_cooler = 32.88 * UA_cooler**0.75
+    UA_cooler = (q_cooler / 1) / lmtd(dt1_cooler, dt2_cooler)  # W / °C
+    if t2 > 550:
+        ft_cooler = 1 + 0.02141 * (t2 - 550)
+    else:
+        ft_cooler = 1
+    cost_cooler = 49.45 * UA_cooler**0.7544 * ft_cooler  # $
 
     cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992  # $
 
@@ -134,29 +139,25 @@ def result_analyses(x):
     if dt2_heater < 0 or dt1_heater < 0:
         return PENALTY_VALUE
     UA_heater = (q_heater / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
-    if t6 > 550:
-        ft_heater = 1 + 0.02141 * (t6 - 550)
-    else:
-        ft_heater = 1
-    cost_heater = 49.45 * UA_heater**0.7544 * ft_heater  # $
+    cost_heater = 5000 * UA_heater  # Thesis 97/pdf116
 
     dt1_hx = t1 - t5  # °C
     dt2_hx = t2 - t4  # °C
-    UA_hx = (q_hx / 1e3) / lmtd(dt1_hx, dt2_hx)  # W / °C
+    UA_hx = (q_hx / 1) / lmtd(dt1_hx, dt2_hx)  # W / °C
     if t1 > 550:
         ft_hx = 1 + 0.02141 * (t1 - 550)
     else:
         ft_hx = 1
     cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
-
     pec.append(cost_tur)
     pec.append(cost_hx)
     pec.append(cost_cooler)
     pec.append(cost_heater)
     pec.append(cost_comp)
     prod_capacity = (w_tur - w_comp) / 1e6  # MW
+    print(pec, prod_capacity)
     zk, cfuel = economics(pec, prod_capacity)  # $/h
-    # [c1,c2,c3,c4,c5,c6,cw]
+    # [c1,c2,c3,c4,c5,c6,cw,cfg]
     m1 = np.array(
         [
             [e1, 0, 0, 0, 0, -e6, w_tur, 0],
@@ -193,7 +194,13 @@ def result_analyses(x):
     Ep = (w_tur - w_comp) / 1e6 + 22.4  # MW
     c = Cp / Ep  # $/MWh
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
-    unit_energy = [w_tur / 1e6, w_comp / 1e6, q_heater / 1e6, q_c / 1e6, q_hx / 1e6]
+    unit_energy = [
+        w_tur / 1e6,
+        w_comp / 1e6,
+        q_heater / 1e6,
+        q_cooler / 1e6,
+        q_hx / 1e6,
+    ]
     print(
         f"""
         Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
@@ -204,9 +211,10 @@ def result_analyses(x):
         Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
         Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
         Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
-        Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW
+        Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 +0.5:.2f}MW {e_fgout/1e6+0.5:.2f}MW
         Objective Function value = {c}
-        
+        {costs/3600 * 1e9}
+        {zk}
         """
     )
 

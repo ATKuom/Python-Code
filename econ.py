@@ -3,7 +3,7 @@ def economics(pec, prod_capacity):
     cap_factor = 0.85
     T = 8760
     hourtosec = 3600
-    costofNG = 0.003  # $/MJ
+    costofNG = 0.00285  # $/MJ
     lvh = 50.01  # MJ/kgNG
     rnf = 0.06
     int_rate = 0.03
@@ -25,7 +25,7 @@ def economics(pec, prod_capacity):
     oandm = prod_capacity * annual_om * T * cap_factor
     suc = oandm / 12 + fc / 52 + tpc * 0.02
     wc = (fc / 6 + 0.3 * oandm) * 1.25
-
+    breakpoint()
     ##AFUDC calculation
     year1 = 0.4 * tpc * (1 + int_rate) ** 0.5
     y1_equity_afudc = equity_frac * equity_roi * year1 * 1.5
@@ -124,5 +124,17 @@ def economics(pec, prod_capacity):
     zk = list()
     for equip in pec:
         zk.append(first_term * equip / total_pec)
-
+    print(trrl_current / (prod_capacity * T * cap_factor))
     return zk, fcl_current / T
+
+
+if __name__ == "__main__":
+    pec = [
+        665039.3276981997,
+        1171584.713784437,
+        589888.2268116964,
+        992719.0280835985,
+        1851007.5007325755,
+    ]
+    prod_cap = 7.435758185649715
+    economics(pec, prod_cap)
