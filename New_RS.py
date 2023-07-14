@@ -70,38 +70,40 @@ def result_analyses(x):
         return PENALTY_VALUE
     # Turbine
     h1, s1, t1, p1c, turbine_DH = turbine(t6, p6, p1, ntur)
-    ##Compressor
-    h4, s4, t4, p4c, comp_DH = compressor(t3, p3, p4, ncomp)
-    ##Heat Exchanger
-    t2, p2c, h2, s2, t5, p5c, h5, s5, heater_DH = HX_calculation(
-        t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop
-    )
-
-    ##Cooler
-    if t3 > t2:
-        # print("negative cooler work")
-        return PENALTY_VALUE
-    h3, s3, t3c, p3, cooler_DH = cooler(t2, p2, t3, cooler_pdrop)
-    ##Heater
-    h6, s6, t6c, p6, heater_DH = heater(t5, p5, t6, heater_pdrop)
-
     w_tur = m * turbine_DH  # W = kg/s*J/kg
     if w_tur < 0:
         # print("negative turbine work")
         return PENALTY_VALUE
 
-    q_hx = m * heater_DH  # W = kg/s*J/kg
-    q_c = m * cooler_DH  # W = kg/s*J/kg
+    ##Compressor
+    h4, s4, t4, p4c, comp_DH = compressor(t3, p3, p4, ncomp)
     w_comp = m * comp_DH  # W = kg/s*J/kg
     if w_comp > w_tur:
-        # print("negative compressor work")
+        # print("negative net power production")
         return PENALTY_VALUE
+
+    ##Heat Exchanger
+    t2, p2c, h2, s2, t5, p5c, h5, s5, heater_DH = HX_calculation(
+        t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop
+    )
+    q_hx = m * heater_DH  # W = kg/s*J/kg
+    ##Cooler
+    if t3 > t2:
+        # print("negative cooler work")
+        return PENALTY_VALUE
+    h3, s3, t3c, p3, cooler_DH = cooler(t2, p2, t3, cooler_pdrop)
+    q_c = m * cooler_DH  # W = kg/s*J/kg
+
+    ##Heater
+    h6, s6, t6c, p6, heater_DH = heater(t5, p5, t6, heater_pdrop)
     q_heater = m * heater_DH  # W = kg/s*J/kg
     fg_tout = fg_calculation(fg_m, q_heater)
+    if fg_tout < 90:
+        # print("too low flue gas stack temperature")
+        return PENALTY_VALUE
     hout_fg, sout_fg = h_s_fg(fg_tout, P0)
 
-    if fg_tout < 90:
-        return PENALTY_VALUE
+    # Exergy Analysis
     e1 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
     e2 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
     e3 = m * ((h3 - h0) - (T0 + K) * (s3 - s0))
@@ -112,7 +114,6 @@ def result_analyses(x):
     e_fgout = fg_m * ((hout_fg - h0_fg) - (T0 + K) * (sout_fg - s0_fg))
 
     # Economic Analysis
-
     if t6 > 550:
         ft_tur = 1 + 1.106e-4 * (t6 - 550) ** 2
     else:
