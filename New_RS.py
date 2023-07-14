@@ -12,6 +12,7 @@ from functions import (
     heater,
     h_s_fg,
     fg_calculation,
+    HX_calculation,
     h0_fg,
     s0_fg,
     hin_fg,
@@ -45,7 +46,7 @@ def result_analyses(x):
     p1 = x[2]
     p4 = x[3]
     m = x[4]
-    pinch_temp = x[5]
+    approach_temp = x[5]
 
     ##Parameters
     ntur = 85  # turbine efficiency     2019 Nabil
@@ -53,16 +54,16 @@ def result_analyses(x):
     air_temp = 15  # °C
     fg_tin = 539  # °C
     fg_m = 68.75  # kg/s
-    cooler_pdrop = 0.5e5
+    cooler_pdrop = 1e5
     heater_pdrop = 0
-    hx_pdrop = 1e5
+    hx_pdrop = 0.5e5
     PENALTY_VALUE = float(1e6)
     pec = list()
 
     p2 = p1 - hx_pdrop
     p3 = p2 - cooler_pdrop
     p5 = p4 - hx_pdrop
-    p6 = p5
+    p6 = p5 - heater_pdrop
     tur_pratio = p6 / p1
     comp_pratio = p4 / p3
     if tur_pratio < 1 or comp_pratio < 1:
@@ -72,11 +73,10 @@ def result_analyses(x):
     ##Compressor
     h4, s4, t4, p4c, comp_DH = compressor(t3, p3, p4, ncomp)
     ##Heat Exchanger
-    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m, pinch_temp)  # °C
-    if t2 == 0 or t5 == 0:
-        # print(t1, t4)
-        # print("t2 or t5 = 0 ")
-        return PENALTY_VALUE
+    t2, p2c, h2, s2, t5, p5c, h5, s5, heater_DH = HX_calculation(
+        t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop
+    )
+
     ##Cooler
     if t3 > t2:
         # print("negative cooler work")
@@ -89,20 +89,19 @@ def result_analyses(x):
     if w_tur < 0:
         # print("negative turbine work")
         return PENALTY_VALUE
-    (h2, s2) = enthalpy_entropy(t2, p2)
-    q_hx = m * (h1 - h2)  # W = kg/s*J/kg
+
+    q_hx = m * heater_DH  # W = kg/s*J/kg
     q_c = m * cooler_DH  # W = kg/s*J/kg
     w_comp = m * comp_DH  # W = kg/s*J/kg
     if w_comp > w_tur:
         # print("negative compressor work")
         return PENALTY_VALUE
     q_heater = m * heater_DH  # W = kg/s*J/kg
-    fg_tout = fg_calculation(heater_DH)
+    fg_tout = fg_calculation(fg_m, q_heater)
     hout_fg, sout_fg = h_s_fg(fg_tout, P0)
 
     if fg_tout < 90:
         return PENALTY_VALUE
-    (h5, s5) = enthalpy_entropy(t5, p5)
     e1 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
     e2 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
     e3 = m * ((h3 - h0) - (T0 + K) * (s3 - s0))
@@ -172,7 +171,7 @@ def result_analyses(x):
     m2 = np.asarray(zk + [0, 0, 8.7e-9 * 3600]).reshape(8, 1)
     try:
         costs = np.linalg.solve(m1, m2)  # $/Wh
-        print(costs)
+
     except:
         return PENALTY_VALUE
     """
@@ -196,19 +195,15 @@ def result_analyses(x):
     unit_energy = [w_tur / 1e6, w_comp / 1e6, q_heater / 1e6, q_c / 1e6, q_hx / 1e6]
     print(
         f"""
-        p6 = {Pressure[5]:.2f} bar
-        p1 = {Pressure[0]:.2f} bar
-        Turbine Pratio = {tur_pratio:.2f}
-        Turbine output = {unit_energy[0]:.2f} MW
-        p3 = {Pressure[2]:.2f} bar
-        p4 = {Pressure[3]:.2f} bar
-        Compressor Pratio = {comp_pratio:.2f}
-        Compressor Input = {unit_energy[1]:.2f} MW
-        Temperatures = t1={t1:.0f}  t2={t2:.0f} t3={t3:.0f} t4={t4:.0f} t5={t5:.0f} t6={t6:.0f} Tstack = {fg_tout:.0f}
+        Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
+        Turbine output = {unit_energy[0]:.2f}MW
+        Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
+        Compressor Input = {unit_energy[1]:.2f}MW
+        Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}
+        Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
         Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
         Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
         Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW
-        Ep = 
         Objective Function value = {c}
         
         """
@@ -224,6 +219,6 @@ if __name__ == "__main__":
         78.5e5,
         241.3e5,
         93.18,
-        10,
+        10.8,
     ]
     result_analyses(x)

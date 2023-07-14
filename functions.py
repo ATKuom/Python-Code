@@ -180,7 +180,7 @@ def heater(tin, pin, tout, pdrop):
     )
 
 
-def fg_calculation(heater_DH):
+def fg_calculation(fg_m, q_heater):
     fg_in_h = CP.PropsSI(
         "H",
         "P|gas",
@@ -199,10 +199,54 @@ def fg_calculation(heater_DH):
             T + K,
             "Nitrogen[0.7643]&Oxygen[0.1382]&Water[0.0650]&CarbonDioxide[0.0325]",
         )
-        return fg_in_h - heater_DH - fg_out_h
+        return fg_m * (fg_in_h - fg_out_h) - q_heater
 
     fg_tout = opt.newton(objective, T0 + K)
     return fg_tout
+
+
+def HX_calculation(t1, p1, h1, t4, p4, h4, dt, hx_pdrop):
+    try:
+        hotside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(t1), Input.pressure(p1))
+            .cooling_to_temperature(t4 + dt, hx_pdrop)
+        )
+
+        dh = h1 - hotside_outlet.enthalpy
+
+        coldside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(t4), Input.pressure(p4))
+            .heating_to_enthalpy(h4 + dh, hx_pdrop)
+        )
+        if t1 - coldside_outlet.temperature < dt:
+            raise Exception
+    except:
+        coldside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(t4), Input.pressure(p4))
+            .heating_to_temperature(t1 - dt, hx_pdrop)
+        )
+
+        dh = coldside_outlet.enthalpy - h4
+
+        hotside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(t1), Input.pressure(p1))
+            .cooling_to_enthalpy(h1 - dh, hx_pdrop)
+        )
+    return (
+        hotside_outlet.temperature,
+        hotside_outlet.pressure,
+        hotside_outlet.enthalpy,
+        hotside_outlet.entropy,
+        coldside_outlet.temperature,
+        coldside_outlet.pressure,
+        coldside_outlet.enthalpy,
+        coldside_outlet.entropy,
+        dh,
+    )
 
 
 T0 = 15

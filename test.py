@@ -57,17 +57,16 @@ def objective(t):
     hotside = (
         Fluid(FluidsList.CarbonDioxide)
         .with_state(Input.temperature(t1), Input.pressure(p1))
-        .cooling_to_temperature(t, 1e5)
+        .cooling_to_temperature(t[0], 1e5)
     )
     coldside = (
         Fluid(FluidsList.CarbonDioxide)
         .with_state(Input.temperature(t4), Input.pressure(p5))
-        .heating_to_temperature(t, 1e5)
+        .heating_to_temperature(t[1], 1e5)
     )
     return hotside.enthalpy - coldside.enthalpy
 
 
-t2, t5 = opt.brent(
-    objective,
-)
+x0 = [t1 - delta_t, t4 + delta_t]
+t2, t5 = opt.brent(objective, x0)
 print(t2)

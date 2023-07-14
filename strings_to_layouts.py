@@ -1,7 +1,11 @@
 import numpy as np
 from designs import expert_designs
 
+
+# The output of ML model will be one-hot encoded strings of the layouts
+# The output will be cut down using start and end tokens to identify the units in the layout
 # Known things from the string: Number of units, their placements, and their connections
+# Decision variables are added to the PSO based on their units and placements
 # Unit input T and P of i unit = T(i-1), P(i-1) Unit output T and P of i unit = T(i), P(i)
 # Pressures of the system are identified then calculated using turbine and compressor pressure ratios
 # Temperatures of the system are identified then inputted using Cooler and heater target temperatures
