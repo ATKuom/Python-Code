@@ -1,7 +1,7 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-from econ import economics
+from test_econ import economics
 from functions import (
     pinch_calculation,
     lmtd,
@@ -100,6 +100,7 @@ def result_analyses(x):
     e6 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
     e_fgin = fg_m * ((hin_fg - h0_fg) - (T0 + K) * (sin_fg - s0_fg)) + 0.5e6
     e_fgout = fg_m * ((hout_fg - h0_fg) - (T0 + K) * (sout_fg - s0_fg)) + 0.5e6
+    e_fuel = NG_exergy()
 
     # Economic Analysis
     if t6 > 550:
@@ -136,36 +137,86 @@ def result_analyses(x):
     else:
         ft_hx = 1
     cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
+    cost_gt = 9.721e6  # $
     pec.append(cost_tur)
     pec.append(cost_hx)
     pec.append(cost_cooler)
     pec.append(cost_heater)
     pec.append(cost_comp)
-    prod_capacity = (w_tur - w_comp) / 1e6  # MW
+    pec.append(cost_gt)
+    w_gt = 22.4e6
+    prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
+    print(pec, prod_capacity)
     zk, cfueltot, lcoe = economics(pec, prod_capacity)  # $/h
+    cfuel = 0.00379 / 1e6  # $/MJ
+    # cfueltot / e_fuel / 3600  # $/J
+
+    # W
     # [c1,c2,c3,c4,c5,c6,cw,cfg]
 
+    # m1 = np.array(
+    #     [
+    #         [e1, 0, 0, 0, 0, -e6, w_tur, 0],
+    #         [e1, e2, 0, -e4, e5, 0, 0, 0],
+    #         [0, -e2, e3, 0, 0, 0, 0, 0],
+    #         [0, 0, 0, 0, -e5, e6, 0, -(e_fgin - e_fgout)],
+    #         [0, 0, -e3, e4, 0, 0, -w_comp, 0],
+    #         [1, 0, 0, 0, 0, -1, 0, 0],
+    #         [1, -1, 0, 0, 0, 0, 0, 0],
+    #         [0, 0, 0, 0, 0, 0, 0, 1],
+    #     ]
+    # )
+    # m1 = np.array(
+    #     [
+    #         [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0],
+    #         [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0],
+    #         [0, -e2, e3, 0, 0, 0, 0, 0, 0, 0],
+    #         [0, 0, 0, 0, -e5, e6, 0, -e_fgin, e_fgout, 0],
+    #         [0, 0, -e3, e4, 0, 0, -w_comp, 0, 0, 0],
+    #         [0, 0, 0, 0, 0, 0, w_gt, e_fgin, 0, -e_fuel],
+    #         [1, 0, 0, 0, 0, -1, 0, 0, 0, 0],
+    #         [1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+    #         [0, 0, 0, 0, 0, 0, 0, 1, -1, 0],
+    #         # [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+    #         [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    #     ]
+    # )  # W
+    # m2 = np.asarray(
+    #     zk
+    #     + [
+    #         0,
+    #         0,
+    #         0,
+    #         # 8.7e-9 * 3600,
+    #         cfuel * 3600,
+    #     ]
+    # ).reshape(-1, 1)
     m1 = np.array(
         [
-            [e1, 0, 0, 0, 0, -e6, w_tur, 0],
-            [-e1, e2, 0, -e4, e5, 0, 0, 0],
-            [0, -e2, e3, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0, -(e_fgin - e_fgout)],
-            [0, 0, -e3, e4, 0, 0, -w_comp, 0],
-            [1, 0, 0, 0, 0, -1, 0, 0],
-            [1, -1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1],
+            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0],
+            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0],
+            [0, -e2, e3, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, -e5, e6, 0, -e_fgin, e_fgout, 0],
+            [0, 0, -e3, e4, 0, 0, -w_comp, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, w_gt, e_fgin, 0, -e_fuel],
+            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0],
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, -1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+            # [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
         ]
-    )
+    )  # W
     m2 = np.asarray(
         zk
         + [
             0,
             0,
+            0,
             8.7e-9 * 3600,
+            # cfuel * 3600,
         ]
     ).reshape(-1, 1)
-    # 8.7e-9 * 3600
+
     try:
         costs = np.linalg.solve(m1, m2)  # $/Wh
 
@@ -200,21 +251,25 @@ def result_analyses(x):
 
     print(
         f"""
-        Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
-        Turbine output = {unit_energy[0]:.2f}MW
-        Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
-        Compressor Input = {unit_energy[1]:.2f}MW
-        Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
-        Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
-        Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
-        Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
-        Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 +0.5:.2f}MW {e_fgout/1e6+0.5:.2f}MW
-        Objective Function value = {c}
-        {Cp/Ep}
-        {costs/3600}
-        """
+    Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
+    Turbine output = {unit_energy[0]:.2f}MW
+    Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
+    Compressor Input = {unit_energy[1]:.2f}MW
+    Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
+    Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
+    Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
+    Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
+    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 +0.5:.2f}MW {e_fgout/1e6+0.5:.2f}MW
+    {costs/3600*1e9}
+    {zk}
+    {sum(zk),sum(pec)}
+    Objective Function value = {c}
+    
+    
+    
+    """
     )
-
+    # {Cp/Ep}
     return c
 
 

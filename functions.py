@@ -201,10 +201,14 @@ def fg_calculation(fg_m, q_heater):
         )
         return fg_m * (fg_in_h - fg_out_h) - q_heater
 
-    fg_tout = opt.newton(objective, T0 + K)
+    try:
+        fg_tout = opt.newton(objective, T0 + K)
+    except:
+        breakpoint()
     return fg_tout
 
 
+##Heat exchanger hot and cold side determination needs to be implemented
 def HX_calculation(t1, p1, h1, t4, p4, h4, dt, hx_pdrop):
     try:
         hotside_outlet = (
@@ -258,7 +262,6 @@ def cw_Tout(q_cooler):
     return cw_outlet.temperature
 
 
-print(cw_Tout(17.3e6))
 T0 = 15
 P0 = 101325
 K = 273.15
@@ -266,3 +269,15 @@ h0, s0 = enthalpy_entropy(T0, P0)
 h0_fg, s0_fg = h_s_fg(T0, P0)
 hin_fg, sin_fg = h_s_fg(539.76, 101325)
 exergy_new = hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)
+
+
+def NG_exergy():
+    methane = Fluid(FluidsList.Methane).with_state(
+        Input.temperature(25), Input.pressure(18.2e5)
+    )
+    m0 = Fluid(FluidsList.Methane).with_state(
+        Input.temperature(25), Input.pressure(101325)
+    )
+    Pexergy = methane.enthalpy - m0.enthalpy - (T0 + K) * (methane.entropy - m0.entropy)
+    Cexergy = 824.348 * 1.26 / 16.043 * 1e6
+    return Pexergy + Cexergy
