@@ -104,7 +104,7 @@ def h_s_fg(t, p):
     return (h, s)
 
 
-def turbine(tin, pin, pout, ntur):
+def turbine(tin, pin, pout, ntur, m):
     turb_out = (
         Fluid(FluidsList.CarbonDioxide)
         .with_state(Input.temperature(tin), Input.pressure(pin))
@@ -114,16 +114,16 @@ def turbine(tin, pin, pout, ntur):
         Input.temperature(tin), Input.pressure(pin)
     )
     delta_h = turb_inlet.enthalpy - turb_out.enthalpy
+    w_tur = delta_h * m
     return (
         turb_out.enthalpy,
         turb_out.entropy,
         turb_out.temperature,
-        turb_out.pressure,
-        delta_h,
+        w_tur,
     )
 
 
-def compressor(tin, pin, pout, ncomp):
+def compressor(tin, pin, pout, ncomp, m):
     comp_out = (
         Fluid(FluidsList.CarbonDioxide)
         .with_state(Input.temperature(tin), Input.pressure(pin))
@@ -133,16 +133,16 @@ def compressor(tin, pin, pout, ncomp):
         Input.temperature(tin), Input.pressure(pin)
     )
     delta_h = comp_out.enthalpy - comp_inlet.enthalpy
+    w_comp = delta_h * m
     return (
         comp_out.enthalpy,
         comp_out.entropy,
         comp_out.temperature,
-        comp_out.pressure,
-        delta_h,
+        w_comp,
     )
 
 
-def cooler(tin, pin, tout, pdrop):
+def cooler(tin, pin, tout, pdrop, m):
     cooler_out = (
         Fluid(FluidsList.CarbonDioxide)
         .with_state(Input.temperature(tin), Input.pressure(pin))
@@ -152,16 +152,15 @@ def cooler(tin, pin, tout, pdrop):
         Input.temperature(tin), Input.pressure(pin)
     )
     delta_h = cooler_inlet.enthalpy - cooler_out.enthalpy
+    q_cooler = delta_h * m
     return (
         cooler_out.enthalpy,
         cooler_out.entropy,
-        cooler_out.temperature,
-        cooler_out.pressure,
-        delta_h,
+        q_cooler,
     )
 
 
-def heater(tin, pin, tout, pdrop):
+def heater(tin, pin, tout, pdrop, m):
     heater_out = (
         Fluid(FluidsList.CarbonDioxide)
         .with_state(Input.temperature(tin), Input.pressure(pin))
@@ -171,12 +170,11 @@ def heater(tin, pin, tout, pdrop):
         Input.temperature(tin), Input.pressure(pin)
     )
     delta_h = heater_out.enthalpy - heater_inlet.enthalpy
+    q_heater = delta_h * m
     return (
         heater_out.enthalpy,
         heater_out.entropy,
-        heater_out.temperature,
-        heater_out.pressure,
-        delta_h,
+        q_heater,
     )
 
 
@@ -209,47 +207,46 @@ def fg_calculation(fg_m, q_heater):
 
 
 ##Heat exchanger hot and cold side determination needs to be implemented
-def HX_calculation(t1, p1, h1, t4, p4, h4, dt, hx_pdrop):
+def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdrop, m):
     try:
         hotside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(t1), Input.pressure(p1))
-            .cooling_to_temperature(t4 + dt, hx_pdrop)
+            .with_state(Input.temperature(Thotin), Input.pressure(photin))
+            .cooling_to_temperature(tcoldin + dt, hx_pdrop)
         )
 
-        dh = h1 - hotside_outlet.enthalpy
-
+        dh = hhotin - hotside_outlet.enthalpy
+        q_hx = dh * m
         coldside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(t4), Input.pressure(p4))
-            .heating_to_enthalpy(h4 + dh, hx_pdrop)
+            .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
+            .heating_to_enthalpy(hcoldin + dh, hx_pdrop)
         )
-        if t1 - coldside_outlet.temperature < dt:
+        if Thotin - coldside_outlet.temperature < dt:
             raise Exception
     except:
         coldside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(t4), Input.pressure(p4))
-            .heating_to_temperature(t1 - dt, hx_pdrop)
+            .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
+            .heating_to_temperature(Thotin - dt, hx_pdrop)
         )
 
-        dh = coldside_outlet.enthalpy - h4
+        dh = coldside_outlet.enthalpy - hcoldin
 
         hotside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(t1), Input.pressure(p1))
-            .cooling_to_enthalpy(h1 - dh, hx_pdrop)
+            .with_state(Input.temperature(Thotin), Input.pressure(photin))
+            .cooling_to_enthalpy(hhotin - dh, hx_pdrop)
         )
+        q_hx = dh * m
     return (
         hotside_outlet.temperature,
-        hotside_outlet.pressure,
         hotside_outlet.enthalpy,
         hotside_outlet.entropy,
         coldside_outlet.temperature,
-        coldside_outlet.pressure,
         coldside_outlet.enthalpy,
         coldside_outlet.entropy,
-        dh,
+        q_hx,
     )
 
 

@@ -3,9 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from econ import economics
 from functions import (
-    pinch_calculation,
     lmtd,
-    enthalpy_entropy,
     turbine,
     compressor,
     cooler,
@@ -57,34 +55,29 @@ def result_analyses(x):
     if tur_pratio < 1 or comp_pratio < 1:
         return PENALTY_VALUE
     # Turbine
-    h1, s1, t1, p1c, turbine_DH = turbine(t6, p6, p1, ntur)
-    w_tur = m * turbine_DH  # W = kg/s*J/kg
+    h1, s1, t1, w_tur = turbine(t6, p6, p1, ntur, m)
     if w_tur < 0:
         # print("negative turbine work")
         return PENALTY_VALUE
 
     ##Compressor
-    h4, s4, t4, p4c, comp_DH = compressor(t3, p3, p4, ncomp)
-    w_comp = m * comp_DH  # W = kg/s*J/kg
+    h4, s4, t4, w_comp = compressor(t3, p3, p4, ncomp, m)
     if w_comp > w_tur:
         # print("negative net power production")
         return PENALTY_VALUE
 
     ##Heat Exchanger
-    t2, p2c, h2, s2, t5, p5c, h5, s5, heater_DH = HX_calculation(
-        t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop
+    t2, h2, s2, t5, h5, s5, q_hx = HX_calculation(
+        t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop, m
     )
-    q_hx = m * heater_DH  # W = kg/s*J/kg
     ##Cooler
     if t3 > t2:
         # print("negative cooler work")
         return PENALTY_VALUE
-    h3, s3, t3c, p3, cooler_DH = cooler(t2, p2, t3, cooler_pdrop)
-    q_cooler = m * cooler_DH  # W = kg/s*J/kg
+    h3, s3, q_cooler = cooler(t2, p2, t3, cooler_pdrop, m)
 
     ##Heater
-    h6, s6, t6c, p6, heater_DH = heater(t5, p5, t6, heater_pdrop)
-    q_heater = m * heater_DH  # W = kg/s*J/kg
+    h6, s6, q_heater = heater(t5, p5, t6, heater_pdrop, m)
     fg_tout = fg_calculation(fg_m, q_heater)
     if fg_tout < 90:
         # print("too low flue gas stack temperature")
