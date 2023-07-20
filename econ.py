@@ -14,10 +14,9 @@ def economics(pec, prod_capacity):
     wacc = equity_frac * equity_roi + debt_frac * debt_roi
     tax_rate = 0.38
     mfuel = 1.26  ##22.3  # kg/s PhDthes_103
-    total_pec = (
-        sum(pec) + 9.721e6 + 1e5 * prod_capacity
-    )  # 9.721e6 for GT set, 1M $ for 10 MWe for piping and stuff
-    prod_capacity += 22.4  # 450  # It should be obtained from the layout (MW)
+    total_pec = sum(
+        pec
+    )  # + 9.721e6 + 1e5 * prod_capacity  # 9.721e6 for GT set, 1M $ for 10 MWe for piping and stuff
     annual_om = 9.839  # $/MWhe in 2023$
 
     fci = 1.44 * total_pec  # 3.5575 * total_pec
@@ -127,6 +126,9 @@ def economics(pec, prod_capacity):
     for equip in pec:
         zk.append(first_term * equip / total_pec)
     lcoe = trrl_current / (prod_capacity * T * cap_factor)
+    print(
+        fcl_current,
+    )
     return zk, fcl_current / T, lcoe
 
 

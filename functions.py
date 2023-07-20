@@ -57,7 +57,7 @@ def pinch_calculation(
     return (T_hotout, T_coldout)
 
 
-def Pressure_calculation(tur_pratio, comp_pratio):
+def old_Pressure_calculation(tur_pratio, comp_pratio):
     # [p1,p2,p3,p4,p5,p6]
     pres = np.array(
         [
@@ -269,6 +269,9 @@ exergy_new = hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)
 
 
 def NG_exergy():
+    """
+    Fuel exergy calculation with 100% methane assumption
+    """
     methane = Fluid(FluidsList.Methane).with_state(
         Input.temperature(25), Input.pressure(18.2e5)
     )
@@ -278,3 +281,187 @@ def NG_exergy():
     Pexergy = methane.enthalpy - m0.enthalpy - (T0 + K) * (methane.entropy - m0.entropy)
     Cexergy = 824.348 * 1.26 / 16.043 * 1e6
     return Pexergy + Cexergy
+
+
+def decision_variable_placement(x, enumerated_equipment, pressures, temperatures):
+    approach_temp = 1
+    split_ratio = 1
+    hx_token = 1
+    for index, equip in enumerated_equipment:
+        if equip == 1:
+            pressures[index] = x[index]
+        if equip == 2:
+            temperatures[index] = x[index]
+        if equip == 3:
+            pressures[index] = x[index]
+        if equip == 4:
+            temperatures[index] = x[index]
+        if equip == 5:
+            if hx_token == 1:
+                approach_temp = x[index]
+                hx_token += -1
+            else:
+                pass
+        if equip == 6:
+            split_ratio = x[index]
+    return (pressures, temperatures, approach_temp, split_ratio)
+
+
+def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop):
+    while Pressures.prod() == 0:
+        for i in range(len(Pressures)):
+            if Pressures[i] != 0:
+                if i == len(Pressures) - 1:
+                    if equipment[0] == 2:
+                        Pressures[0] = Pressures[i] - cooler_pdrop
+                    if equipment[0] == 4:
+                        Pressures[0] = Pressures[i] - heater_pdrop
+                    if equipment[0] == 5:
+                        Pressures[0] = Pressures[i] - hx_pdrop
+
+                else:
+                    if equipment[i + 1] == 2:
+                        Pressures[i + 1] = Pressures[i] - cooler_pdrop
+                    if equipment[i + 1] == 4:
+                        Pressures[i + 1] = Pressures[i] - heater_pdrop
+                    if equipment[i + 1] == 5:
+                        Pressures[i + 1] = Pressures[i] - hx_pdrop
+    return Pressures
+
+
+def tur_comp_pratio(enumerated_equipment, Pressures):
+    for index, equip in enumerated_equipment:
+        if equip == 1:
+            if index != 0:
+                tur_pratio = Pressures[index - 1] / Pressures[index]
+            else:
+                tur_pratio = Pressures[-1] / Pressures[index]
+        if equip == 3:
+            if index != 0:
+                comp_pratio = Pressures[index] / Pressures[index - 1]
+            else:
+                comp_pratio = Pressures[index] / Pressures[-1]
+    return (tur_pratio, comp_pratio)
+
+
+def turbine_compressor_calculation(
+    Temperatures,
+    Pressures,
+    enthalpies,
+    entropies,
+    w_tur,
+    w_comp,
+    equipment,
+    ntur,
+    ncomp,
+    m,
+):
+    for i in range(len(Temperatures)):
+        if Temperatures[i] != 0:
+            if i == len(Temperatures) - 1:
+                if equipment[0] == 1:
+                    (
+                        enthalpies[0],
+                        entropies[0],
+                        Temperatures[0],
+                        w_tur[0],
+                    ) = turbine(Temperatures[i], Pressures[i], Pressures[0], ntur, m)
+                if equipment[0] == 3:
+                    (
+                        enthalpies[0],
+                        entropies[0],
+                        Temperatures[0],
+                        w_comp[0],
+                    ) = compressor(
+                        Temperatures[i], Pressures[i], Pressures[0], ncomp, m
+                    )
+
+            else:
+                if equipment[i + 1] == 1:
+                    (
+                        enthalpies[i + 1],
+                        entropies[i + 1],
+                        Temperatures[i + 1],
+                        w_tur[i + 1],
+                    ) = turbine(
+                        Temperatures[i], Pressures[i], Pressures[i + 1], ntur, m
+                    )
+                if equipment[i + 1] == 3:
+                    (
+                        enthalpies[i + 1],
+                        entropies[i + 1],
+                        Temperatures[i + 1],
+                        w_comp[i + 1],
+                    ) = compressor(
+                        Temperatures[i], Pressures[i], Pressures[i + 1], ncomp, m
+                    )
+    return (Temperatures, enthalpies, entropies, w_tur, w_comp)
+
+
+def cooler_calculation(
+    enumerated_equipment,
+    Temperatures,
+    Pressures,
+    enthalpies,
+    entropies,
+    q_cooler,
+    cooler_pdrop,
+    m,
+):
+    cooler_position = [i for i, j in enumerated_equipment if j == 2]
+    for i in cooler_position:
+        (
+            enthalpies[i],
+            entropies[i],
+            q_cooler[i],
+        ) = cooler(
+            Temperatures[i - 1], Pressures[i - 1], Temperatures[i], cooler_pdrop, m
+        )
+    return (enthalpies, entropies, q_cooler)
+
+
+def heater_calculation(
+    enumerated_equipment,
+    Temperatures,
+    Pressures,
+    enthalpies,
+    entropies,
+    q_heater,
+    heater_pdrop,
+    m,
+):
+    heater_position = [i for i, j in enumerated_equipment if j == 4]
+    for i in heater_position:
+        (
+            enthalpies[i],
+            entropies[i],
+            q_heater[i],
+        ) = heater(
+            Temperatures[i - 1], Pressures[i - 1], Temperatures[i], heater_pdrop, m
+        )
+    return (enthalpies, entropies, q_heater)
+
+
+def hx_side_selection(hx_position, Temperatures):
+    if hx_position[0] != 0 and hx_position[1] != 0:
+        if Temperatures[hx_position[0] - 1] > Temperatures[hx_position[1] - 1]:
+            hotside_index = hx_position[0]
+            coldside_index = hx_position[1]
+        else:
+            hotside_index = hx_position[1]
+            coldside_index = hx_position[0]
+    if hx_position[0] == 0:
+        if Temperatures[-1] > Temperatures[hx_position[1] - 1]:
+            hotside_index = -1
+            coldside_index = hx_position[1]
+        else:
+            hotside_index = hx_position[1]
+            coldside_index = -1
+    if hx_position[1] == 0:
+        if Temperatures[hx_position[0] - 1] > Temperatures[-1]:
+            hotside_index = hx_position[0]
+            coldside_index = -1
+        else:
+            hotside_index = -1
+            coldside_index = hx_position[0]
+    return (hotside_index, coldside_index)

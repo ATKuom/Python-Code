@@ -1,8 +1,8 @@
 import numpy as np
-from designs import expert_designs
 import torch
 import random
 import matplotlib.pyplot as plt
+from econ import economics
 from functions import (
     lmtd,
     turbine,
@@ -13,7 +13,13 @@ from functions import (
     fg_calculation,
     HX_calculation,
     cw_Tout,
-    NG_exergy,
+    decision_variable_placement,
+    Pressure_calculation,
+    tur_comp_pratio,
+    turbine_compressor_calculation,
+    cooler_calculation,
+    heater_calculation,
+    hx_side_selection,
     h0_fg,
     s0_fg,
     hin_fg,
@@ -40,23 +46,7 @@ layout = torch.tensor(
 )
 unitsx = layout[1:-1]
 print(unitsx)
-temperatures = np.zeros(len(unitsx))
-pressures = np.zeros(len(unitsx))
-enthalpies = np.zeros(len(unitsx))
-entropies = np.zeros(len(unitsx))
-exergies = np.zeros(len(unitsx))
 equipment = np.zeros(len(unitsx)).tolist()
-
-w_comp = np.zeros(len(unitsx))
-cost_comp = np.zeros(len(unitsx))
-w_tur = np.zeros(len(unitsx))
-cost_tur = np.zeros(len(unitsx))
-q_cooler = np.zeros(len(unitsx))
-cost_cooler = np.zeros(len(unitsx))
-q_heater = np.zeros(len(unitsx))
-cost_heater = np.zeros(len(unitsx))
-q_hx = np.zeros(len(unitsx))
-cost_hx = np.zeros(len(unitsx))
 x = []
 bounds = list(range(len(unitsx)))
 hx_token = 1
@@ -86,13 +76,13 @@ for i in range(len(unitsx)):
 bounds.append((50, 160))
 print(equipment)
 print(bounds)
-particle_size = 1  # 7 * len(bounds)
-iterations = 1  # 30
+particle_size = 30  # 7 * len(bounds)
+iterations = 10  # 30
 nv = len(bounds)
 enumerated_equipment = list(enumerate(equipment))
 
 
-def objective_function(x):
+def objective_function(x, unitsx):
     ntur = 85  # turbine efficiency     2019 Nabil
     ncomp = 82  # compressor efficiency 2019 Nabil
     cw_temp = 19  # °C
@@ -106,169 +96,127 @@ def objective_function(x):
     hx_position = list()
     m = x[-1]
 
-    for equip in equipment:
-        if equip == 1:
-            pressures[equipment.index(equip)] = x[equipment.index(equip)]
-        if equip == 2:
-            temperatures[equipment.index(equip)] = x[equipment.index(equip)]
-        if equip == 3:
-            pressures[equipment.index(equip)] = x[equipment.index(equip)]
-        if equip == 4:
-            temperatures[equipment.index(equip)] = x[equipment.index(equip)]
-        if equip == 5:
-            approach_temp = x[equipment.index(equip)]
+    Temperatures = np.zeros(len(unitsx))
+    Pressures = np.zeros(len(unitsx))
+    enthalpies = np.zeros(len(unitsx))
+    entropies = np.zeros(len(unitsx))
+    exergies = np.zeros(len(unitsx))
+    w_comp = np.zeros(len(unitsx))
+    cost_comp = np.zeros(len(unitsx))
+    w_tur = np.zeros(len(unitsx))
+    cost_tur = np.zeros(len(unitsx))
+    q_cooler = np.zeros(len(unitsx))
+    cost_cooler = np.zeros(len(unitsx))
+    q_heater = np.zeros(len(unitsx))
+    cost_heater = np.zeros(len(unitsx))
+    q_hx = np.zeros(len(unitsx))
+    cost_hx = np.zeros(len(unitsx))
 
-    while pressures.prod() == 0:
-        for i in range(len(pressures)):
-            if pressures[i] != 0:
-                if i == len(pressures) - 1:
-                    if equipment[0] == 2:
-                        pressures[0] = pressures[i] - cooler_pdrop
-                    if equipment[0] == 4:
-                        pressures[0] = pressures[i] - heater_pdrop
-                    if equipment[0] == 5:
-                        pressures[0] = pressures[i] - hx_pdrop
-
-                else:
-                    if equipment[i + 1] == 2:
-                        pressures[i + 1] = pressures[i] - cooler_pdrop
-                    if equipment[i + 1] == 4:
-                        pressures[i + 1] = pressures[i] - heater_pdrop
-                    if equipment[i + 1] == 5:
-                        pressures[i + 1] = pressures[i] - hx_pdrop
-    for equip in equipment:
-        if equip == 1:
-            if equipment.index(equip) != 0:
-                tur_pratio = (
-                    pressures[equipment.index(equip) - 1]
-                    / pressures[equipment.index(equip)]
-                )
-            else:
-                tur_pratio = pressures[-1] / pressures[equipment.index(equip)]
-        if equip == 3:
-            if equipment.index(equip) != 0:
-                comp_pratio = (
-                    pressures[equipment.index(equip)]
-                    / pressures[equipment.index(equip) - 1]
-                )
-            else:
-                comp_pratio = pressures[equipment.index(equip)] / pressures[-1]
+    Pressures, Temperatures, approach_temp, split_ratio = decision_variable_placement(
+        x, enumerated_equipment, Pressures, Temperatures
+    )
+    # Pressure calculation splitter part is missing still
+    Pressures = Pressure_calculation(
+        Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop
+    )
+    # Turbine and Compressor pressure ratio calculation and checking
+    tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
     if tur_pratio < 1 or comp_pratio < 1:
+        print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
-    while temperatures.prod() == 0:
-        for i in range(len(temperatures)):
-            if temperatures[i] != 0:
-                if i == len(temperatures) - 1:
-                    if equipment[0] == 1:
-                        (
-                            enthalpies[0],
-                            entropies[0],
-                            temperatures[0],
-                            w_tur[0],
-                        ) = turbine(
-                            temperatures[i], pressures[i], pressures[0], ntur, m
-                        )
-                    if equipment[0] == 3:
-                        (
-                            enthalpies[0],
-                            entropies[0],
-                            temperatures[0],
-                            w_comp[0],
-                        ) = compressor(
-                            temperatures[i], pressures[i], pressures[0], ncomp, m
-                        )
 
-                else:
-                    if equipment[i + 1] == 1:
-                        (
-                            enthalpies[i + 1],
-                            entropies[i + 1],
-                            temperatures[i + 1],
-                            w_tur[i + 1],
-                        ) = turbine(
-                            temperatures[i], pressures[i], pressures[i + 1], ntur, m
-                        )
-                    if equipment[i + 1] == 3:
-                        (
-                            enthalpies[i + 1],
-                            entropies[i + 1],
-                            temperatures[i + 1],
-                            w_comp[i + 1],
-                        ) = compressor(
-                            temperatures[i], pressures[i], pressures[i + 1], ncomp, m
-                        )
+    while Temperatures.prod() == 0:
+        (
+            Temperatures,
+            enthalpies,
+            entropies,
+            w_tur,
+            w_comp,
+        ) = turbine_compressor_calculation(
+            Temperatures,
+            Pressures,
+            enthalpies,
+            entropies,
+            w_tur,
+            w_comp,
+            equipment,
+            ntur,
+            ncomp,
+            m,
+        )
         for work in w_tur:
             if work < 0:
+                print("Turbine work is negative")
                 return PENALTY_VALUE
         for work in w_comp:
             if work < 0:
+                print("Compressor work is negative")
                 return PENALTY_VALUE
         hx_position = [i for i, j in enumerated_equipment if j == 5]
-        if hx_position != []:
-            if hx_position[0] != 0 and hx_position[1] != 0:
-                if temperatures[hx_position[0] - 1] > temperatures[hx_position[1] - 1]:
-                    hotside_index = hx_position[0]
-                    colside_index = hx_position[1]
-                else:
-                    hotside_index = hx_position[1]
-                    colside_index = hx_position[0]
-            if hx_position[0] == 0:
-                if temperatures[-1] > temperatures[hx_position[1] - 1]:
-                    hotside_index = -1
-                    colside_index = hx_position[1]
-                else:
-                    hotside_index = hx_position[1]
-                    colside_index = -1
-            if hx_position[1] == 0:
-                if temperatures[hx_position[0] - 1] > temperatures[-1]:
-                    hotside_index = hx_position[0]
-                    colside_index = -1
-                else:
-                    hotside_index = -1
-                    colside_index = hx_position[0]
-        (
-            temperatures[hotside_index],
-            enthalpies[hotside_index],
-            entropies[hotside_index],
-            temperatures[colside_index],
-            enthalpies[colside_index],
-            entropies[colside_index],
-            q_hx[colside_index],
-        ) = HX_calculation(
-            temperatures[hotside_index - 1],
-            pressures[hotside_index - 1],
-            enthalpies[hotside_index - 1],
-            temperatures[colside_index - 1],
-            pressures[colside_index - 1],
-            enthalpies[colside_index - 1],
-            approach_temp,
-            hx_pdrop,
-            m,
-        )
-    cooler_position = [i for i, j in enumerated_equipment if j == 2]
-    for i in cooler_position:
-        (
-            enthalpies[i],
-            entropies[i],
-            q_cooler[i],
-        ) = cooler(
-            temperatures[i - 1], pressures[i - 1], temperatures[i], cooler_pdrop, m
-        )
+        if (
+            hx_position != []
+            and Temperatures[hx_position[0] - 1] != 0
+            and Temperatures[hx_position[1] - 1] != 0
+        ):
+            hotside_index, coldside_index = hx_side_selection(hx_position, Temperatures)
+            if (
+                Temperatures[hotside_index - 1]
+                < Temperatures[coldside_index - 1] + approach_temp
+            ):
+                print("Infeasible HX")
+                return PENALTY_VALUE
+            try:
+                (
+                    Temperatures[hotside_index],
+                    enthalpies[hotside_index],
+                    entropies[hotside_index],
+                    Temperatures[coldside_index],
+                    enthalpies[coldside_index],
+                    entropies[coldside_index],
+                    q_hx[min(hotside_index, coldside_index)],
+                ) = HX_calculation(
+                    Temperatures[hotside_index - 1],
+                    Pressures[hotside_index - 1],
+                    enthalpies[hotside_index - 1],
+                    Temperatures[coldside_index - 1],
+                    Pressures[coldside_index - 1],
+                    enthalpies[coldside_index - 1],
+                    approach_temp,
+                    hx_pdrop,
+                    m,
+                )
+            except:
+                breakpoint()
+    enthalpies, entropies, q_cooler = cooler_calculation(
+        enumerated_equipment,
+        Temperatures,
+        Pressures,
+        enthalpies,
+        entropies,
+        q_cooler,
+        cooler_pdrop,
+        m,
+    )
     for work in q_cooler:
         if work < 0:
+            print("Infeasible Cooler")
             return PENALTY_VALUE
-    heater_position = [i for i, j in enumerated_equipment if j == 4]
-    for i in heater_position:
-        (
-            enthalpies[i],
-            entropies[i],
-            q_heater[i],
-        ) = heater(
-            temperatures[i - 1], pressures[i - 1], temperatures[i], heater_pdrop, m
-        )
+
+    enthalpies, entropies, q_heater = heater_calculation(
+        enumerated_equipment,
+        Temperatures,
+        Pressures,
+        enthalpies,
+        entropies,
+        q_heater,
+        heater_pdrop,
+        m,
+    )
+
     total_heat = sum(q_heater)
     fg_tout = fg_calculation(fg_m, total_heat)
     if fg_tout < 90:
+        print("Too low stack temperature")
         return PENALTY_VALUE
     hout_fg, sout_fg = h_s_fg(fg_tout, P0)
 
@@ -284,32 +232,77 @@ def objective_function(x):
 
     for work in w_tur:
         if work > 0:
-            index = np.where(w_tur == work)
-            if temperatures[index] > 550:
-                ft_tur = 1 + 1.137e-5 * (temperatures[index] - 550) ** 2
+            index = np.where(w_tur == work)[0][0]
+            if index == 0:
+                index = -1
+            else:
+                index = index - 1
+            if Temperatures[index] > 550:
+                ft_tur = 1 + 1.137e-5 * (Temperatures[index] - 550) ** 2
             else:
                 ft_tur = 1
-            cost_tur[index] = 406200 * ((work / 1e6) ** 0.8) * ft_tur
+            cost_tur[index + 1] = 406200 * ((work / 1e6) ** 0.8) * ft_tur
 
     for work in w_comp:
         if work > 0:
-            cost_comp[np.where(w_comp == work)] = 1230000 * (work / 1e6) ** 0.3992
+            cost_comp[np.where(w_comp == work)[0][0]] = 1230000 * (work / 1e6) ** 0.3992
 
     for work in q_cooler:
         if work > 0:
-            index = np.where(q_cooler == work)
-            dt1_cooler = temperatures[index] - cw_temp
-            dt2_cooler = temperatures[index - 1] - cw_Tout(work)
+            index = np.where(q_cooler == work)[0][0]
+            if index == 0:
+                index = -1
+            else:
+                index = index - 1
+            dt1_cooler = Temperatures[index + 1] - cw_temp
+            dt2_cooler = Temperatures[index] - cw_Tout(work)
             if dt2_cooler < 0 or dt1_cooler < 0:
                 return PENALTY_VALUE
             UA_cooler = (work / 1) / lmtd(dt1_cooler, dt2_cooler)  # W / °C
-            if temperatures[index - 1] > 550:
-                ft_cooler = 1 + 0.02141 * (temperatures[index - 1] - 550)
+            if Temperatures[index - 1] > 550:
+                ft_cooler = 1 + 0.02141 * (Temperatures[index - 1] - 550)
             else:
                 ft_cooler = 1
-            cost_cooler[index] = 49.45 * UA_cooler**0.7544 * ft_cooler  # $
+            cost_cooler[index + 1] = 49.45 * UA_cooler**0.7544 * ft_cooler  # $
+    for work in q_heater:
+        if work > 0:
+            index = np.where(q_heater == work)[0][0]
+            if index == 0:
+                index = -1
+            else:
+                index = index - 1
+            fg_tout_i = fg_calculation(fg_m * work / total_heat, work)
+            dt1_heater = fg_tin - Temperatures[index + 1]
+            dt2_heater = fg_tout_i - Temperatures[index]
+            if dt2_heater < 0 or dt1_heater < 0:
+                return PENALTY_VALUE
+            UA_heater = (work / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
+            cost_heater[index + 1] = 5000 * UA_heater  # Thesis 97/pdf116
+    for work in q_hx:
+        if work > 0:
+            index = np.where(q_hx == work)[0][0]
+            if index == 0:
+                index = -1
+            else:
+                index = index - 1
+            dt1_hx = Temperatures[hotside_index - 1] - Temperatures[coldside_index]
+            dt2_hx = Temperatures[hotside_index] - Temperatures[coldside_index - 1]
+            if dt2_hx < 0 or dt1_hx < 0:
+                return PENALTY_VALUE
+            UA_hx = (work / 1) / lmtd(dt1_hx, dt2_hx)  # W / °C
+            if Temperatures[hotside_index - 1] > 550:
+                ft_hx = 1 + 0.02141 * (Temperatures[hotside_index - 1] - 550)
+            else:
+                ft_hx = 1
+            cost_hx[index + 1] = 49.45 * UA_hx**0.7544 * ft_hx  # $
+    pec = cost_tur + cost_hx + cost_cooler + cost_comp + cost_heater
+    prod_capacity = (sum(w_tur) - sum(w_comp)) / 1e6
+    zk, cfueltot, lcoe = economics(pec, prod_capacity)
+
+    # Exergy Analysis
+
     breakpoint()
-    return 1
+    return
 
 
 # The output of ML model will be one-hot encoded strings of the layouts
@@ -318,7 +311,7 @@ def objective_function(x):
 # Decision variables are added to the PSO based on their units and placements
 # Unit input T and P of i unit = T(i-1), P(i-1) Unit output T and P of i unit = T(i), P(i)
 # Pressures of the system are identified then calculated using turbine and compressor pressure ratios
-# Temperatures of the system are identified then inputted using Cooler and heater target temperatures
+# Temperatures of the system are identified then inputted using Cooler and heater target Temperatures
 # Mass flow of streams are identified then calculated using mass variable and splitter ratios
 # Order of calculations can be done by checking if T(i-1) and P(i-1) are known, if so, calculate the unit function and get T(i) and P(i)
 
@@ -344,7 +337,7 @@ def objective_function(x):
 # data oriented programming
 
 # class Turbine:
-#     DecisionVariables = namedtuple('DecisionVariables', 'pressures[i]')
+#     DecisionVariables = namedtuple('DecisionVariables', 'Pressures[i]')
 #     var: DecisionVariables
 
 #     def __init__(self, *var):
@@ -379,7 +372,9 @@ class Particle:
             )  # generate random initial velocity
 
     def evaluate(self, objective_function):
-        self.fitness_particle_position = objective_function(self.particle_position)
+        self.fitness_particle_position = objective_function(
+            self.particle_position, unitsx
+        )
         if self.fitness_particle_position < self.fitness_local_best_particle_position:
             self.local_best_particle_position = (
                 self.particle_position
@@ -473,7 +468,7 @@ class PSO:
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # Main PSO
-# PSO(objective_function, bounds, particle_size, iterations)
+PSO(objective_function, bounds, particle_size, iterations)
 x = [
     78.5e5,
     10.8,
@@ -483,4 +478,4 @@ x = [
     411.4,
     93.18,
 ]
-objective_function(x)
+# objective_function(x, unitsx)

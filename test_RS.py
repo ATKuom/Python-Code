@@ -1,11 +1,8 @@
-import random
 import matplotlib.pyplot as plt
 import numpy as np
-from test_econ import economics
+from econ import economics
 from functions import (
-    pinch_calculation,
     lmtd,
-    enthalpy_entropy,
     turbine,
     compressor,
     cooler,
@@ -57,34 +54,29 @@ def result_analyses(x):
     if tur_pratio < 1 or comp_pratio < 1:
         return PENALTY_VALUE
     # Turbine
-    h1, s1, t1, p1c, turbine_DH = turbine(t6, p6, p1, ntur)
-    w_tur = m * turbine_DH  # W = kg/s*J/kg
+    h1, s1, t1, w_tur = turbine(t6, p6, p1, ntur, m)
     if w_tur < 0:
         # print("negative turbine work")
         return PENALTY_VALUE
 
     ##Compressor
-    h4, s4, t4, p4c, comp_DH = compressor(t3, p3, p4, ncomp)
-    w_comp = m * comp_DH  # W = kg/s*J/kg
+    h4, s4, t4, w_comp = compressor(t3, p3, p4, ncomp, m)
     if w_comp > w_tur:
         # print("negative net power production")
         return PENALTY_VALUE
 
     ##Heat Exchanger
-    t2, p2c, h2, s2, t5, p5c, h5, s5, heater_DH = HX_calculation(
-        t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop
+    t2, h2, s2, t5, h5, s5, q_hx = HX_calculation(
+        t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop, m
     )
-    q_hx = m * heater_DH  # W = kg/s*J/kg
     ##Cooler
     if t3 > t2:
         # print("negative cooler work")
         return PENALTY_VALUE
-    h3, s3, t3c, p3, cooler_DH = cooler(t2, p2, t3, cooler_pdrop)
-    q_cooler = m * cooler_DH  # W = kg/s*J/kg
+    h3, s3, q_cooler = cooler(t2, p2, t3, cooler_pdrop, m)
 
     ##Heater
-    h6, s6, t6c, p6, heater_DH = heater(t5, p5, t6, heater_pdrop)
-    q_heater = m * heater_DH  # W = kg/s*J/kg
+    h6, s6, q_heater = heater(t5, p5, t6, heater_pdrop, m)
     fg_tout = fg_calculation(fg_m, q_heater)
     if fg_tout < 90:
         # print("too low flue gas stack temperature")
@@ -212,7 +204,7 @@ def result_analyses(x):
             0,
             0,
             0,
-            8.7e-9 * 3600,
+            8.9e-9 * 3600,
             # cfuel * 3600,
         ]
     ).reshape(-1, 1)
@@ -251,25 +243,24 @@ def result_analyses(x):
 
     print(
         f"""
-    Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
-    Turbine output = {unit_energy[0]:.2f}MW
-    Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
-    Compressor Input = {unit_energy[1]:.2f}MW
-    Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
-    Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
-    Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
-    Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
-    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 +0.5:.2f}MW {e_fgout/1e6+0.5:.2f}MW
+    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 :.2f}MW {e_fgout/1e6:.2f}MW
     {costs/3600*1e9}
+    {pec}
     {zk}
-    {sum(zk),sum(pec)}
-    Objective Function value = {c}
-    
-    
-    
+    {sum(zk)}
+    {sum(pec)}
     """
     )
-    # {Cp/Ep}
+
+    # Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
+    # Turbine output = {unit_energy[0]:.2f}MW
+    # Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
+    # Compressor Input = {unit_energy[1]:.2f}MW
+    # Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
+    # Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
+    # Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
+    # Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
+    # Objective Function value = {c}
     return c
 
 
