@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import optimize
 from econ import economics
 from functions import (
     lmtd,
@@ -130,15 +131,26 @@ def result_analyses(x):
         ft_hx = 1
     cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
     cost_gt = 9.721e6  # $
-    pec.append(cost_tur)
-    pec.append(cost_hx)
-    pec.append(cost_cooler)
-    pec.append(cost_heater)
-    pec.append(cost_comp)
-    pec.append(cost_gt)
+    # pec.append(cost_heater)
+    # pec.append(cost_tur)
+    # pec.append(cost_hx)
+    # pec.append(cost_cooler)
+    # pec.append(cost_comp)
+    # pec.append(cost_gt)
     w_gt = 22.4e6
-    prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
-    print(pec, prod_capacity)
+    # prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
+    # pec.append(2e5 * (w_tur - w_comp) / 1e6)  # $/h
+    # print(pec, prod_capacity)
+    pec = [
+        2.523e6,
+        2.734e6,
+        1.231e6,
+        1.327e6,
+        1.939e6,
+        9.721e6,
+        0.821e6 + 0.478e6 + 0.690e6,
+    ]
+    prod_capacity = 29.83
     zk, cfueltot, lcoe = economics(pec, prod_capacity)  # $/h
     cfuel = 0.00379 / 1e6  # $/MJ
     # cfueltot / e_fuel / 3600  # $/J
@@ -184,36 +196,44 @@ def result_analyses(x):
     #     ]
     # ).reshape(-1, 1)
     m1 = np.array(
-        [
-            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0],
-            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0],
-            [0, -e2, e3, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0, -e_fgin, e_fgout, 0],
-            [0, 0, -e3, e4, 0, 0, -w_comp, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, w_gt, e_fgin, 0, -e_fuel],
-            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0],
-            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, -1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-            # [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [  # [c1,c2,c3,c4,c5,c6,wt,cfgin,cfgout,cfuel,wc,wgt]
+            [0, 0, 0, 0, -e5, e6, 0, -e_fgin, e_fgout, 0, 0, 0],
+            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0, 0, 0],
+            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0, 0, 0],
+            [0, -e2, e3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, -e3, e4, 0, 0, 0, 0, 0, 0, -w_comp, 0],
+            [0, 0, 0, 0, 0, 0, 0, e_fgin, 0, -e_fuel, 0, w_gt],
+            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0],
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ]
     )  # W
     m2 = np.asarray(
-        zk
+        zk[:6]
         + [
             0,
             0,
             0,
             8.9e-9 * 3600,
-            # cfuel * 3600,
+            cfuel * 3600,
+            0,
         ]
     ).reshape(-1, 1)
-
     try:
-        costs = np.linalg.solve(m1, m2)  # $/Wh
+        costs1, _, _, _ = np.linalg.lstsq(m1, m2, rcond=None)  # $/Wh
+        costs2, _ = optimize.nnls(m1, m2[:, 0])
+        print(costs1 / 3600 * 1e9)
+        print(costs2 / 3600 * 1e9)
+        costs = np.linalg.solve(m1, m2)
+        print(costs / 3600 * 1e9)
+        breakpoint()
 
     except:
         return PENALTY_VALUE
+
     """
     fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
     fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
@@ -229,7 +249,7 @@ def result_analyses(x):
     Cf = costs[7] * e_fgin  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
-    Ep = (w_tur - w_comp) / 1e6  # MW
+    Ep = (w_tur - w_comp) / 1e6 + w_gt  # MW
     # c = Cp / Ep  # $/MWh
     c = lcoe
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]

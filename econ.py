@@ -17,21 +17,23 @@ def economics(pec, prod_capacity):
     total_pec = sum(
         pec
     )  # + 9.721e6 + 1e5 * prod_capacity  # 9.721e6 for GT set, 1M $ for 10 MWe for piping and stuff
-    annual_om = 9.839  # $/MWhe in 2023$
+    annual_om = 9.1111  # $/MWhe in 2023$
+    tpc = 1.242 * total_pec
+    land = 0.014 * total_pec
+    fci = tpc + land  # 3.5575 * total_pec
 
-    fci = 1.44 * total_pec  # 3.5575 * total_pec
-    land = 0.025 * total_pec
-    tpc = fci - land
     fc = costofNG * lvh * T * cap_factor * hourtosec * mfuel
     oandm = prod_capacity * annual_om * T * cap_factor
     suc = oandm / 12 + fc / 52 + tpc * 0.02
-    wc = (fc / 6 + 0.3 * oandm) * 1.25
+    wc = 0.005 * tpc + oandm / 44 + fc / 12
+    fnc = 0.027 * tpc
+    ooc = 0.15 * tpc
 
     ##AFUDC calculation
-    year1 = 0.4 * tpc * (1 + int_rate) ** 0.5
+    year1 = 0.4 * tpc * (1 + int_rate) ** 3
     y1_equity_afudc = equity_frac * equity_roi * year1 * 1.5
     y1_debt_afudc = debt_frac * debt_roi * year1 * 1.5
-    year2 = 0.6 * tpc * (1 + int_rate) ** 1.5
+    year2 = 0.6 * tpc * (1 + int_rate) ** 4
     y2_equity_afudc = equity_frac * equity_roi * year2 * 0.5
     y2_debt_afudc = debt_frac * debt_roi * year2 * 0.5
     land_equity = equity_frac * equity_roi * land * 2
@@ -43,8 +45,18 @@ def economics(pec, prod_capacity):
     total_afudc = equity_afudc + debt_afudc
 
     pfi = year1 + year2
-    tci = fci + suc + wc + total_afudc
-    ndi = land + equity_afudc + wc
+    toc = land + tpc + suc + wc + fnc + ooc
+    tasc = toc + total_afudc
+    # Escalated Amounts
+    esc_land = land * (1 + int_rate) ** 2
+    esc_tpc = year1 + year2
+    esc_suc = suc * (1 + int_rate) ** 3
+    esc_wc = wc * (1 + int_rate) ** 3
+    esc_fnc = fnc * (1 + int_rate) ** 2.5
+    esc_ooc = ooc * (1 + int_rate) ** 3
+    esc_toc = esc_land + esc_tpc + esc_suc + esc_wc + esc_fnc + esc_ooc
+    tci = esc_toc + total_afudc
+    ndi = esc_land + esc_wc + equity_afudc
     tdi = tci - ndi
 
     macrs = [
@@ -72,11 +84,11 @@ def economics(pec, prod_capacity):
     txd = [tdi * mcr / 100 for mcr in macrs]
 
     annual_bd = tdi / 20
-    ditx = [txdj - annual_bd for txdj in txd]
+    ditx = [(txdj - annual_bd) * tax_rate for txdj in txd]
     rceaf = equity_afudc / 20
     tcrj = [annual_bd + ditxj + rceaf for ditxj in ditx]
     tcr = sum(tcrj)
-    total_investment = tcr + wc + land
+    total_investment = tcr + esc_land + esc_wc
 
     bby_equity_tot = 0.4 * total_investment
     adj_equity = [0.4 * ditxj + rceaf for ditxj in ditx]
@@ -121,24 +133,25 @@ def economics(pec, prod_capacity):
     celffuel = (kfuel * (1 - kfuel**20)) / (1 - kfuel) * crf
     trrl_current = sum(trr_pvalue_current) * crf
     fcl_current = fc * celffuel
-    first_term = (trrl_current + fcl_current) / T
+    first_term = (trrl_current - fcl_current) / (T * cap_factor)
     zk = list()
     for equip in pec:
         zk.append(first_term * equip / total_pec)
     lcoe = trrl_current / (prod_capacity * T * cap_factor)
-    print(
-        fcl_current,
-    )
-    return zk, fcl_current / T, lcoe
+    return zk, fcl_current / (T), lcoe
 
 
 if __name__ == "__main__":
     pec = [
-        2607879.7491527777,
-        1171584.713784437,
-        1251998.7863409717,
-        2525747.940599193,
-        1851007.5007325755,
+        2.523e6,
+        2.734e6,
+        1.231e6,
+        1.327e6,
+        1.939e6,
+        0.821e6,
+        0.478e6,
+        0.690e6,
+        9.721e6,
     ]
-    prod_cap = 7.435758185649715
-    economics(pec, prod_cap)
+    prod_capacity = 29.83
+    economics(pec, prod_capacity)
