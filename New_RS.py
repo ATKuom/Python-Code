@@ -140,15 +140,16 @@ def result_analyses(x):
 
     m1 = np.array(
         [  # [c1,c2,c3,c4,c5,c6,wt,wcomp,cfgin,cfgout]
-            [0, 0, 0, 0, -e5, e6, 0, 0, e_fgin - e_fgout],
-            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0],
-            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0],
-            [0, -e2, e3, 0, 0, 0, 0, 0, 0],
-            [0, 0, -e3, e4, 0, 0, 0, -w_comp, 0],
-            [1, 0, 0, 0, 0, -1, 0, 0, 0],
-            [1, -1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [0, 1, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, -e5, e6, 0, 0, -e_fgin, e_fgout],
+            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0],
+            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0],
+            [0, -e2, e3, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, -e3, e4, 0, 0, 0, -w_comp, 0, 0],
+            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0],
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 1, -1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, -1, 1],
         ]
     )
     m2 = np.asarray(
@@ -158,16 +159,21 @@ def result_analyses(x):
             0,
             8.9e-9 * 3600,
             0,
+            0,
         ]
     ).reshape(-1, 1)
-    # 8.7e-9 * 3600
+    # 8.9e-9 * 3600 $/Wh = 8.9 $/GJ /1e9 J/GJ * 3600 s/h
 
     try:
         costs1, _, _, _ = np.linalg.lstsq(m1, m2, rcond=None)  # $/Wh
         costs2, _ = optimize.nnls(m1, m2[:, 0])
         print(costs1 / 3600 * 1e9)
         print(costs2 / 3600 * 1e9)
+        costs = np.linalg.solve(m1, m2)
+        print(costs[2] * e3 - costs[1] * e2)
+        print(zk[3])
         breakpoint()
+
     except:
         return PENALTY_VALUE
     """

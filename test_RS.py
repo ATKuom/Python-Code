@@ -206,9 +206,9 @@ def result_analyses(x):
             [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0],
             [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-            [0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # [0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
         ]
     )  # W
     m2 = np.asarray(
@@ -217,9 +217,9 @@ def result_analyses(x):
             0,
             0,
             0,
-            8.9e-9 * 3600,
             cfuel * 3600,
             0,
+            # 8.9e-9 * 3600,
         ]
     ).reshape(-1, 1)
     try:
@@ -227,9 +227,9 @@ def result_analyses(x):
         costs2, _ = optimize.nnls(m1, m2[:, 0])
         print(costs1 / 3600 * 1e9)
         print(costs2 / 3600 * 1e9)
+        breakpoint()
         costs = np.linalg.solve(m1, m2)
         print(costs / 3600 * 1e9)
-        breakpoint()
 
     except:
         return PENALTY_VALUE
