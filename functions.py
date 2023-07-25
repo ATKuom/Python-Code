@@ -225,20 +225,23 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
         if Thotin - coldside_outlet.temperature < dt:
             raise Exception
     except:
-        coldside_outlet = (
-            Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
-            .heating_to_temperature(Thotin - dt, hx_pdrop)
-        )
+        try:
+            coldside_outlet = (
+                Fluid(FluidsList.CarbonDioxide)
+                .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
+                .heating_to_temperature(Thotin - dt, hx_pdrop)
+            )
 
-        dh = coldside_outlet.enthalpy - hcoldin
+            dh = coldside_outlet.enthalpy - hcoldin
 
-        hotside_outlet = (
-            Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(Thotin), Input.pressure(photin))
-            .cooling_to_enthalpy(hhotin - dh, hx_pdrop)
-        )
-        q_hx = dh * m
+            hotside_outlet = (
+                Fluid(FluidsList.CarbonDioxide)
+                .with_state(Input.temperature(Thotin), Input.pressure(photin))
+                .cooling_to_enthalpy(hhotin - dh, hx_pdrop)
+            )
+            q_hx = dh * m
+        except:
+            return (0, 0, 0, 0, 0, 0, 0)
     return (
         hotside_outlet.temperature,
         hotside_outlet.enthalpy,

@@ -76,8 +76,8 @@ for i in range(len(unitsx)):
 bounds.append((50, 160))
 print(equipment)
 print(bounds)
-particle_size = 30  # 7 * len(bounds)
-iterations = 10  # 30
+particle_size = 7 * len(bounds)
+iterations = 30
 nv = len(bounds)
 enumerated_equipment = list(enumerate(equipment))
 
@@ -301,8 +301,7 @@ def objective_function(x, unitsx):
 
     # Exergy Analysis
 
-    breakpoint()
-    return
+    return lcoe
 
 
 # The output of ML model will be one-hot encoded strings of the layouts
