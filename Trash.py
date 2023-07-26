@@ -532,3 +532,14 @@
 #         cfuel * 3600,
 #     ]
 # ).reshape(-1, 1)
+
+"""
+    fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
+    fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
+    Efuel = fuel_chem_ex + fuel_phys_ex  # MW
+    Cp=cfuel*Efuel  + Ztot # $/h
+    Ep = 22.4 + w_tur/1e6 - w_comp/1e6 # MW
+    Cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
+    Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
+    Ep = (w_tur - w_comp) / 1e6  # MW
+    """

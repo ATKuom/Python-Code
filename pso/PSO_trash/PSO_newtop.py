@@ -1,3 +1,6 @@
+## Old PSO code using Turbine and compressor equations for thermodynamic calculations. Which creates a lot of deviation
+# from the actual values. This is because of the CO2 cp values are non linear
+
 import random
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,30 +11,52 @@ from functions import (
     pinch_calculation,
     lmtd,
     enthalpy_entropy,
+    h_s_fg,
+    h0_fg,
+    s0_fg,
     h0,
     s0,
     T0,
     K,
 )
 
+bounds = [
+    (35, 560),
+    (250, 560),
+    (1, 300 / 74),
+    (1, 300 / 74),
+    (50, 200),
+    (4, 10),
+]  # upper and lower bounds of variables
+
+# PARAMETERS OF PSO
+particle_size = 7 * len(bounds)  # number of particles
+iterations = 10  # max number of iterations
+nv = len(bounds)  # number of variables
+
 
 # ------------------------------------------------------------------------------
 def objective_function(x):
-    tur_pratio1 = x[0]
+    t3 = x[0]
+    t6 = x[1]
+    tur_pratio = x[2]
+    comp_pratio = x[3]
+    m = x[4]
+    pinch_temp = x[5]
 
     ##Parameters
     ntur = 0.93  # turbine efficiency     2019 Nabil
     ncomp = 0.89  # compressor efficiency 2019 Nabil
     gamma = 1.28  # 1.28 or 1.33 can be used based on the assumption
     air_temp = 15  # °C
-    exhaust_Tin = 630  # °C
-    exhaust_m = 935  # kg/s
+    exhaust_Tin = 539  # °C
+    exhaust_m = 68.75  # kg/s
     cp_gas = 1151  # j/kgK
     PENALTY_VALUE = float(1e6)
     pec = list()
 
     p1, p2, p3, p4, p5, p6 = Pressure_calculation(tur_pratio, comp_pratio)
-    if p6 > 300e5 or p3 < 74e5:
+    if p4 > 300e5 or p3 < 74e5:
         # print(p1 / 1e5, p6 / 1e5, "Out of bounds pressures")
         return PENALTY_VALUE
 
@@ -55,12 +80,12 @@ def objective_function(x):
     (h4, s4) = enthalpy_entropy(t4, p4)
     w_comp = m * (h4 - h3)  # W = kg/s*J/kg
 
-    if w_comp < 0:
+    if w_comp > w_tur:
         # print("negative compressor work")
         return PENALTY_VALUE
 
     ##Heat Exchanger
-    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m)  # °C
+    t2, t5 = pinch_calculation(t1, h1, t4, h4, p2, p5, m, pinch_temp)  # °C
     if t2 == 0 or t5 == 0:
         # print(t1, t4)
         # print("t2 or t5 = 0 ")
@@ -81,6 +106,10 @@ def objective_function(x):
     exhaust_Tout = exhaust_Tin - q_heater / (
         exhaust_m * cp_gas
     )  # °C = °C - W/(kg/s*J/kgK)
+    if exhaust_Tout < 90:
+        return PENALTY_VALUE
+    h_exhaust_Tin, s_exhaust_Tin, cp_exhaust_Tin = h_s_fg(exhaust_Tin, 1.01e5)
+    h_exhaust_Tout, s_exhaust_Tout, cp_exhaust_Tout = h_s_fg(exhaust_Tout, 1.01e5)
 
     e1 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
     e2 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
@@ -88,7 +117,10 @@ def objective_function(x):
     e4 = m * ((h4 - h0) - (T0 + K) * (s4 - s0))
     e5 = m * ((h5 - h0) - (T0 + K) * (s5 - s0))
     e6 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
-
+    e_exin = exhaust_m * ((h_exhaust_Tin - h0_fg) - (T0 + K) * (s_exhaust_Tin - s0_fg))
+    e_exout = exhaust_m * (
+        (h_exhaust_Tout - h0_fg) - (T0 + K) * (s_exhaust_Tout - s0_fg)
+    )
     # Economic Analysis
 
     if t6 > 550:
@@ -99,14 +131,18 @@ def objective_function(x):
 
     dt1_cooler = t2 - air_temp  # °C
     dt2_cooler = t3 - air_temp  # °C
-    UA_cooler = q_c / lmtd(dt1_cooler, dt2_cooler)  # W / °C
+    if dt2_cooler < 0 or dt1_cooler < 0:
+        return PENALTY_VALUE
+    UA_cooler = (q_c / 1e3) / lmtd(dt1_cooler, dt2_cooler)  # W / °C
     cost_cooler = 32.88 * UA_cooler**0.75
 
     cost_comp = 1230000 * (w_comp / 1e6) ** 0.3992  # $
 
     dt1_heater = exhaust_Tin - t6  # °C
     dt2_heater = exhaust_Tout - t5  # °C
-    UA_heater = q_heater / lmtd(dt1_heater, dt2_heater)  # W / °C
+    if dt2_heater < 0 or dt1_heater < 0:
+        return PENALTY_VALUE
+    UA_heater = (q_heater / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
     if t6 > 550:
         ft_heater = 1 + 0.02141 * (t6 - 550)
     else:
@@ -115,7 +151,7 @@ def objective_function(x):
 
     dt1_hx = t1 - t5  # °C
     dt2_hx = t2 - t4  # °C
-    UA_hx = q_hx / lmtd(dt1_hx, dt2_hx)  # W / °C
+    UA_hx = (q_hx / 1e3) / lmtd(dt1_hx, dt2_hx)  # W / °C
     if t1 > 550:
         ft_hx = 1 + 0.02141 * (t1 - 550)
     else:
@@ -128,53 +164,53 @@ def objective_function(x):
     pec.append(cost_heater)
     pec.append(cost_comp)
     prod_capacity = (w_tur - w_comp) / 1e6  # MW
-    zk, cftot = economics(pec, prod_capacity)  # $/h
+    zk, cfuel = economics(pec, prod_capacity)  # $/h
     # [c1,c2,c3,c4,c5,c6,cw]
     m1 = np.array(
         [
-            [e1, 0, 0, 0, 0, -e6, w_tur],
-            [e1, e2, 0, -e4, e5, 0, 0],
-            [0, e2, -e3, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0],
-            [0, 0, -e3, e4, 0, 0, -w_comp],
-            [1, 0, 0, 0, 0, -1, 0],
-            [1, -1, 0, 0, 0, 0, 0],
+            [e1, 0, 0, 0, 0, -e6, w_tur, 0],
+            [e1, e2, 0, -e4, e5, 0, 0, 0],
+            [0, e2, -e3, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, -e5, e6, 0, -(e_exin - e_exout)],
+            [0, 0, -e3, e4, 0, 0, -w_comp, 0],
+            [1, 0, 0, 0, 0, -1, 0, 0],
+            [1, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],
         ]
     )  # W
-    m2 = np.asarray(zk + [0, 0]).reshape(7, 1)
+    m2 = np.asarray(zk + [0, 0, 8.7e-9 * 3600]).reshape(8, 1)
     try:
         costs = np.linalg.solve(m1, m2)  # $/Wh
+
     except:
         return PENALTY_VALUE
-    Cp = costs[6] * w_tur + costs[1] * e2 + costs[5] * e6 - 2 * costs[2] * e3  # $/h
-    Cf = cftot * q_heater + costs[6] * w_comp + costs[5] * e6 - costs[1] * e2  # $/h
+    """
+    fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
+    fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
+    Efuel = fuel_chem_ex + fuel_phys_ex  # MW
+    Cp=cfuel*Efuel  + Ztot # $/h
+    Ep = 22.4 + w_tur/1e6 - w_comp/1e6 # MW
+    Cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
+    Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
+    Ep = (w_tur - w_comp) / 1e6  # MW
+    """
+
+    Cl = costs[7] * e_exout  # $/h
+    Cf = costs[7] * e_exin  # $/h
     Ztot = sum(zk)  # $/h
-    Cl = Cf - Cp - Ztot  # $/h
-    Ep = (w_tur + e2 + e6 + -2 * e3) / 1e6  # MW
+    Cp = Cf + Ztot - Cl  # $/h
+    Ep = (w_tur - w_comp) / 1e6 + 22.4  # MW
     c = Cp / Ep  # $/MWh
     return c
 
 
-bounds = [
-    (35, 560),
-    (250, 560),
-    (1, 300 / 74),
-    (1, 300 / 74),
-    (50, 200),
-]  # upper and lower bounds of variables
-nv = len(bounds)  # number of variables
-
-# PARAMETERS OF PSO
-particle_size = 7 * len(bounds)  # number of particles
-iterations = 100  # max number of iterations
-
 # Visualization
-fig = plt.figure()
-ax = fig.add_subplot()
-fig.show()
-plt.title("Evolutionary process of the objective function value")
-plt.xlabel("Iteration")
-plt.ylabel("Objective function ($/MWh)")
+# fig = plt.figure()
+# ax = fig.add_subplot()
+# fig.show()
+# plt.title("Evolutionary process of the objective function value")
+# plt.xlabel("Iteration")
+# plt.ylabel("Objective function ($/MWh)")
 
 
 # ------------------------------------------------------------------------------
@@ -294,4 +330,4 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 PSO(objective_function, bounds, particle_size, iterations)
-plt.show()
+# plt.show()

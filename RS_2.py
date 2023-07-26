@@ -95,6 +95,7 @@ def result_analyses(x):
     e6 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
     e_fgin = fg_m * ((hin_fg - h0_fg) - (T0 + K) * (sin_fg - s0_fg)) + 0.5e6
     e_fgout = fg_m * ((hout_fg - h0_fg) - (T0 + K) * (sout_fg - s0_fg)) + 0.5e6
+    e_fuel = NG_exergy()
 
     # Economic Analysis
     if t6 > 550:
@@ -131,78 +132,109 @@ def result_analyses(x):
     else:
         ft_hx = 1
     cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
-    pec.append(cost_heater)
-    pec.append(cost_tur)
-    pec.append(cost_hx)
-    pec.append(cost_comp)
-    pec.append(cost_cooler)
-    prod_capacity = (w_tur - w_comp) / 1e6  # MW
-    zk, cfueltot, lcoe = economics(pec, prod_capacity)  # $/h
-    # [c1,c2,c3,c4,c5,c6,cw,cfg]
+    cost_gt = 9.721e6  # $
+    cost_gnrtr = 211400 * (w_comp / 1e6) ** 0.6227
+    cost_mtr_grbx = 108900 * (w_tur / 1e6) ** 0.5463 + 177200 * (w_tur / 1e6) ** 0.2434
+    # pec.append(cost_heater)
+    # pec.append(cost_tur)
+    # pec.append(cost_hx)
+    # pec.append(cost_cooler)
+    # pec.append(cost_comp)
+    # pec.append(cost_gt)
+    w_gt = 22.4e6
+    # prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
+    # pec.append(2e5 * (w_tur - w_comp) / 1e6)  # $/h
+    # print(pec, prod_capacity)
+    pec = [
+        cost_heater,  # 2.523e6,
+        cost_tur,  # 2.734e6,
+        cost_hx,  # 1.231e6,
+        cost_comp,  # 1.939e6,
+        cost_gt,  # 9.721e6,
+        cost_cooler,  # 1.327e6,
+        cost_gnrtr + cost_mtr_grbx + (w_tur - w_comp) / 1e1,
+    ]
 
+    prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
+    zk, cfueltot, lcoe = economics(pec, prod_capacity)  # $/h
+    cfuel = 3.8e-9 * 3600  # cfueltot / e_fuel
+    # 3.8e-9 * 3600  # $/MJ
+    # cfueltot / e_fuel / 3600  # $/J
     m1 = np.array(
-        [  # [c1,c2,c3,c4,c5,c6,cwt,cwcomp,ctotecfgin,cfgout]
+        [  # [c1,c2,c3,c4,c5,c6,wt,cfgin,cfgout,cfuel,wc,wgt,ctot]
             # Heater
-            [0, 0, 0, 0, -e5, e6, 0, 0, 0, -e_fgin, e_fgout],
+            [0, 0, 0, 0, -e5, e6, 0, -e_fgin, e_fgout, 0, 0, 0, 0],
             # Turbine
-            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0, 0],
+            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0, 0, 0, 0],
             # HXer
-            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0, 0],
+            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0, 0, 0, 0],
             # Compressor
-            [0, 0, -e3, e4, 0, 0, 0, -w_comp, 0, 0, 0],
-            # [0, -e2, e3, 0, 0, 0, 0, 0, 0,0, 0],
+            [0, 0, -e3, e4, 0, 0, 0, 0, 0, 0, -w_comp, 0, 0],
+            # GT
+            [0, 0, 0, 0, 0, 0, 0, e_fgin, 0, -e_fuel, 0, w_gt, 0],
             # Turbine aux1
-            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0],
             # HXer aux1
-            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            # Cost of FG
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-            # Cooler aux1
-            [0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             # Heater aux1
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 1],
-            [0, 0, 0, 0, 0, 0, w_tur, -w_comp, -(w_tur - w_comp), 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, -1, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+            # Cooler aux1
+            [0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # GT aux1
+            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, -1, 0],
+            # Power summarizer
+            [0, 0, 0, 0, 0, 0, w_tur, 0, 0, 0, -w_comp, w_gt, -(w_tur - w_comp + w_gt)],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, -1],
+            # Cost of Fuel
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            # [0, -e2, e3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
         ]
-    )
+    )  # W
     m2 = np.asarray(
-        zk[:4]
+        zk[:5]
         + [
             0,
             0,
-            8.9e-9 * 3600,
             0,
             0,
             0,
             0,
+            0,
+            cfuel,
         ]
-    ).reshape(-1, 1)
-    # 8.9e-9 * 3600 $/Wh = 8.9 $/GJ /1e9 J/GJ * 3600 s/h
+    ).reshape(-1)
+
     try:
-        costs1, _, _, _ = np.linalg.lstsq(m1, m2, rcond=None)  # $/Wh
-        costs2, _ = optimize.nnls(m1, m2[:, 0])
-        print(costs1 / 3600 * 1e9)
-        print(costs2 / 3600 * 1e9)
+        # costs1, _, _, _ = np.linalg.lstsq(m1, m2, rcond=None)  # $/Wh
+        # costs2, _ = optimize.nnls(m1, m2[:, 0])
+        # print(costs1 / 3600 * 1e9)
+        # print(costs2 / 3600 * 1e9)
         costs = np.linalg.solve(m1, m2)
+
     except:
         return PENALTY_VALUE
+
     """
     fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
     fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
     Efuel = fuel_chem_ex + fuel_phys_ex  # MW
     Cp=cfuel*Efuel  + Ztot # $/h
     Ep = 22.4 + w_tur/1e6 - w_comp/1e6 # MW
-    Cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
+    cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
     Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
     Ep = (w_tur - w_comp) / 1e6  # MW
     """
 
     Cl = costs[7] * e_fgout  # $/h
-    Cf = costs[7] * e_fgin  # $/h
+    Cf = costs[9] * e_fuel  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
-    Ep = (w_tur - w_comp) / 1e6  # MW
+    Ep = w_tur - w_comp + w_gt  # MW
     # c = Cp / Ep  # $/MWh
+    cdiss = costs[1] * e2 - costs[2] * e3 + zk[-2]
+    lcoex = (costs[-1] * Ep + cdiss + Cl) / (Ep / 1e6)
+    print(cdiss, Cl, costs[-1] * Ep, lcoex)
     c = lcoe
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [
@@ -215,24 +247,31 @@ def result_analyses(x):
 
     print(
         f"""
-    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
     {costs/3600*1e9}
     {pec}
     {zk}
-    {sum(zk)}
     {sum(pec)}
-        """
+    {sum(zk)}
+    {cdiss, Cl, costs[-3] * Ep, lcoex,lcoe}
+    {Cp/(Ep/1e6)}
+    """
     )
-    #    Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
-    #         Turbine output = {unit_energy[0]:.2f}MW
-    #         Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
-    #         Compressor Input = {unit_energy[1]:.2f}MW
-    #         Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
-    #         Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
-    #         Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
-    #         Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
+
+    # Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
+    # Turbine output = {unit_energy[0]:.2f}MW
+    # Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
+    # Compressor Input = {unit_energy[1]:.2f}MW
+    # Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
+    # Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
+    # Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
+    # Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
     # Objective Function value = {c}
-    # {Cp/Ep}
+    # Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 :.2f}MW {e_fgout/1e6:.2f}MW
+    # {costs/3600*1e9}
+    # {pec}
+    # {zk}
+    # {sum(zk)}
+    # {sum(pec)}
     return c
 
 

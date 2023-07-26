@@ -1,12 +1,10 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-from New_RS import result_analyses
+from RS_1b import result_analyses
 from econ import economics
 from functions import (
-    pinch_calculation,
     lmtd,
-    enthalpy_entropy,
     turbine,
     compressor,
     cooler,
@@ -33,12 +31,12 @@ bounds = [
     (74e5, 300e5),
     (74e5, 300e5),
     (50, 160),
-    (4, 10.7),
+    (4, 11),
 ]  # upper and lower bounds of variables
 
 # PARAMETERS OF PSO
 particle_size = 7 * len(bounds)  # number of particles
-iterations = 30  # max number of iterations
+iterations = 100  # max number of iterations
 nv = len(bounds)  # number of variables
 
 
@@ -153,45 +151,53 @@ def objective_function(x):
     pec.append(cost_cooler)
     pec.append(cost_heater)
     pec.append(cost_comp)
-    prod_capacity = (w_tur - w_comp) / 1e6  # MW
+    pec.append(9.721e6)
+    prod_capacity = (w_tur - w_comp + 22.39e6) / 1e6  # MW
     zk, cfuel, lcoe = economics(pec, prod_capacity)  # $/h
-    # [c1,c2,c3,c4,c5,c6,cw,cfg]
+
     m1 = np.array(
-        [
-            [e1, 0, 0, 0, 0, -e6, w_tur, 0],
-            [-e1, e2, 0, -e4, e5, 0, 0, 0],
-            [0, -e2, e3, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, -e5, e6, 0, -(e_fgin - e_fgout)],
-            [0, 0, -e3, e4, 0, 0, -w_comp, 0],
-            [1, 0, 0, 0, 0, -1, 0, 0],
-            [1, -1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1],
+        [  # [c1,c2,c3,c4,c5,c6,cwt,cwcomp,ctote,cfgin,cfgout]
+            # Heater
+            [0, 0, 0, 0, -e5, e6, 0, 0, 0, -e_fgin, e_fgout],
+            # Turbine
+            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0, 0],
+            # HXer
+            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0, 0],
+            # Compressor
+            [0, 0, -e3, e4, 0, 0, 0, -w_comp, 0, 0, 0],
+            # [0, -e2, e3, 0, 0, 0, 0, 0, 0,0, 0],
+            # Turbine aux1
+            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0],
+            # HXer aux1
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Cost of FG
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+            # Cooler aux1
+            [0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Heater aux1
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 1],
+            # Total electricity production
+            [0, 0, 0, 0, 0, 0, w_tur, -w_comp, -(w_tur - w_comp + 22.39e6), 0, 0],
+            # Total electricity aux1
+            [0, 0, 0, 0, 0, 0, 0, -1, 1, 0, 0],
         ]
-    )  # W
-    m2 = np.asarray(zk + [0, 0, 8.7e-9 * 3600]).reshape(-1, 1)
+    )
+    m2 = np.asarray(zk[:4] + [0, 0, 8.9e-9 * 3600, 0, 0, 0, 0]).reshape(
+        -1,
+    )
     try:
         costs = np.linalg.solve(m1, m2)  # $/Wh
     except:
         return PENALTY_VALUE
-    """
-    fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
-    fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
-    Efuel = fuel_chem_ex + fuel_phys_ex  # MW
-    Cp=cfuel*Efuel  + Ztot # $/h
-    Ep = 22.4 + w_tur/1e6 - w_comp/1e6 # MW
-    Cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
-    Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
-    Ep = (w_tur - w_comp) / 1e6  # MW
-    """
 
-    Cl = costs[7] * e_fgout  # $/h
-    Cf = costs[7] * e_fgin  # $/h
+    Cl = costs[10] * e_fgout  # $/h
+    Cf = costs[9] * e_fgin  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
-    Ep = (w_tur - w_comp) / 1e6  # MW
-    # c = Cp / Ep  # $/MWh
-    c = lcoe
-
+    Ep = w_tur - w_comp + 22.39e6  # W
+    cdiss = costs[1] * e2 - costs[2] * e3 + zk[-2]
+    lcoex = (costs[-3] * Ep + cdiss + Cl) / (Ep / 1e6)
+    c = lcoex
     return c
 
 
@@ -313,7 +319,7 @@ class PSO:
         print("Result:")
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)
-        # result_analyses(global_best_particle_position)
+        result_analyses(global_best_particle_position)
         plt.plot(A)
 
 

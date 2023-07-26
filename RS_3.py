@@ -87,12 +87,12 @@ def result_analyses(x):
     hout_fg, sout_fg = h_s_fg(fg_tout, P0)
 
     # Exergy Analysis
-    e1 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
-    e2 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
-    e3 = m * ((h3 - h0) - (T0 + K) * (s3 - s0))
-    e4 = m * ((h4 - h0) - (T0 + K) * (s4 - s0))
-    e5 = m * ((h5 - h0) - (T0 + K) * (s5 - s0))
-    e6 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
+    e8 = m * ((h1 - h0) - (T0 + K) * (s1 - s0))  # W = kg/s*(J - °C*J/kgK)
+    e9 = m * ((h2 - h0) - (T0 + K) * (s2 - s0))
+    e10 = m * ((h3 - h0) - (T0 + K) * (s3 - s0))
+    e11 = m * ((h4 - h0) - (T0 + K) * (s4 - s0))
+    e12 = m * ((h5 - h0) - (T0 + K) * (s5 - s0))
+    e7 = m * ((h6 - h0) - (T0 + K) * (s6 - s0))
     e_fgin = fg_m * ((hin_fg - h0_fg) - (T0 + K) * (sin_fg - s0_fg)) + 0.5e6
     e_fgout = fg_m * ((hout_fg - h0_fg) - (T0 + K) * (sout_fg - s0_fg)) + 0.5e6
     e_fuel = NG_exergy()
@@ -133,64 +133,145 @@ def result_analyses(x):
         ft_hx = 1
     cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
     cost_gt = 9.721e6  # $
-    # pec.append(cost_heater)
-    # pec.append(cost_tur)
-    # pec.append(cost_hx)
-    # pec.append(cost_cooler)
-    # pec.append(cost_comp)
-    # pec.append(cost_gt)
+    cost_motor = 211400 * (w_comp / 1e6) ** 0.6227
+    cost_generator = (
+        108900 * (w_tur * 0.95 / 1e6) ** 0.5463 + 177200 * (w_tur / 1e6) ** 0.2434
+    )
     w_gt = 22.4e6
-    # prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
-    # pec.append(2e5 * (w_tur - w_comp) / 1e6)  # $/h
-    # print(pec, prod_capacity)
     pec = [
+        2.916e6,
+        1.944e6,
+        3.888e6,
+        0.972e6,
         cost_heater,  # 2.523e6,
         cost_tur,  # 2.734e6,
         cost_hx,  # 1.231e6,
         cost_comp,  # 1.939e6,
-        cost_gt,  # 9.721e6,
+        cost_generator,
+        cost_motor,
         cost_cooler,  # 1.327e6,
-        0.821e6 + 0.478e6 + (w_tur - w_comp) / 1e1,
+        (w_tur - w_comp) / 1e1,
     ]
 
     prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
     zk, cfueltot, lcoe = economics(pec, prod_capacity)  # $/h
-    cfuel = cfueltot / e_fuel
-    # 3.8e-9 * 3600  # $/MJ
-    # cfueltot / e_fuel / 3600  # $/J
+    neg_zk = [-1 * i for i in zk]
+    cfuel = 3.8e-9 * 3600  # cfueltot / e_fuel
+
+    e1 = 0.08e6
+    e2 = 27.62e6
+    e3 = e_fuel
+    e4 = 73.97e6
+    e5 = e_fgin
+    e6 = e_fgout
+    e13 = 0.52e6
+    e14 = 1.33e6
+    e101 = 29.72e6
+    e102 = 22.85e6
+    e103 = w_comp
+    e104 = w_tur
+    e105 = w_gt
+    e106 = w_comp
+    e107 = 0.95 * w_tur
+    e108 = e107 + e105 - e106
     m1 = np.array(
-        [  # [c1,c2,c3,c4,c5,c6,wt,cfgin,cfgout,cfuel,wc,wgt,ctot]
-            # Heater
-            [0, 0, 0, 0, -e5, e6, 0, -e_fgin, e_fgout, 0, 0, 0, 0],
-            # Turbine
-            [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0, 0, 0, 0],
-            # HXer
-            [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0, 0, 0, 0],
-            # Compressor
-            [0, 0, -e3, e4, 0, 0, 0, 0, 0, 0, -w_comp, 0, 0],
-            # GT
-            [0, 0, 0, 0, 0, 0, 0, e_fgin, 0, -e_fuel, 0, w_gt, 0],
-            # Turbine aux1
-            [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0],
-            # HXer aux1
-            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            # Heater aux1
-            [0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-            # Cooler aux1
-            [0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            # GT aux1
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, -1, 0],
+        [  # [c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c101,c102,c103,c104,c105,c106,c107,c108]
+            # GT compressor
+            [e1, -e2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, e101, 0, 0, 0, 0, 0, 0, 0],
+            # GT combustor
+            [0, e2, e3, -e4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # GT expander
+            [
+                0,
+                0,
+                0,
+                e4,
+                -e5,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -e101,
+                -e102,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            # GT generator
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, e102, 0, 0, -e105, 0, 0, 0],
+            # Primary heater
+            [0, 0, 0, 0, e5, -e6, -e7, 0, 0, 0, 0, e12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # SCO2 expander
+            [0, 0, 0, 0, 0, 0, e7, -e8, 0, 0, 0, 0, 0, 0, 0, 0, 0, -e104, 0, 0, 0, 0],
+            # Recuperator
+            [0, 0, 0, 0, 0, 0, 0, e8, -e9, 0, e11, -e12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Cooler
+            # [0, 0, 0, 0, 0, 0, 0, 0, e9, -e10, 0, 0, e13, -e14, 0, 0, 0, 0, 0, 0, 0, 0],
+            # SCO2 compressor
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, e10, -e11, 0, 0, 0, 0, 0, e103, 0, 0, 0, 0, 0],
+            # SCO2 generator
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, e104, 0, 0, -e107, 0],
+            # SCO2 motor
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -e103, 0, 0, e106, 0, 0],
             # Power summarizer
-            [0, 0, 0, 0, 0, 0, w_tur, 0, 0, 0, -w_comp, w_gt, -(w_tur - w_comp + w_gt)],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, -1],
-            # Cost of Fuel
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            # [0, -e2, e3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            # [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                e105,
+                -e106,
+                e107,
+                -e108,
+            ],
+            # GT expander aux1
+            [0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # GT expander aux2
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+            # Primary heater aux1
+            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # SCO2 expander aux1
+            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Recuperator aux1
+            [0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Cooler aux1
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Cooler aux2
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Power summarizer aux1
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, -1],
+            # Fuel cost
+            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Air cost
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # Cooling water cost
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
         ]
-    )  # W
+    )
     m2 = np.asarray(
-        zk[:5]
+        neg_zk[:-2]
         + [
             0,
             0,
@@ -199,18 +280,22 @@ def result_analyses(x):
             0,
             0,
             0,
+            0,
+            0,
             cfuel,
+            0,
+            0,
         ]
-    ).reshape(-1, 1)
-
+    ).reshape(
+        -1,
+    )
     try:
         # costs1, _, _, _ = np.linalg.lstsq(m1, m2, rcond=None)  # $/Wh
-        costs2, _ = optimize.nnls(m1, m2[:, 0])
+        # costs2, _ = optimize.nnls(m1, m2[:, 0])
         # print(costs1 / 3600 * 1e9)
-        print(costs2 / 3600 * 1e9)
-        # costs = np.linalg.solve(m1, m2)
-        # print(costs / 3600 * 1e9)
-        breakpoint()
+        # print(costs2 / 3600 * 1e9)
+        costs = np.linalg.solve(m1, m2)
+
     except:
         return PENALTY_VALUE
 
@@ -220,17 +305,18 @@ def result_analyses(x):
     Efuel = fuel_chem_ex + fuel_phys_ex  # MW
     Cp=cfuel*Efuel  + Ztot # $/h
     Ep = 22.4 + w_tur/1e6 - w_comp/1e6 # MW
-    Cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
+    cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
     Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
     Ep = (w_tur - w_comp) / 1e6  # MW
     """
-
-    Cl = costs[7] * e_fgout  # $/h
-    Cf = costs[7] * e_fgin  # $/h
+    Cl = costs[5] * e_fgout  # $/h
+    Cf = costs[2] * e_fuel  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
-    Ep = (w_tur - w_comp) / 1e6 + w_gt  # MW
+    Ep = e108  # W
     # c = Cp / Ep  # $/MWh
+    cdiss = (e9 * costs[8] - e10 * costs[9]) + zk[-2]
+    lcoex = (costs[21] * Ep + cdiss + Cl) / (Ep / 1e6)
     c = lcoe
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [
@@ -243,12 +329,13 @@ def result_analyses(x):
 
     print(
         f"""
-    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 :.2f}MW {e_fgout/1e6:.2f}MW
     {costs/3600*1e9}
     {pec}
     {zk}
-    {sum(zk)}
     {sum(pec)}
+    {sum(zk)}
+    {cdiss, Cl, costs[21] * Ep, lcoex,lcoe}
+    {Cp/(Ep/1e6)}
     """
     )
 
@@ -261,6 +348,12 @@ def result_analyses(x):
     # Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
     # Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
     # Objective Function value = {c}
+    # Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 :.2f}MW {e_fgout/1e6:.2f}MW
+    # {costs/3600*1e9}
+    # {pec}
+    # {zk}
+    # {sum(zk)}
+    # {sum(pec)}
     return c
 
 
