@@ -233,13 +233,13 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
             )
 
             dh = coldside_outlet.enthalpy - hcoldin
-
+            q_hx = dh * m
             hotside_outlet = (
                 Fluid(FluidsList.CarbonDioxide)
                 .with_state(Input.temperature(Thotin), Input.pressure(photin))
                 .cooling_to_enthalpy(hhotin - dh, hx_pdrop)
             )
-            q_hx = dh * m
+
         except:
             return (0, 0, 0, 0, 0, 0, 0)
     return (

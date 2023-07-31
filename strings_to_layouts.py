@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
+from STL_RS import results_analysis
 from econ import economics
 from functions import (
     lmtd,
@@ -77,7 +78,7 @@ bounds.append((50, 160))
 print(equipment)
 print(bounds)
 particle_size = 7 * len(bounds)
-iterations = 30
+iterations = 10
 nv = len(bounds)
 enumerated_equipment = list(enumerate(equipment))
 
@@ -121,8 +122,9 @@ def objective_function(x, unitsx):
     )
     # Turbine and Compressor pressure ratio calculation and checking
     tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
+
     if tur_pratio < 1 or comp_pratio < 1:
-        print("Turbine or Compressor pressure ratio is less than 1")
+        # print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
 
     while Temperatures.prod() == 0:
@@ -187,6 +189,9 @@ def objective_function(x, unitsx):
                 )
             except:
                 breakpoint()
+    if sum(w_tur) < sum(w_comp):
+        print("Negative Net Power Production")
+        return PENALTY_VALUE
     enthalpies, entropies, q_cooler = cooler_calculation(
         enumerated_equipment,
         Temperatures,
@@ -299,7 +304,7 @@ def objective_function(x, unitsx):
     prod_capacity = (sum(w_tur) - sum(w_comp)) / 1e6
     zk, cfueltot, lcoe = economics(pec, prod_capacity)
 
-    # Exergy Analysis
+    # Thermo-economic Analysis
 
     return lcoe
 
@@ -426,7 +431,7 @@ class PSO:
         for i in range(particle_size):
             swarm_particle.append(Particle(bounds))
         A = []
-
+        k = 0
         for i in range(iterations):
             w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
             c1 = -3 * (i / iterations) + 3.5
@@ -435,10 +440,11 @@ class PSO:
             print(w, c1, c2)
             for j in range(particle_size):
                 swarm_particle[j].evaluate(objective_function)
+                k += 1
                 while swarm_particle[j].fitness_particle_position == PENALTY_VALUE:
                     swarm_particle[j] = Particle(bounds)
                     swarm_particle[j].evaluate(objective_function)
-
+                    k += 1
                 if (
                     swarm_particle[j].fitness_particle_position
                     < fitness_global_best_particle_position
@@ -460,8 +466,9 @@ class PSO:
         print("Result:")
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)
-        # result_analyses(global_best_particle_position)
-        plt.plot(A)
+        results_analysis(global_best_particle_position, unitsx)
+        print(k)
+        # plt.plot(A)
 
 
 # ------------------------------------------------------------------------------

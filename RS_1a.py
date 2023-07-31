@@ -112,20 +112,20 @@ def result_analyses(x):
     cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
     pec.append(cost_tur)
     pec.append(cost_hx)
-    pec.append(cost_cooler)
     pec.append(cost_heater)
     pec.append(cost_comp)
+    pec.append(cost_cooler)
     prod_capacity = (w_tur - w_comp) / 1e6  # MW
     zk, cfuel, lcoe = economics(pec, prod_capacity)  # $/h
 
     m1 = np.array(
         [  # [c1,c2,c3,c4,c5,c6,cwt,cwcomp,ctote,cfgin,cfgout]
-            # Heater
-            [0, 0, 0, 0, -e5, e6, 0, 0, 0, -e_fgin, e_fgout],
             # Turbine
             [e1, 0, 0, 0, 0, -e6, w_tur, 0, 0, 0, 0],
             # HXer
             [-e1, e2, 0, -e4, e5, 0, 0, 0, 0, 0, 0],
+            # Heater
+            [0, 0, 0, 0, -e5, e6, 0, 0, 0, -e_fgin, e_fgout],
             # Compressor
             [0, 0, -e3, e4, 0, 0, 0, -w_comp, 0, 0, 0],
             # [0, -e2, e3, 0, 0, 0, 0, 0, 0,0, 0],
@@ -157,11 +157,10 @@ def result_analyses(x):
     Cf = costs[9] * e_fgin  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
-    Ep = w_tur - w_comp + 22.39e6  # MW
+    Ep = w_tur - w_comp  # MW
     cdiss = costs[1] * e2 - costs[2] * e3 + zk[-1]
     lcoex = (costs[-3] * Ep + cdiss + Cl) / (Ep / 1e6)
-    # c = lcoex
-    c = lcoe
+    c = lcoex
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [
         w_tur / 1e6,
@@ -185,8 +184,9 @@ def result_analyses(x):
     {costs/3600*1e9}
     {sum(pec)}
     {sum(zk)}
-    Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={costs[-3]*Ep:.2f} LCOE = {lcoex:.2f} LCOEX = {lcoe:.2f}
+    Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={costs[-3]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoex:.2f}
     Cp/Ep = {Cp/(Ep/1e6)}
+    Thermal efficiency = {Ep/40.53e6}
         """
     )
 

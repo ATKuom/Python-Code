@@ -135,16 +135,7 @@ def result_analyses(x):
     cost_gt = 9.721e6  # $
     cost_gnrtr = 211400 * (w_comp / 1e6) ** 0.6227
     cost_mtr_grbx = 108900 * (w_tur / 1e6) ** 0.5463 + 177200 * (w_tur / 1e6) ** 0.2434
-    # pec.append(cost_heater)
-    # pec.append(cost_tur)
-    # pec.append(cost_hx)
-    # pec.append(cost_cooler)
-    # pec.append(cost_comp)
-    # pec.append(cost_gt)
     w_gt = 22.4e6
-    # prod_capacity = (w_tur - w_comp + w_gt) / 1e6  # MW
-    # pec.append(2e5 * (w_tur - w_comp) / 1e6)  # $/h
-    # print(pec, prod_capacity)
     pec = [
         cost_heater,  # 2.523e6,
         cost_tur,  # 2.734e6,
@@ -206,10 +197,6 @@ def result_analyses(x):
     ).reshape(-1)
 
     try:
-        # costs1, _, _, _ = np.linalg.lstsq(m1, m2, rcond=None)  # $/Wh
-        # costs2, _ = optimize.nnls(m1, m2[:, 0])
-        # print(costs1 / 3600 * 1e9)
-        # print(costs2 / 3600 * 1e9)
         costs = np.linalg.solve(m1, m2)
 
     except:
@@ -226,7 +213,7 @@ def result_analyses(x):
     Ep = (w_tur - w_comp) / 1e6  # MW
     """
 
-    Cl = costs[7] * e_fgout  # $/h
+    Cl = costs[8] * e_fgout  # $/h
     Cf = costs[9] * e_fuel  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
@@ -234,8 +221,7 @@ def result_analyses(x):
     # c = Cp / Ep  # $/MWh
     cdiss = costs[1] * e2 - costs[2] * e3 + zk[-2]
     lcoex = (costs[-1] * Ep + cdiss + Cl) / (Ep / 1e6)
-    print(cdiss, Cl, costs[-1] * Ep, lcoex)
-    c = lcoe
+    c = lcoex
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [
         w_tur / 1e6,
@@ -247,13 +233,21 @@ def result_analyses(x):
 
     print(
         f"""
+    Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
+    Turbine output = {unit_energy[0]:.2f}MW
+    Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
+    Compressor Input = {unit_energy[1]:.2f}MW
+    Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
+    Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
+    Equipment Cost = Tur={cost_tur/1e3:.0f}    HX={cost_hx/1e3:.0f}    Cooler={cost_cooler/1e3:.0f}    Compr={cost_comp/1e3:.0f}   Heater={cost_heater/1e3:.0f}
+    Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
+    Objective Function value = {c}
+    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
     {costs/3600*1e9}
-    {pec}
-    {zk}
     {sum(pec)}
     {sum(zk)}
-    {cdiss, Cl, costs[-3] * Ep, lcoex,lcoe}
-    {Cp/(Ep/1e6)}
+    Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={costs[-3]*Ep:.2f} LCOEX = {lcoex:.2f} LCOE = {lcoe:.2f}
+    Cp/Ep = {Cp/(Ep/1e6)}
     """
     )
 

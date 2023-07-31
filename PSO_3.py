@@ -1,8 +1,7 @@
+import random
 import matplotlib.pyplot as plt
 import numpy as np
-
-np.set_printoptions(precision=3, suppress=True)
-from scipy import optimize
+from RS_3 import result_analyses
 from econ import economics
 from functions import (
     lmtd,
@@ -26,9 +25,23 @@ from functions import (
     K,
 )
 
+bounds = [
+    (32, 100),
+    (180, 530),
+    (74e5, 300e5),
+    (74e5, 300e5),
+    (50, 160),
+    (4, 11),
+]  # upper and lower bounds of variables
+
+# PARAMETERS OF PSO
+particle_size = 7 * len(bounds)  # number of particles
+iterations = 30  # max number of iterations
+nv = len(bounds)  # number of variables
+
 
 # ------------------------------------------------------------------------------
-def result_analyses(x):
+def objective_function(x):
     t3 = x[0]
     t6 = x[1]
     p1 = x[2]
@@ -72,6 +85,8 @@ def result_analyses(x):
     t2, h2, s2, t5, h5, s5, q_hx = HX_calculation(
         t1, p1, h1, t4, p4, h4, approach_temp, hx_pdrop, m
     )
+    if t2 == 0:
+        return PENALTY_VALUE
     ##Cooler
     if t3 > t2:
         # print("negative cooler work")
@@ -133,9 +148,7 @@ def result_analyses(x):
         ft_hx = 1
     cost_hx = 49.45 * UA_hx**0.7544 * ft_hx  # $
     cost_motor = 211400 * (w_comp / 1e6) ** 0.6227
-    cost_generator = (
-        108900 * (w_tur * 0.95 / 1e6) ** 0.5463 + 177200 * (w_tur / 1e6) ** 0.2434
-    )
+    cost_generator = 108900 * (w_tur / 1e6) ** 0.5463 + 177200 * (w_tur / 1e6) ** 0.2434
     w_gt = 22.4e6
     pec = [
         2.916e6,
@@ -156,7 +169,8 @@ def result_analyses(x):
     zk, cfueltot, lcoe = economics(pec, prod_capacity)  # $/h
     neg_zk = [-1 * i for i in zk]
     cfuel = 3.8e-9 * 3600  # cfueltot / e_fuel
-
+    # 3.8e-9 * 3600  # $/MJ
+    # cfueltot / e_fuel / 3600  # $/J
     e1 = 0.08e6
     e2 = 27.62e6
     e3 = e_fuel
@@ -298,94 +312,146 @@ def result_analyses(x):
     except:
         return PENALTY_VALUE
 
-    """
-    fuel_chem_ex = 1.26/16.043*824.348  # MW = kg/s /kg/kmol *MJ/kmol
-    fuel_phys_ex = 1.26*(0.39758) #MW = kg/s * MJ/kg
-    Efuel = fuel_chem_ex + fuel_phys_ex  # MW
-    Cp=cfuel*Efuel  + Ztot # $/h
-    Ep = 22.4 + w_tur/1e6 - w_comp/1e6 # MW
-    cdiss = c2*e2 - c3*e3 + zk[2] # $/h = $/Wh * W - $/Wh * W + $/h
-    Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
-    Ep = (w_tur - w_comp) / 1e6  # MW
-    """
     Cl = costs[5] * e_fgout  # $/h
     Cf = costs[2] * e_fuel  # $/h
     Ztot = sum(zk)  # $/h
     Cp = Cf + Ztot - Cl  # $/h
     Ep = e108  # W
-    # c = Cp / Ep  # $/MWh
     cdiss = (e9 * costs[8] - e10 * costs[9]) + zk[-2]
     lcoex = (costs[21] * Ep + cdiss + Cl) / (Ep / 1e6)
     c = lcoex
     thermal_efficiency = (w_tur - w_comp) / 40.53e6
     if thermal_efficiency < 0.1575:
-        j = 100 * (0.30 - thermal_efficiency)
+        j = 1000 * (0.30 - thermal_efficiency)
     else:
         j = c + max(0, 0.1 - q_hx / q_heater)
-    Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
-    unit_energy = [
-        w_tur / 1e6,
-        w_comp / 1e6,
-        q_heater / 1e6,
-        q_cooler / 1e6,
-        q_hx / 1e6,
-    ]
-
-    print(
-        f"""
-    Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
-    Turbine output = {unit_energy[0]:.2f}MW
-    Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
-    Compressor Input = {unit_energy[1]:.2f}MW
-    Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
-    Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
-    Equipment Cost = Tur={cost_tur/1e3:.0f}    HX={cost_hx/1e3:.0f}    Cooler={cost_cooler/1e3:.0f}    Compr={cost_comp/1e3:.0f}   Heater={cost_heater/1e3:.0f}
-    Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
-    Objective Function value = {c}
-    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
-    {costs/3600*1e9}
-    {sum(pec)}
-    {sum(zk)}
-    Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={costs[-1]*Ep:.2f} LCOEX = {lcoex:.2f} LCOE = {lcoe:.2f}
-    Cp/Ep = {Cp/(Ep/1e6)}
-    {thermal_efficiency:.2f}
-    {j:.2f}
-    """
-    )
-
-    # Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
-    # Turbine output = {unit_energy[0]:.2f}MW
-    # Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
-    # Compressor Input = {unit_energy[1]:.2f}MW
-    # Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
-    # Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
-    # Equipment Cost = Tur={cost_tur:.0f}    HX={cost_hx:.0f}    Cooler={cost_cooler:.0f}    Compr={cost_comp:.0f}   Heater={cost_heater:.0f}
-    # Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
-    # Objective Function value = {c}
-    # Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6 :.2f}MW {e_fgout/1e6:.2f}MW
-    # {costs/3600*1e9}
-    # {pec}
-    # {zk}
-    # {sum(zk)}
-    # {sum(pec)}
     return c
 
 
-if __name__ == "__main__":
-    x1 = [
-        32.3,
-        411.4,
-        78.5e5,
-        241.3e5,
-        93.18,
-        10.8,
-    ]
-    x2 = [
-        32,
-        427.14871102310946,
-        7838558.624054214,
-        30000000.0,
-        74.68430647939505,
-        10.7,
-    ]
-    result_analyses(x1)
+# Visualization
+# fig = plt.figure()
+# ax = fig.add_subplot()
+# fig.show()
+# plt.title("Evolutionary process of the objective function value")
+# plt.xlabel("Iteration")
+# plt.ylabel("Objective function ($/MWh)")
+
+
+# ------------------------------------------------------------------------------
+class Particle:
+    def __init__(self, bounds):
+        self.particle_position = []
+        self.particle_velocity = []
+        self.local_best_particle_position = []
+        self.fitness_local_best_particle_position = float(
+            "inf"
+        )  # objective function value of the best particle position
+        self.fitness_particle_position = float(
+            "inf"
+        )  # objective function value of the particle position
+
+        for i in range(nv):
+            self.particle_position.append(
+                random.uniform(bounds[i][0], bounds[i][1])
+            )  # generate random initial position
+            self.particle_velocity.append(
+                random.uniform(-1, 1)
+            )  # generate random initial velocity
+
+    def evaluate(self, objective_function):
+        self.fitness_particle_position = objective_function(self.particle_position)
+        if self.fitness_particle_position < self.fitness_local_best_particle_position:
+            self.local_best_particle_position = (
+                self.particle_position
+            )  # update particle's local best poition
+            self.fitness_local_best_particle_position = (
+                self.fitness_particle_position
+            )  # update fitness at particle's local best position
+
+    def update_velocity(self, w, c1, c2, global_best_particle_position):
+        for i in range(nv):
+            r1 = random.uniform(0, 2)
+            r2 = random.uniform(0, 2)
+
+            # local explorative position displacement component
+            cognitive_velocity = (
+                c1
+                * r1
+                * (self.local_best_particle_position[i] - self.particle_position[i])
+            )
+
+            # position displacement component towards global best
+            social_velocity = (
+                c2 * r2 * (global_best_particle_position[i] - self.particle_position[i])
+            )
+
+            self.particle_velocity[i] = (
+                w * self.particle_velocity[i] + cognitive_velocity + social_velocity
+            )
+
+    def update_position(self, bounds):
+        for i in range(nv):
+            self.particle_position[i] = (
+                self.particle_position[i] + self.particle_velocity[i]
+            )
+
+            # check and repair to satisfy the upper bounds
+            if self.particle_position[i] > bounds[i][1]:
+                self.particle_position[i] = bounds[i][1]
+            # check and repair to satisfy the lower bounds
+            if self.particle_position[i] < bounds[i][0]:
+                self.particle_position[i] = bounds[i][0]
+
+
+class PSO:
+    def __init__(self, objective_function, bounds, particle_size, iterations):
+        fitness_global_best_particle_position = float("inf")
+        global_best_particle_position = []
+        swarm_particle = []
+        PENALTY_VALUE = float(1e6)
+        for i in range(particle_size):
+            swarm_particle.append(Particle(bounds))
+        A = []
+
+        for i in range(iterations):
+            w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
+            c1 = -3 * (i / iterations) + 3.5
+            c2 = 3 * (i / iterations) + 0.5
+            print("iteration = ", i)
+            print(w, c1, c2)
+            for j in range(particle_size):
+                swarm_particle[j].evaluate(objective_function)
+                while swarm_particle[j].fitness_particle_position == PENALTY_VALUE:
+                    swarm_particle[j] = Particle(bounds)
+                    swarm_particle[j].evaluate(objective_function)
+
+                if (
+                    swarm_particle[j].fitness_particle_position
+                    < fitness_global_best_particle_position
+                ):
+                    global_best_particle_position = list(
+                        swarm_particle[j].particle_position
+                    )
+                    fitness_global_best_particle_position = float(
+                        swarm_particle[j].fitness_particle_position
+                    )
+
+            for j in range(particle_size):
+                swarm_particle[j].update_velocity(
+                    w, c1, c2, global_best_particle_position
+                )
+                swarm_particle[j].update_position(bounds)
+
+            A.append(fitness_global_best_particle_position)  # record the best fitness
+        print("Result:")
+        print("Optimal solutions:", global_best_particle_position)
+        print("Objective function value:", fitness_global_best_particle_position)
+        result_analyses(global_best_particle_position)
+        # plt.plot(A)
+
+
+# ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Main PSO
+PSO(objective_function, bounds, particle_size, iterations)
+# plt.show()
