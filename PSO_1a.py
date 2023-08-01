@@ -184,6 +184,7 @@ def objective_function(x):
     m2 = np.asarray(zk[:4] + [0, 0, 8.9e-9 * 3600, 0, 0, 0, 0]).reshape(
         -1,
     )
+
     try:
         costs = np.linalg.solve(m1, m2)  # $/Wh
     except:

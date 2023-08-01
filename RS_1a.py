@@ -128,7 +128,7 @@ def result_analyses(x):
             [0, 0, 0, 0, -e5, e6, 0, 0, 0, -e_fgin, e_fgout],
             # Compressor
             [0, 0, -e3, e4, 0, 0, 0, -w_comp, 0, 0, 0],
-            # [0, -e2, e3, 0, 0, 0, 0, 0, 0,0, 0],
+            # [0, 0, 0, 0, 0, 0, 0, 0, 0,0, 0],
             # Turbine aux1
             [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0],
             # HXer aux1
@@ -148,6 +148,7 @@ def result_analyses(x):
     m2 = np.asarray(zk[:4] + [0, 0, 8.9e-9 * 3600, 0, 0, 0, 0]).reshape(
         -1,
     )
+
     try:
         costs = np.linalg.solve(m1, m2)
     except:
@@ -169,6 +170,7 @@ def result_analyses(x):
         q_cooler / 1e6,
         q_hx / 1e6,
     ]
+    np.set_printoptions(precision=2, suppress=True)
     print(
         f"""
     Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar

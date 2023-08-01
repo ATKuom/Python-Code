@@ -251,12 +251,98 @@ def results_analysis(x, unitsx):
     zk, cfueltot, lcoe = economics(pec, prod_capacity)
 
     # Exergy Analysis
-
-    ecosts = np.array(
-        np.zeros(len(unitsx) + equipment.count(1) + equipment.count(3) + 3)
+    # m1 = [
+    #     i[:]
+    #     for i in [[0] * (len(unitsx) + equipment.count(1) + equipment.count(3) + 3)]
+    #     * len(equipment)
+    # ]
+    m1 = np.zeros(
+        (
+            len(equipment),
+            (len(unitsx) + equipment.count(1) + equipment.count(3) + 3),
+        )
     )
+    zero_row = np.zeros(m1.shape[1]).reshape(1, -1)
+    total_electricity_production = np.copy(zero_row)
+    total_electricity_aux = np.copy(zero_row)
+    turbine_token = equipment.count(1)
+    comp_token = equipment.count(3)
+    hx_token = 1
+    for i, j in enumerated_equipment:
+        if i == 0:
+            inlet = len(Temperatures) - 1
+        else:
+            inlet = i - 1
+        outlet = i
 
-    breakpoint()
+        if j == 1:
+            m1[i][inlet] = -1 * exergies[inlet]
+            m1[i][outlet] = exergies[outlet]
+            m1[i][len(equipment) + 1 + turbine_token] = w_tur[outlet]
+            total_electricity_production[0][len(equipment) + 1 + turbine_token] = w_tur[
+                outlet
+            ]
+            turbine_aux = np.copy(zero_row)
+            turbine_aux[0][inlet] = 1
+            turbine_aux[0][outlet] = -1
+            m1 = np.concatenate((m1, turbine_aux), axis=0)
+            turbine_token -= 1
+        elif j == 2:
+            cooler_aux = np.copy(zero_row)
+            cooler_aux[0][inlet] = 1
+            cooler_aux[0][outlet] = -1
+            m1 = np.concatenate((m1, cooler_aux), axis=0)
+        elif j == 3:
+            m1[i][inlet] = -1 * exergies[inlet]
+            m1[i][outlet] = exergies[outlet]
+            m1[i][-(1 + comp_token)] = -1 * w_comp[outlet]
+            total_electricity_production[0][-(1 + comp_token)] = -1 * w_comp[outlet]
+            total_electricity_aux[0][-(1 + comp_token)] = -1
+            comp_token -= 1
+        elif j == 4:
+            m1[i][inlet] = -1 * exergies[inlet]
+            m1[i][outlet] = exergies[outlet]
+            m1[i][len(equipment)] = -1 * e_fgin
+            m1[i][len(equipment) + 1] = e_fgout
+            heater_aux = np.copy(zero_row)
+            heater_aux[0][len(equipment)] = 1
+            heater_aux[0][len(equipment) + 1] = -1
+            m1 = np.concatenate((m1, heater_aux), axis=0)
+            ### needs more specification for each possible heater
+        elif j == 5 and hx_token == 1:
+            m1[i][hotside_index - 1] = -1 * exergies[hotside_index - 1]
+            m1[i][hotside_index] = exergies[hotside_index]
+            m1[i][coldside_index - 1] = -1 * exergies[coldside_index - 1]
+            m1[i][coldside_index] = exergies[coldside_index]
+            hxer_aux = np.copy(zero_row)
+            hxer_aux[0][hotside_index - 1] = 1
+            hxer_aux[0][hotside_index] = -1
+            m1 = np.concatenate((m1, hxer_aux), axis=0)
+            hx_token = 0
+    total_electricity_production[0][-1] = -1 * (sum(w_tur) - sum(w_comp))
+    total_electricity_aux[0][-1] = 1
+    m1 = np.concatenate((m1, total_electricity_production), axis=0)
+    m1 = np.concatenate((m1, total_electricity_aux), axis=0)
+    cost_of_fg = np.copy(zero_row)
+    cost_of_fg[0][len(equipment)] = 1
+    m1 = np.concatenate((m1, cost_of_fg), axis=0)
+    m2 = zk + [0] * (len(m1) - len(zk))
+    m2[-1] = 8.9e-9 * 3600
+    m2 = np.asarray(m2).reshape(-1)
+    redundancy = np.where(np.all(m1 == 0, axis=1) == True)[0]
+    m1 = np.delete(m1, redundancy, axis=0)
+    m2 = np.delete(m2, redundancy, axis=0)
+    try:
+        costs = np.linalg.solve(m1, m2)
+    except:
+        print("Matrix solution problem")
+        return PENALTY_VALUE
+    closs = costs[len(equipment)+1] * e_fgout
+    cfuel = costs[len(equipment)] * e_fgin
+    Ztot = sum(zk)
+    cproduct = cfuel+Ztot-closs
+    Ep = sum(w_tur) - sum(w_comp)
+    cdiss = 
     np.set_printoptions(precision=2, suppress=True)
     print(
         f"""
@@ -264,6 +350,7 @@ def results_analysis(x, unitsx):
     Compressor Pratio = {comp_pratio:.2f} 
     Temperatures = {Temperatures}
     Pressures =    {Pressures}
+    {costs/3600*1e9}
 
         """
     )
@@ -280,10 +367,10 @@ def results_analysis(x, unitsx):
 #     Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
 #     Objective Function value = {c}
 #     Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
-#     {costs/3600*1e9}
+#     {m1/3600*1e9}
 #     {sum(pec)}
 #     {sum(zk)}
-#     Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={costs[-3]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoex:.2f}
+#     Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={m1[-3]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoex:.2f}
 #     Cp/Ep = {Cp/(Ep/1e6)}
 #     Thermal efficiency = {Ep/40.53e6}
 
