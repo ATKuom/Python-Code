@@ -1,3 +1,13 @@
+# Mixing with different pressures is a problem.
+# Assumption of flashing the higher pressure stream to the lower pressure stream can be made to mix them.
+# Splitter/mixer sitatuion will create different m values which necessitates a more complex approach to the hx.
+# More than one heater fg_out and exergy analysis maybe necessary?
+# At least a partioning between the heaters based on their share on the total heat duty is a reasonable appraoch?
+# All the m inputs in the functions must be changed accordingly after the implementation of splitter/mixer
+# After determining the pressures of the system without the mixer, then the mixer must adjust the pressure of the output using the lowest pressure input
+# Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
+# Splitter/mixer effects on exergy and overall structure must be analysed
+
 import numpy as np
 import torch
 import random
@@ -6,10 +16,6 @@ from STL_RS import results_analysis
 from econ import economics
 from functions import (
     lmtd,
-    turbine,
-    compressor,
-    cooler,
-    heater,
     h_s_fg,
     fg_calculation,
     HX_calculation,
@@ -45,14 +51,14 @@ layout = torch.tensor(
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
     ]
 )
-unitsx = layout[1:-1]
-print(unitsx)
-equipment = np.zeros(len(unitsx)).tolist()
+units = layout[1:-1]
+print(units)
 x = []
-bounds = list(range(len(unitsx)))
+equipment = np.zeros(len(units)).tolist()
+bounds = list(range(len(units)))
 hx_token = 1
-for i in range(len(unitsx)):
-    a = np.where(unitsx[i] == 1)[0][0]
+for i in range(len(units)):
+    a = np.where(units[i] == 1)[0][0]
     if a == 1:
         equipment[i] = 1
         bounds[i] = (74e5, 300e5)
@@ -67,23 +73,22 @@ for i in range(len(unitsx)):
         bounds[i] = (180, 530)
     elif a == 5:
         equipment[i] = 5
-        if hx_token == 1:
-            bounds[i] = (4, 11)
-            hx_token = 0
-        else:
-            bounds[i] = (0, 0)
+        bounds[i] = (4, 11)
     elif a == 6:
         equipment[i] = 6
 bounds.append((50, 160))
 print(equipment)
 print(bounds)
-particle_size = 7 * len(bounds)
-iterations = 10
+# PSO Parameters
+if 5 in equipment:
+    particle_size = 7 * (len(bounds) - 1)
+else:
+    particle_size = 7 * len(bounds)
+iterations = 100
 nv = len(bounds)
-enumerated_equipment = list(enumerate(equipment))
 
 
-def objective_function(x, unitsx):
+def objective_function(x, equipment):
     ntur = 85  # turbine efficiency     2019 Nabil
     ncomp = 82  # compressor efficiency 2019 Nabil
     cw_temp = 19  # °C
@@ -93,37 +98,44 @@ def objective_function(x, unitsx):
     heater_pdrop = 0
     hx_pdrop = 0.5e5
     PENALTY_VALUE = float(1e6)
-    pec = list()
-    hx_position = list()
-    m = x[-1]
 
-    Temperatures = np.zeros(len(unitsx))
-    Pressures = np.zeros(len(unitsx))
-    enthalpies = np.zeros(len(unitsx))
-    entropies = np.zeros(len(unitsx))
-    exergies = np.zeros(len(unitsx))
-    w_comp = np.zeros(len(unitsx))
-    cost_comp = np.zeros(len(unitsx))
-    w_tur = np.zeros(len(unitsx))
-    cost_tur = np.zeros(len(unitsx))
-    q_cooler = np.zeros(len(unitsx))
-    cost_cooler = np.zeros(len(unitsx))
-    q_heater = np.zeros(len(unitsx))
-    cost_heater = np.zeros(len(unitsx))
-    q_hx = np.zeros(len(unitsx))
-    cost_hx = np.zeros(len(unitsx))
+    enumerated_equipment = list(enumerate(equipment))
+    Temperatures = np.zeros(len(equipment))
+    Pressures = np.zeros(len(equipment))
+    enthalpies = np.zeros(len(equipment))
+    entropies = np.zeros(len(equipment))
+    exergies = np.zeros(len(equipment))
+    w_comp = np.zeros(len(equipment))
+    cost_comp = np.zeros(len(equipment))
+    comp_pratio = np.ones(len(equipment))
+    w_tur = np.zeros(len(equipment))
+    cost_tur = np.zeros(len(equipment))
+    tur_pratio = np.ones(len(equipment))
+    q_cooler = np.zeros(len(equipment))
+    cost_cooler = np.zeros(len(equipment))
+    dissipation = np.zeros(len(equipment))
+    q_heater = np.zeros(len(equipment))
+    cost_heater = np.zeros(len(equipment))
+    q_hx = np.zeros(len(equipment))
+    cost_hx = np.zeros(len(equipment))
 
-    Pressures, Temperatures, approach_temp, split_ratio = decision_variable_placement(
-        x, enumerated_equipment, Pressures, Temperatures
-    )
+    (
+        Pressures,
+        Temperatures,
+        approach_temp,
+        split_ratio,
+        m,
+    ) = decision_variable_placement(x, enumerated_equipment, Pressures, Temperatures)
     # Pressure calculation splitter part is missing still
     Pressures = Pressure_calculation(
         Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop
     )
     # Turbine and Compressor pressure ratio calculation and checking
-    tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
+    tur_pratio, comp_pratio = tur_comp_pratio(
+        enumerated_equipment, Pressures, tur_pratio, comp_pratio
+    )
 
-    if tur_pratio < 1 or comp_pratio < 1:
+    if np.any(tur_pratio < 1) or np.any(comp_pratio < 1):
         # print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
 
@@ -303,55 +315,100 @@ def objective_function(x, unitsx):
     pec = cost_tur + cost_hx + cost_cooler + cost_comp + cost_heater
     prod_capacity = (sum(w_tur) - sum(w_comp)) / 1e6
     zk, cfueltot, lcoe = economics(pec, prod_capacity)
-
     # Thermo-economic Analysis
+    m1 = np.zeros(
+        (
+            len(equipment),
+            (len(equipment) + equipment.count(1) + equipment.count(3) + 3),
+        )
+    )
+    zero_row = np.zeros(m1.shape[1]).reshape(1, -1)
+    total_electricity_production = np.copy(zero_row)
+    total_electricity_aux = np.copy(zero_row)
+    turbine_token = equipment.count(1)
+    comp_token = equipment.count(3)
+    hx_token = 1
+    for i, j in enumerated_equipment:
+        if i == 0:
+            inlet = len(Temperatures) - 1
+        else:
+            inlet = i - 1
+        outlet = i
 
-    return lcoe
-
-
-# The output of ML model will be one-hot encoded strings of the layouts
-# The output will be cut down using start and end tokens to identify the units in the layout
-# Known things from the string: Number of units, their placements, and their connections
-# Decision variables are added to the PSO based on their units and placements
-# Unit input T and P of i unit = T(i-1), P(i-1) Unit output T and P of i unit = T(i), P(i)
-# Pressures of the system are identified then calculated using turbine and compressor pressure ratios
-# Temperatures of the system are identified then inputted using Cooler and heater target Temperatures
-# Mass flow of streams are identified then calculated using mass variable and splitter ratios
-# Order of calculations can be done by checking if T(i-1) and P(i-1) are known, if so, calculate the unit function and get T(i) and P(i)
-
-# In my mind there is two different versions of implementation, one is a while loop which constantly checks to obtain all values for T and P and when it is able to obtain them
-# It can progress further with exergy analysis,economy analysis and exergoeconomic analysis to obtain the objective function value for the layout and the variables
-# It is implemented like checking to see if the input values are known for the functions, if they are, calculate the function and get the output values
-# The other version is finding a way to order the functions in a way that the input values are known for the functions, if they are, calculate the function and get the output values
-
-# UNIT_FROM_CHAR = {'T': Turbine}
-
-# def word_to_units(sequence):
-#     return [UNIT_FROM_CHAR[char]() for char in sequence]
-
-
-# if __name__ == "__main__":
-#     layout = expert_designs
-#     word_to_units(layout[1])
-
-# [T,A,C,H,T,T,C]
-# class for units?
-# while look without backup or some kind of alternative ending to stop
-# #####Profiling if it is slow? Finding the real cause of the speed problems not just assumptions, programs or timing each part to see the performance
-# data oriented programming
-
-# class Turbine:
-#     DecisionVariables = namedtuple('DecisionVariables', 'Pressures[i]')
-#     var: DecisionVariables
-
-#     def __init__(self, *var):
-#         if len(var) == 0:
-#             self.var = #assign randomly
-#         self.var = DecisionVariables(var)
-
-#     def outlet_parameters(self, *inlet_parameters):
-#         # do computation based on var
-#         return outlet_parameters
+        if j == 1:
+            m1[i][inlet] = -1 * exergies[inlet]
+            m1[i][outlet] = exergies[outlet]
+            m1[i][len(equipment) + 1 + turbine_token] = w_tur[outlet]
+            total_electricity_production[0][len(equipment) + 1 + turbine_token] = w_tur[
+                outlet
+            ]
+            turbine_aux = np.copy(zero_row)
+            turbine_aux[0][inlet] = 1
+            turbine_aux[0][outlet] = -1
+            m1 = np.concatenate((m1, turbine_aux), axis=0)
+            turbine_token -= 1
+        elif j == 2:
+            cooler_aux = np.copy(zero_row)
+            cooler_aux[0][inlet] = 1
+            cooler_aux[0][outlet] = -1
+            m1 = np.concatenate((m1, cooler_aux), axis=0)
+        elif j == 3:
+            m1[i][inlet] = -1 * exergies[inlet]
+            m1[i][outlet] = exergies[outlet]
+            m1[i][-(1 + comp_token)] = -1 * w_comp[outlet]
+            total_electricity_production[0][-(1 + comp_token)] = -1 * w_comp[outlet]
+            total_electricity_aux[0][-(1 + comp_token)] = -1
+            comp_token -= 1
+        elif j == 4:
+            m1[i][inlet] = -1 * exergies[inlet]
+            m1[i][outlet] = exergies[outlet]
+            m1[i][len(equipment)] = -1 * e_fgin
+            m1[i][len(equipment) + 1] = e_fgout
+            heater_aux = np.copy(zero_row)
+            heater_aux[0][len(equipment)] = 1
+            heater_aux[0][len(equipment) + 1] = -1
+            m1 = np.concatenate((m1, heater_aux), axis=0)
+            ### needs more specification for each possible heater
+        elif j == 5 and hx_token == 1:
+            m1[i][hotside_index - 1] = -1 * exergies[hotside_index - 1]
+            m1[i][hotside_index] = exergies[hotside_index]
+            m1[i][coldside_index - 1] = -1 * exergies[coldside_index - 1]
+            m1[i][coldside_index] = exergies[coldside_index]
+            hxer_aux = np.copy(zero_row)
+            hxer_aux[0][hotside_index - 1] = 1
+            hxer_aux[0][hotside_index] = -1
+            m1 = np.concatenate((m1, hxer_aux), axis=0)
+            hx_token = 0
+    total_electricity_production[0][-1] = -1 * (sum(w_tur) - sum(w_comp))
+    total_electricity_aux[0][-1] = 1
+    m1 = np.concatenate((m1, total_electricity_production), axis=0)
+    m1 = np.concatenate((m1, total_electricity_aux), axis=0)
+    cost_of_fg = np.copy(zero_row)
+    cost_of_fg[0][len(equipment)] = 1
+    m1 = np.concatenate((m1, cost_of_fg), axis=0)
+    m2 = zk + [0] * (len(m1) - len(zk))
+    m2[-1] = 8.9e-9 * 3600
+    m2 = np.asarray(m2).reshape(-1)
+    redundancy = np.where(np.all(m1 == 0, axis=1) == True)[0]
+    m1 = np.delete(m1, redundancy, axis=0)
+    m2 = np.delete(m2, redundancy, axis=0)
+    try:
+        costs = np.linalg.solve(m1, m2)
+    except:
+        print("Matrix solution problem")
+        return PENALTY_VALUE
+    Closs = costs[len(equipment) + 1] * e_fgout
+    Cfuel = costs[len(equipment)] * e_fgin
+    Ztot = sum(zk)
+    Cproduct = Cfuel + Ztot - Closs
+    Ep = sum(w_tur) - sum(w_comp)
+    for i, j in enumerated_equipment:
+        if j == 2:
+            dissipation[i] = costs[i] * (exergies[i - 1] - exergies[i]) + zk[i]
+    Cdiss = sum(dissipation)
+    lcoe_calculated = (costs[-1] * Ep + Cdiss + Closs) / (Ep / 1e6)
+    c = lcoe_calculated
+    return c
 
 
 # ------------------------------------------------------------------------------
@@ -377,7 +434,7 @@ class Particle:
 
     def evaluate(self, objective_function):
         self.fitness_particle_position = objective_function(
-            self.particle_position, unitsx
+            self.particle_position, equipment
         )
         if self.fitness_particle_position < self.fitness_local_best_particle_position:
             self.local_best_particle_position = (
@@ -431,7 +488,7 @@ class PSO:
         for i in range(particle_size):
             swarm_particle.append(Particle(bounds))
         A = []
-        k = 0
+        total_number_of_particle_evaluation = 0
         for i in range(iterations):
             w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
             c1 = -3 * (i / iterations) + 3.5
@@ -440,11 +497,11 @@ class PSO:
             print(w, c1, c2)
             for j in range(particle_size):
                 swarm_particle[j].evaluate(objective_function)
-                k += 1
+                total_number_of_particle_evaluation += 1
                 while swarm_particle[j].fitness_particle_position == PENALTY_VALUE:
                     swarm_particle[j] = Particle(bounds)
                     swarm_particle[j].evaluate(objective_function)
-                    k += 1
+                    total_number_of_particle_evaluation += 1
                 if (
                     swarm_particle[j].fitness_particle_position
                     < fitness_global_best_particle_position
@@ -466,8 +523,8 @@ class PSO:
         print("Result:")
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)
-        results_analysis(global_best_particle_position, unitsx)
-        print(k)
+        results_analysis(global_best_particle_position, equipment)
+        print(total_number_of_particle_evaluation)
         # plt.plot(A)
 
 
@@ -484,4 +541,3 @@ x = [
     411.4,
     93.18,
 ]
-# objective_function(x, unitsx)

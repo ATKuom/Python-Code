@@ -183,12 +183,12 @@ def result_analyses(x):
     Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
     Objective Function value = {c}
     Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
-    {costs/3600*1e9}
-    {sum(pec)}
-    {sum(zk)}
+    Exergy costing of streams = {costs/3600*1e9} $/GJ
+    Total PEC = {sum(pec):.2f} $
+    Total Zk  = {sum(zk):.2f} $/h
     Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={costs[-3]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoex:.2f}
-    Cp/Ep = {Cp/(Ep/1e6)}
-    Thermal efficiency = {Ep/40.53e6}
+    Cp/Ep = {Cp/(Ep/1e6):.2f}
+    Thermal efficiency = {Ep/40.53e6*100:.2f}%
         """
     )
 

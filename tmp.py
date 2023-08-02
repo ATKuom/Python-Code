@@ -68,3 +68,39 @@
 # 1. pec += [cost_tur, ...]
 # 2. pec.extend([cost_tur, ...])
 # 3.
+
+# cost list creation rather than array
+# m1 = [
+#     i[:]
+#     for i in [[0] * (len(equipment) + equipment.count(1) + equipment.count(3) + 3)]
+#     * len(equipment)
+# ]
+
+# UNIT_FROM_CHAR = {'T': Turbine}
+
+# def word_to_units(sequence):
+#     return [UNIT_FROM_CHAR[char]() for char in sequence]
+
+
+# if __name__ == "__main__":
+#     layout = expert_designs
+#     word_to_units(layout[1])
+
+# [T,A,C,H,T,T,C]
+# class for units?
+# while look without backup or some kind of alternative ending to stop
+# #####Profiling if it is slow? Finding the real cause of the speed problems not just assumptions, programs or timing each part to see the performance
+# data oriented programming
+
+# class Turbine:
+#     DecisionVariables = namedtuple('DecisionVariables', 'Pressures[i]')
+#     var: DecisionVariables
+
+#     def __init__(self, *var):
+#         if len(var) == 0:
+#             self.var = #assign randomly
+#         self.var = DecisionVariables(var)
+
+#     def outlet_parameters(self, *inlet_parameters):
+#         # do computation based on var
+#         return outlet_parameters

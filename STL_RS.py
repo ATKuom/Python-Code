@@ -32,7 +32,7 @@ from functions import (
 )
 
 
-def results_analysis(x, unitsx):
+def results_analysis(x, equipment):
     ntur = 85  # turbine efficiency     2019 Nabil
     ncomp = 82  # compressor efficiency 2019 Nabil
     cw_temp = 19  # °C
@@ -42,37 +42,45 @@ def results_analysis(x, unitsx):
     heater_pdrop = 0
     hx_pdrop = 0.5e5
     PENALTY_VALUE = float(1e6)
-    pec = list()
-    hx_position = list()
-    m = x[-1]
 
-    Temperatures = np.zeros(len(unitsx))
-    Pressures = np.zeros(len(unitsx))
-    enthalpies = np.zeros(len(unitsx))
-    entropies = np.zeros(len(unitsx))
-    exergies = np.zeros(len(unitsx))
-    w_comp = np.zeros(len(unitsx))
-    cost_comp = np.zeros(len(unitsx))
-    w_tur = np.zeros(len(unitsx))
-    cost_tur = np.zeros(len(unitsx))
-    q_cooler = np.zeros(len(unitsx))
-    cost_cooler = np.zeros(len(unitsx))
-    q_heater = np.zeros(len(unitsx))
-    cost_heater = np.zeros(len(unitsx))
-    q_hx = np.zeros(len(unitsx))
-    cost_hx = np.zeros(len(unitsx))
+    enumerated_equipment = list(enumerate(equipment))
+    Temperatures = np.zeros(len(equipment))
+    Pressures = np.zeros(len(equipment))
+    enthalpies = np.zeros(len(equipment))
+    entropies = np.zeros(len(equipment))
+    exergies = np.zeros(len(equipment))
+    w_comp = np.zeros(len(equipment))
+    cost_comp = np.zeros(len(equipment))
+    comp_pratio = np.ones(len(equipment))
+    w_tur = np.zeros(len(equipment))
+    cost_tur = np.zeros(len(equipment))
+    tur_pratio = np.ones(len(equipment))
+    q_cooler = np.zeros(len(equipment))
+    cost_cooler = np.zeros(len(equipment))
+    dissipation = np.zeros(len(equipment))
+    q_heater = np.zeros(len(equipment))
+    cost_heater = np.zeros(len(equipment))
+    q_hx = np.zeros(len(equipment))
+    cost_hx = np.zeros(len(equipment))
 
-    Pressures, Temperatures, approach_temp, split_ratio = decision_variable_placement(
-        x, enumerated_equipment, Pressures, Temperatures
-    )
+    (
+        Pressures,
+        Temperatures,
+        approach_temp,
+        split_ratio,
+        m,
+    ) = decision_variable_placement(x, enumerated_equipment, Pressures, Temperatures)
 
     # Pressure calculation splitter part is missing still
     Pressures = Pressure_calculation(
         Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop
     )
     # Turbine and Compressor pressure ratio calculation and checking
-    tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
-    if tur_pratio < 1 or comp_pratio < 1:
+    tur_pratio, comp_pratio = tur_comp_pratio(
+        enumerated_equipment, Pressures, tur_pratio, comp_pratio
+    )
+
+    if np.any(tur_pratio < 1) or np.any(comp_pratio < 1):
         print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
 
@@ -253,13 +261,13 @@ def results_analysis(x, unitsx):
     # Exergy Analysis
     # m1 = [
     #     i[:]
-    #     for i in [[0] * (len(unitsx) + equipment.count(1) + equipment.count(3) + 3)]
+    #     for i in [[0] * (len(equipment) + equipment.count(1) + equipment.count(3) + 3)]
     #     * len(equipment)
     # ]
     m1 = np.zeros(
         (
             len(equipment),
-            (len(unitsx) + equipment.count(1) + equipment.count(3) + 3),
+            (len(equipment) + equipment.count(1) + equipment.count(3) + 3),
         )
     )
     zero_row = np.zeros(m1.shape[1]).reshape(1, -1)
@@ -337,42 +345,39 @@ def results_analysis(x, unitsx):
     except:
         print("Matrix solution problem")
         return PENALTY_VALUE
-    closs = costs[len(equipment)+1] * e_fgout
-    cfuel = costs[len(equipment)] * e_fgin
+    Closs = costs[len(equipment) + 1] * e_fgout
+    Cfuel = costs[len(equipment)] * e_fgin
     Ztot = sum(zk)
-    cproduct = cfuel+Ztot-closs
+    Cproduct = Cfuel + Ztot - Closs
     Ep = sum(w_tur) - sum(w_comp)
-    cdiss = 
+    for i, j in enumerated_equipment:
+        if j == 2:
+            dissipation[i] = costs[i] * (exergies[i - 1] - exergies[i]) + zk[i]
+    Cdiss = sum(dissipation)
+    lcoe_calculated = (costs[-1] * Ep + Cdiss + Closs) / (Ep / 1e6)
+    c = lcoe_calculated
     np.set_printoptions(precision=2, suppress=True)
+
     print(
         f"""
-    Turbine Pratio = {tur_pratio:.2f}
-    Compressor Pratio = {comp_pratio:.2f} 
-    Temperatures = {Temperatures}
-    Pressures =    {Pressures}
-    {costs/3600*1e9}
-
+    Turbine Pratio = {tur_pratio[np.where(tur_pratio>1)[0]]}
+    Turbine Output = {w_tur[np.where(w_tur>0)[0]]/1e6}MW
+    Compressor Pratio = {comp_pratio[np.where(comp_pratio>1)[0]]}
+    Compressor Input = {w_comp[np.where(w_comp>0)[0]]/1e6}MW
+    Temperatures = {Temperatures}   Tstack = {fg_tout:.1f}    DT = {approach_temp} 
+    Pressures =    {Pressures/1e5}bar
+    Equipment Cost = {pec/1e3}
+    Objective Function value = {c}
+    Exergy of streams = {exergies/1e6}MW
+    Exergy costing of streams = {costs/3600*1e9} $/GJ
+    Total PEC = {sum(pec):.2f} $
+    Total Zk  = {sum(zk):.2f} $/h
+    Cdiss = {Cdiss:.2f} Cl = {Closs:.2f} Cp ={costs[-1]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
+    Cp/Ep = {Cproduct/(Ep/1e6):.2f}
+    Thermal efficiency = {Ep/40.53e6*100:.2f}%
         """
     )
-    return lcoe
-
-
-# Turbine Pratio = {tur_pratio:.2f}   p6/p1={Pressure[5]:.2f}bar/{Pressure[0]:.2f}bar
-#     Turbine output = {unit_energy[0]:.2f}MW
-#     Compressor Pratio = {comp_pratio:.2f}   p3/p4={Pressure[3]:.2f}bar/{Pressure[2]:.2f}bar
-#     Compressor Input = {unit_energy[1]:.2f}MW
-#     Temperatures = t1={t1:.1f}   t2={t2:.1f}    t3={t3:.1f}    t4={t4:.1f}     t5={t5:.1f}    t6={t6:.1f}   Tstack={fg_tout:.1f}    DT ={approach_temp:.1f}
-#     Pressures =    p1={Pressure[0]:.1f}bar p2={Pressure[1]:.1f}bar p3={Pressure[2]:.1f}bar p4={Pressure[3]:.1f}bar p5={Pressure[4]:.1f}bar p6={Pressure[5]:.1f}bar
-#     Equipment Cost = Tur={cost_tur/1e3:.0f}    HX={cost_hx/1e3:.0f}    Cooler={cost_cooler/1e3:.0f}    Compr={cost_comp/1e3:.0f}   Heater={cost_heater/1e3:.0f}
-#     Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
-#     Objective Function value = {c}
-#     Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
-#     {m1/3600*1e9}
-#     {sum(pec)}
-#     {sum(zk)}
-#     Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={m1[-3]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoex:.2f}
-#     Cp/Ep = {Cp/(Ep/1e6)}
-#     Thermal efficiency = {Ep/40.53e6}
+    return c
 
 
 if __name__ == "__main__":
@@ -421,13 +426,22 @@ if __name__ == "__main__":
     iterations = 30
     nv = len(bounds)
     enumerated_equipment = list(enumerate(equipment))
+    # x = [
+    #     78.5e5,
+    #     10.8,
+    #     32.3,
+    #     241.3e5,
+    #     10.8,
+    #     411.4,
+    #     93.18,
+    # ]
     x = [
-        78.5e5,
-        10.8,
-        32.3,
-        241.3e5,
-        10.8,
-        411.4,
-        93.18,
+        7862533.502913576,
+        11,
+        32,
+        30000000.0,
+        11,
+        409.2294928293156,
+        86.75580085918635,
     ]
-    results_analysis(x, unitsx)
+    results_analysis(x, equipment)

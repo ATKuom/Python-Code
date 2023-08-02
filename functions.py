@@ -206,7 +206,6 @@ def fg_calculation(fg_m, q_heater):
     return fg_tout
 
 
-##Heat exchanger hot and cold side determination needs to be implemented
 def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdrop, m):
     try:
         hotside_outlet = (
@@ -289,7 +288,6 @@ def NG_exergy():
 def decision_variable_placement(x, enumerated_equipment, pressures, temperatures):
     approach_temp = 1
     split_ratio = 1
-    hx_token = 1
     for index, equip in enumerated_equipment:
         if equip == 1:
             pressures[index] = x[index]
@@ -300,14 +298,11 @@ def decision_variable_placement(x, enumerated_equipment, pressures, temperatures
         if equip == 4:
             temperatures[index] = x[index]
         if equip == 5:
-            if hx_token == 1:
-                approach_temp = x[index]
-                hx_token += -1
-            else:
-                pass
+            approach_temp = x[index]
         if equip == 6:
             split_ratio = x[index]
-    return (pressures, temperatures, approach_temp, split_ratio)
+    m = x[-1]
+    return (pressures, temperatures, approach_temp, split_ratio, m)
 
 
 def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop):
@@ -332,18 +327,12 @@ def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pd
     return Pressures
 
 
-def tur_comp_pratio(enumerated_equipment, Pressures):
+def tur_comp_pratio(enumerated_equipment, Pressures, tur_pratio, comp_pratio):
     for index, equip in enumerated_equipment:
         if equip == 1:
-            if index != 0:
-                tur_pratio = Pressures[index - 1] / Pressures[index]
-            else:
-                tur_pratio = Pressures[-1] / Pressures[index]
+            tur_pratio[index] = Pressures[index - 1] / Pressures[index]
         if equip == 3:
-            if index != 0:
-                comp_pratio = Pressures[index] / Pressures[index - 1]
-            else:
-                comp_pratio = Pressures[index] / Pressures[-1]
+            comp_pratio[index] = Pressures[index] / Pressures[index - 1]
     return (tur_pratio, comp_pratio)
 
 
@@ -446,25 +435,10 @@ def heater_calculation(
 
 
 def hx_side_selection(hx_position, Temperatures):
-    if hx_position[0] != 0 and hx_position[1] != 0:
-        if Temperatures[hx_position[0] - 1] > Temperatures[hx_position[1] - 1]:
-            hotside_index = hx_position[0]
-            coldside_index = hx_position[1]
-        else:
-            hotside_index = hx_position[1]
-            coldside_index = hx_position[0]
-    if hx_position[0] == 0:
-        if Temperatures[-1] > Temperatures[hx_position[1] - 1]:
-            hotside_index = -1
-            coldside_index = hx_position[1]
-        else:
-            hotside_index = hx_position[1]
-            coldside_index = -1
-    if hx_position[1] == 0:
-        if Temperatures[hx_position[0] - 1] > Temperatures[-1]:
-            hotside_index = hx_position[0]
-            coldside_index = -1
-        else:
-            hotside_index = -1
-            coldside_index = hx_position[0]
+    if Temperatures[hx_position[0] - 1] >= Temperatures[hx_position[1] - 1]:
+        hotside_index = hx_position[0]
+        coldside_index = hx_position[1]
+    else:
+        hotside_index = hx_position[1]
+        coldside_index = hx_position[0]
     return (hotside_index, coldside_index)
