@@ -543,3 +543,77 @@
     Cp = 8700 * (q_heater / 1e6) * 3600 + Ztot  # $/h = $/MJ * MJ/s * s/h + $/h
     Ep = (w_tur - w_comp) / 1e6  # MW
     """
+
+# Economic analysis with np.where
+#   for work in w_tur:
+#         if work > 0:
+#             index = np.where(w_tur == work)[0][0]
+#             if index == 0:
+#                 index = -1
+#             else:
+#                 index = index - 1
+#             if Temperatures[index] > 550:
+#                 ft_tur = 1 + 1.137e-5 * (Temperatures[index] - 550) ** 2
+#             else:
+#                 ft_tur = 1
+#             cost_tur[index + 1] = 406200 * ((work / 1e6) ** 0.8) * ft_tur
+
+#     for work in w_comp:
+#         if work > 0:
+#             cost_comp[np.where(w_comp == work)[0][0]] = 1230000 * (work / 1e6) ** 0.3992
+
+#     for work in q_cooler:
+#         if work > 0:
+#             index = np.where(q_cooler == work)[0][0]
+#             if index == 0:
+#                 index = -1
+#             else:
+#                 index = index - 1
+#             dt1_cooler = Temperatures[index + 1] - cw_temp
+#             dt2_cooler = Temperatures[index] - cw_Tout(work)
+#             if dt2_cooler < 0 or dt1_cooler < 0:
+#                 return PENALTY_VALUE
+#             UA_cooler = (work / 1) / lmtd(dt1_cooler, dt2_cooler)  # W / °C
+#             if Temperatures[index - 1] > 550:
+#                 ft_cooler = 1 + 0.02141 * (Temperatures[index - 1] - 550)
+#             else:
+#                 ft_cooler = 1
+#             cost_cooler[index + 1] = 49.45 * UA_cooler**0.7544 * ft_cooler  # $
+#     for work in q_heater:
+#         if work > 0:
+#             index = np.where(q_heater == work)[0][0]
+#             if index == 0:
+#                 index = -1
+#             else:
+#                 index = index - 1
+#             fg_tout_i = fg_calculation(fg_m * work / total_heat, work)
+#             dt1_heater = fg_tin - Temperatures[index + 1]
+#             dt2_heater = fg_tout_i - Temperatures[index]
+#             if dt2_heater < 0 or dt1_heater < 0:
+#                 return PENALTY_VALUE
+#             UA_heater = (work / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
+#             cost_heater[index + 1] = 5000 * UA_heater  # Thesis 97/pdf116
+#     for work in q_hx:
+#         if work > 0:
+#             index = np.where(q_hx == work)[0][0]
+#             if index == 0:
+#                 index = -1
+#             else:
+#                 index = index - 1
+#             dt1_hx = Temperatures[hotside_index - 1] - Temperatures[coldside_index]
+#             dt2_hx = Temperatures[hotside_index] - Temperatures[coldside_index - 1]
+#             if dt2_hx < 0 or dt1_hx < 0:
+#                 return PENALTY_VALUE
+#             UA_hx = (work / 1) / lmtd(dt1_hx, dt2_hx)  # W / °C
+#             if Temperatures[hotside_index - 1] > 550:
+#                 ft_hx = 1 + 0.02141 * (Temperatures[hotside_index - 1] - 550)
+#             else:
+#                 ft_hx = 1
+#             cost_hx[index + 1] = 49.45 * UA_hx**0.7544 * ft_hx  # $
+
+# m1 list method
+# m1 = [
+#     i[:]
+#     for i in [[0] * (len(equipment) + equipment.count(1) + equipment.count(3) + 3)]
+#     * len(equipment)
+# ]
