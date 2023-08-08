@@ -1,14 +1,24 @@
+# Mixing with different pressures is a problem.
+# Assumption of flashing the higher pressure stream to the lower pressure stream can be made to mix them.
+# Splitter/mixer sitatuion will create different m values which necessitates a more complex approach to the hx.
+# All the m inputs in the functions must be changed accordingly after the implementation of splitter/mixer
+# After determining the pressures of the system without the mixer, then the mixer must adjust the pressure of the output using the lowest pressure input
+# Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
+# Splitter/mixer effects on exergy and overall structure must be analysed
+# 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
+# ------------Completed Tasks------------
+# More than one heater fg_out and exergy analysis maybe necessary?
+# At least a partioning between the heaters based on their share on the total heat duty is a reasonable appraoch?
+# The partioning is done but the extra e_fgin and e_fgout may be necessary to include per each heater to satisfy the square matrix requirement of the exergy analysis
+
 import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
+from STL_RS import results_analysis
 from econ import economics
 from functions import (
     lmtd,
-    turbine,
-    compressor,
-    cooler,
-    heater,
     h_s_fg,
     fg_calculation,
     HX_calculation,
@@ -32,7 +42,64 @@ from functions import (
 )
 
 
-def results_analysis(x, equipment):
+layout = torch.tensor(
+    [
+        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+    ]
+)
+units = layout[1:-1]
+print(units)
+x = []
+equipment = np.zeros(len(units)).tolist()
+bounds = list(range(len(units)))
+hx_token = 1
+for i in range(len(units)):
+    a = np.where(units[i] == 1)[0][0]
+    if a == 1:
+        equipment[i] = 1
+        bounds[i] = (74e5, 300e5)
+    elif a == 2:
+        equipment[i] = 2
+        bounds[i] = (32, 38)
+    elif a == 3:
+        equipment[i] = 3
+        bounds[i] = (74e5, 300e5)
+    elif a == 4:
+        equipment[i] = 4
+        bounds[i] = (180, 530)
+    elif a == 5:
+        equipment[i] = 5
+        if hx_token == 1:
+            bounds[i] = (4, 11)
+            hx_token = 0
+        else:
+            bounds[i] = (0, 0)
+    elif a == 6:
+        equipment[i] = 6
+bounds.append((50, 160))
+print(equipment)
+print(bounds)
+# PSO Parameters
+swarmsize_factor = 7
+particle_size = swarmsize_factor * len(bounds)
+if 5 in equipment:
+    particle_size += -1 * swarmsize_factor
+if 7 in equipment:
+    particle_size += -2 * swarmsize_factor
+iterations = 100
+nv = len(bounds)
+print(particle_size)
+print(nv)
+
+
+def objective_function(x, equipment):
     ntur = 85  # turbine efficiency     2019 Nabil
     ncomp = 82  # compressor efficiency 2019 Nabil
     cw_temp = 19  # °C
@@ -72,7 +139,6 @@ def results_analysis(x, equipment):
         split_ratio,
         m,
     ) = decision_variable_placement(x, enumerated_equipment, Pressures, Temperatures)
-
     # Pressure calculation splitter part is missing still
     Pressures = Pressure_calculation(
         Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop
@@ -83,7 +149,7 @@ def results_analysis(x, equipment):
     )
 
     if np.any(tur_pratio < 1) or np.any(comp_pratio < 1):
-        print("Turbine or Compressor pressure ratio is less than 1")
+        # print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
 
     while Temperatures.prod() == 0:
@@ -107,11 +173,11 @@ def results_analysis(x, equipment):
         )
         for work in w_tur:
             if work < 0:
-                print("Turbine work is negative")
+                # print("Turbine work is negative")
                 return PENALTY_VALUE
         for work in w_comp:
             if work < 0:
-                print("Compressor work is negative")
+                # print("Compressor work is negative")
                 return PENALTY_VALUE
         hx_position = [i for i, j in enumerated_equipment if j == 5]
         if (
@@ -124,7 +190,7 @@ def results_analysis(x, equipment):
                 Temperatures[hotside_index - 1]
                 < Temperatures[coldside_index - 1] + approach_temp
             ):
-                print("Infeasible HX")
+                # print("Infeasible HX")
                 return PENALTY_VALUE
             try:
                 (
@@ -148,6 +214,9 @@ def results_analysis(x, equipment):
                 )
             except:
                 breakpoint()
+    if sum(w_tur) < sum(w_comp):
+        # print("Negative Net Power Production")
+        return PENALTY_VALUE
     enthalpies, entropies, q_cooler = cooler_calculation(
         enumerated_equipment,
         Temperatures,
@@ -160,7 +229,7 @@ def results_analysis(x, equipment):
     )
     for work in q_cooler:
         if work < 0:
-            print("Infeasible Cooler")
+            # print("Infeasible Cooler")
             return PENALTY_VALUE
 
     enthalpies, entropies, q_heater = heater_calculation(
@@ -177,7 +246,7 @@ def results_analysis(x, equipment):
     total_heat = sum(q_heater)
     fg_tout = fg_calculation(fg_m, total_heat)
     if fg_tout < 90:
-        print("Too low stack temperature")
+        # print("Too low stack temperature")
         return PENALTY_VALUE
     hout_fg, sout_fg = h_s_fg(fg_tout, P0)
 
@@ -186,6 +255,7 @@ def results_analysis(x, equipment):
         exergies[streams] = m * (
             enthalpies[streams] - h0 - (T0 + K) * (entropies[streams] - s0)
         )
+
     for i, work in enumerate(q_heater):
         e_fgin[i] = (work / total_heat) * (
             fg_m * (hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)) + 0.5e6
@@ -264,7 +334,6 @@ def results_analysis(x, equipment):
         else:
             inlet = i - 1
         outlet = i
-
         if j == 1:
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
@@ -309,7 +378,6 @@ def results_analysis(x, equipment):
             hxer_aux[0][hotside_index] = -1
             m1 = np.concatenate((m1, hxer_aux), axis=0)
             hx_token = 0
-
     total_electricity_production[0][-1] = -1 * (sum(w_tur) - sum(w_comp))
     total_electricity_aux[0][-1] = 1
     m1 = np.concatenate((m1, total_electricity_production), axis=0)
@@ -323,11 +391,10 @@ def results_analysis(x, equipment):
     redundancy = np.where(np.all(m1 == 0, axis=1) == True)[0]
     m1 = np.delete(m1, redundancy, axis=0)
     m2 = np.delete(m2, redundancy, axis=0)
-
     try:
         costs = np.linalg.solve(m1, m2)
     except:
-        print("Matrix solution problem")
+        # print("Matrix solution problem")
         return PENALTY_VALUE
     Closs = costs[len(equipment) + 1] * sum(e_fgout)
     Cfuel = costs[len(equipment)] * sum(e_fgin)
@@ -340,83 +407,136 @@ def results_analysis(x, equipment):
     Cdiss = sum(dissipation)
     lcoe_calculated = (costs[-1] * Ep + Cdiss + Closs) / (Ep / 1e6)
     c = lcoe_calculated
-    np.set_printoptions(precision=2, suppress=True)
-
-    print(
-        f"""
-    Turbine Pratio = {tur_pratio[np.where(tur_pratio>1)[0]]}
-    Turbine Output = {w_tur[np.where(w_tur>0)[0]]/1e6}MW
-    Compressor Pratio = {comp_pratio[np.where(comp_pratio>1)[0]]}
-    Compressor Input = {w_comp[np.where(w_comp>0)[0]]/1e6}MW
-    Temperatures = {Temperatures}   Tstack = {fg_tout:.1f}    DT = {approach_temp} 
-    Pressures =    {Pressures/1e5}bar
-    Equipment Cost = {pec/1e3}
-    Equipment Duty = Qheater={q_heater[np.where(q_heater>0)[0]]/1e6}MW Qcooler={q_cooler[np.where(q_cooler>0)[0]]/1e6}MW Qhx={q_hx[np.where(q_hx>0)[0]]/1e6}MW
-    Objective Function value = {c}
-    Exergy of streams = {exergies/1e6}MW
-    Exergy costing of streams = {costs/3600*1e9} $/GJ
-    Total PEC = {sum(pec):.2f} $
-    Total Zk  = {sum(zk):.2f} $/h
-    Cdiss = {Cdiss:.2f} Cl = {Closs:.2f} Cp ={costs[-1]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
-    Cp/Ep = {Cproduct/(Ep/1e6):.2f}
-    Thermal efficiency = {Ep/40.53e6*100:.2f}%
-        """
-    )
     return c
 
 
-if __name__ == "__main__":
-    layout = torch.tensor(
-        [
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-        ]
-    )
-    unitsx = layout[1:-1]
-    equipment = np.zeros(len(unitsx)).tolist()
-    x = []
-    bounds = list(range(len(unitsx)))
-    hx_token = 1
-    for i in range(len(unitsx)):
-        a = np.where(unitsx[i] == 1)[0][0]
-        if a == 1:
-            equipment[i] = 1
-            bounds[i] = (74e5, 300e5)
-        elif a == 2:
-            equipment[i] = 2
-            bounds[i] = (32, 38)
-        elif a == 3:
-            equipment[i] = 3
-            bounds[i] = (74e5, 300e5)
-        elif a == 4:
-            equipment[i] = 4
-            bounds[i] = (180, 530)
-        elif a == 5:
-            equipment[i] = 5
-            if hx_token == 1:
-                bounds[i] = (4, 11)
-                hx_token = 0
-            else:
-                bounds[i] = (0, 0)
-        elif a == 6:
-            equipment[i] = 6
-    bounds.append((50, 160))
-    nv = len(bounds)
-    enumerated_equipment = list(enumerate(equipment))
-    # x = [
-    #     78.5e5,
-    #     10.8,
-    #     32.3,
-    #     241.3e5,
-    #     10.8,
-    #     411.4,
-    #     93.18,
-    # ]
-    x = [13742441.796251044, 4, 32, 30000000.0, 4, 370.3707932393079, 160]
-    results_analysis(x, equipment)
+# ------------------------------------------------------------------------------
+class Particle:
+    def __init__(self, bounds):
+        self.particle_position = []
+        self.particle_velocity = []
+        self.local_best_particle_position = []
+        self.fitness_local_best_particle_position = float(
+            "inf"
+        )  # objective function value of the best particle position
+        self.fitness_particle_position = float(
+            "inf"
+        )  # objective function value of the particle position
+
+        for i in range(nv):
+            self.particle_position.append(
+                random.uniform(bounds[i][0], bounds[i][1])
+            )  # generate random initial position
+            self.particle_velocity.append(
+                random.uniform(-1, 1)
+            )  # generate random initial velocity
+
+    def evaluate(self, objective_function):
+        self.fitness_particle_position = objective_function(
+            self.particle_position, equipment
+        )
+        if self.fitness_particle_position < self.fitness_local_best_particle_position:
+            self.local_best_particle_position = (
+                self.particle_position
+            )  # update particle's local best poition
+            self.fitness_local_best_particle_position = (
+                self.fitness_particle_position
+            )  # update fitness at particle's local best position
+
+    def update_velocity(self, w, c1, c2, global_best_particle_position):
+        for i in range(nv):
+            r1 = random.uniform(0, 2)
+            r2 = random.uniform(0, 2)
+
+            # local explorative position displacement component
+            cognitive_velocity = (
+                c1
+                * r1
+                * (self.local_best_particle_position[i] - self.particle_position[i])
+            )
+
+            # position displacement component towards global best
+            social_velocity = (
+                c2 * r2 * (global_best_particle_position[i] - self.particle_position[i])
+            )
+
+            self.particle_velocity[i] = (
+                w * self.particle_velocity[i] + cognitive_velocity + social_velocity
+            )
+
+    def update_position(self, bounds):
+        for i in range(nv):
+            self.particle_position[i] = (
+                self.particle_position[i] + self.particle_velocity[i]
+            )
+
+            # check and repair to satisfy the upper bounds
+            if self.particle_position[i] > bounds[i][1]:
+                self.particle_position[i] = bounds[i][1]
+            # check and repair to satisfy the lower bounds
+            if self.particle_position[i] < bounds[i][0]:
+                self.particle_position[i] = bounds[i][0]
+
+
+class PSO:
+    def __init__(self, objective_function, bounds, particle_size, iterations):
+        fitness_global_best_particle_position = float("inf")
+        global_best_particle_position = []
+        swarm_particle = []
+        PENALTY_VALUE = float(1e6)
+        for i in range(particle_size):
+            swarm_particle.append(Particle(bounds))
+        A = []
+        total_number_of_particle_evaluation = 0
+        for i in range(iterations):
+            w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
+            c1 = -3 * (i / iterations) + 3.5
+            c2 = 3 * (i / iterations) + 0.5
+            print("iteration = ", i)
+            print(w, c1, c2)
+            for j in range(particle_size):
+                swarm_particle[j].evaluate(objective_function)
+                total_number_of_particle_evaluation += 1
+                while swarm_particle[j].fitness_particle_position == PENALTY_VALUE:
+                    swarm_particle[j] = Particle(bounds)
+                    swarm_particle[j].evaluate(objective_function)
+                    total_number_of_particle_evaluation += 1
+                if (
+                    swarm_particle[j].fitness_particle_position
+                    < fitness_global_best_particle_position
+                ):
+                    global_best_particle_position = list(
+                        swarm_particle[j].particle_position
+                    )
+                    fitness_global_best_particle_position = float(
+                        swarm_particle[j].fitness_particle_position
+                    )
+
+            for j in range(particle_size):
+                swarm_particle[j].update_velocity(
+                    w, c1, c2, global_best_particle_position
+                )
+                swarm_particle[j].update_position(bounds)
+
+            A.append(fitness_global_best_particle_position)  # record the best fitness
+        print("Result:")
+        print("Optimal solutions:", global_best_particle_position)
+        print("Objective function value:", fitness_global_best_particle_position)
+        results_analysis(global_best_particle_position, equipment)
+        print(total_number_of_particle_evaluation)
+        # plt.plot(A)
+
+
+# ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Main PSO
+PSO(objective_function, bounds, particle_size, iterations)
+x = [
+    78.5e5,
+    10.8,
+    32.3,
+    241.3e5,
+    10.8,
+    411.4,
+    93.18,
+]

@@ -36,7 +36,7 @@ bounds = [
 
 # PARAMETERS OF PSO
 particle_size = 7 * len(bounds)  # number of particles
-iterations = 100  # max number of iterations
+iterations = 30  # max number of iterations
 nv = len(bounds)  # number of variables
 
 

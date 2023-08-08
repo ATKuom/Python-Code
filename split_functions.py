@@ -71,24 +71,24 @@ def old_Pressure_calculation(tur_pratio, comp_pratio):
     )
     dp = np.array([0, 1e5, 0.5e5, 0, 1e5, 1e5]).reshape(-1, 1)
     try:
-        pressures = np.linalg.solve(pres, dp)
+        Pressures = np.linalg.solve(pres, dp)
     except:
         # print("singular matrix", tur_pratio, comp_pratio)
         return [0, 0, 0, 0, 0, 0]
-    p1 = pressures.item(0)
+    p1 = Pressures.item(0)
     if p1 < 0:
         # print("negative Pressure")
         return [0, 0, 0, 0, 0, 0]
-    # ub = 300e5 / max(pressures)
-    # lb = 74e5 / max(pressures)
+    # ub = 300e5 / max(Pressures)
+    # lb = 74e5 / max(Pressures)
     # pres_coeff = np.random.uniform(lb, ub)
-    # pressures = pres_coeff * pressures
-    p1 = pressures.item(0)
-    p2 = pressures.item(1)
-    p3 = pressures.item(2)
-    p4 = pressures.item(3)
-    p5 = pressures.item(4)
-    p6 = pressures.item(5)
+    # Pressures = pres_coeff * Pressures
+    p1 = Pressures.item(0)
+    p2 = Pressures.item(1)
+    p3 = Pressures.item(2)
+    p4 = Pressures.item(3)
+    p5 = Pressures.item(4)
+    p6 = Pressures.item(5)
     return (p1, p2, p3, p4, p5, p6)
 
 
@@ -206,7 +206,18 @@ def fg_calculation(fg_m, q_heater):
     return fg_tout
 
 
-def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdrop, m):
+def HX_calculation(
+    Thotin,
+    photin,
+    hhotin,
+    tcoldin,
+    pcoldin,
+    hcoldin,
+    dt,
+    hx_pdrop,
+    m_hotside,
+    m_coldside,
+):
     try:
         hotside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
@@ -214,13 +225,15 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
             .cooling_to_temperature(tcoldin + dt, hx_pdrop)
         )
 
-        dh = hhotin - hotside_outlet.enthalpy
-        q_hx = dh * m
+        dh_hotside = hhotin - hotside_outlet.enthalpy
+        q_hotside = dh_hotside * m_hotside
+        dh_coldside = q_hotside / m_coldside
         coldside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
             .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
-            .heating_to_enthalpy(hcoldin + dh, hx_pdrop)
+            .heating_to_enthalpy(hcoldin + dh_coldside, hx_pdrop)
         )
+        q_hx = q_hotside
         if Thotin - coldside_outlet.temperature < dt:
             raise Exception
     except:
@@ -230,15 +243,15 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
                 .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
                 .heating_to_temperature(Thotin - dt, hx_pdrop)
             )
-
-            dh = coldside_outlet.enthalpy - hcoldin
-            q_hx = dh * m
+            dh_coldside = coldside_outlet.enthalpy - hcoldin
+            q_coldside = dh_coldside * m_coldside
+            dh_hotside = q_coldside / m_hotside
             hotside_outlet = (
                 Fluid(FluidsList.CarbonDioxide)
                 .with_state(Input.temperature(Thotin), Input.pressure(photin))
-                .cooling_to_enthalpy(hhotin - dh, hx_pdrop)
+                .cooling_to_enthalpy(hhotin - dh_hotside, hx_pdrop)
             )
-
+            q_hx = q_coldside
         except:
             return (0, 0, 0, 0, 0, 0, 0)
     return (
@@ -285,30 +298,46 @@ def NG_exergy():
     return Pexergy + Cexergy
 
 
-def decision_variable_placement(x, enumerated_equipment, pressures, temperatures):
+def decision_variable_placement(x, enumerated_equipment):
     approach_temp = 1
     split_ratio = 1
     hx_token = 1
+    Temperatures = np.zeros(len(enumerated_equipment))
+    Pressures = np.zeros(len(enumerated_equipment))
+    mass_flow = np.ones(len(enumerated_equipment)) * x[-1]
     for index, equip in enumerated_equipment:
         if equip == 1:
-            pressures[index] = x[index]
-        if equip == 2:
-            temperatures[index] = x[index]
-        if equip == 3:
-            pressures[index] = x[index]
-        if equip == 4:
-            temperatures[index] = x[index]
-        if equip == 5 and hx_token == 1:
+            Pressures[index] = x[index]
+        elif equip == 2:
+            Temperatures[index] = x[index]
+        elif equip == 3:
+            Pressures[index] = x[index]
+        elif equip == 4:
+            Temperatures[index] = x[index]
+        elif equip == 5 and hx_token == 1:
             approach_temp = x[index]
             hx_token = 0
-        if equip == 9:
+        elif equip == 9:
             split_ratio = x[index]
-    m = x[-1]
-    return (pressures, temperatures, approach_temp, split_ratio, m)
+            branching_start = index
+            branching_end1, branching_end2 = np.where(7 == enumerated_equipment[:, 1])[
+                0
+            ]
+            for i in range(branching_start + 1, branching_end1 + 1):
+                mass_flow[i] = mass_flow[i] * split_ratio
+            for i in range(branching_end1 + 1, branching_end2 + 1):
+                mass_flow[i] = mass_flow[i] * (1 - split_ratio)
+
+    return (Pressures, Temperatures, approach_temp, split_ratio, mass_flow)
 
 
 def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop):
     while Pressures.prod() == 0:
+        equipment = np.asarray(equipment)
+        if np.where(7 == equipment)[0].size != 0:
+            mixer1, mixer2 = np.where(7 == equipment)[0]
+            if Pressures[mixer1 - 1] != 0 and Pressures[mixer2 - 1] != 0:
+                Pressures[mixer2] = min(Pressures[mixer1 - 1], Pressures[mixer2 - 1])
         for i in range(len(Pressures)):
             if Pressures[i] != 0:
                 if i == len(Pressures) - 1:
@@ -318,6 +347,8 @@ def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pd
                         Pressures[0] = Pressures[i] - heater_pdrop
                     if equipment[0] == 5:
                         Pressures[0] = Pressures[i] - hx_pdrop
+                    if equipment[0] == 9:
+                        Pressures[0] = Pressures[i]
 
                 else:
                     if equipment[i + 1] == 2:
@@ -326,10 +357,16 @@ def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pd
                         Pressures[i + 1] = Pressures[i] - heater_pdrop
                     if equipment[i + 1] == 5:
                         Pressures[i + 1] = Pressures[i] - hx_pdrop
+                    if equipment[i + 1] == 9:
+                        Pressures[i + 1] = Pressures[i]
+                        Pressures[mixer1] = Pressures[i]
+
     return Pressures
 
 
-def tur_comp_pratio(enumerated_equipment, Pressures, tur_pratio, comp_pratio):
+def tur_comp_pratio(enumerated_equipment, Pressures):
+    tur_pratio = np.ones(len(enumerated_equipment))
+    comp_pratio = np.ones(len(enumerated_equipment))
     for index, equip in enumerated_equipment:
         if equip == 1:
             tur_pratio[index] = Pressures[index - 1] / Pressures[index]
@@ -348,7 +385,7 @@ def turbine_compressor_calculation(
     equipment,
     ntur,
     ncomp,
-    m,
+    mass_flow,
 ):
     for i in range(len(Temperatures)):
         if Temperatures[i] != 0:
@@ -359,16 +396,22 @@ def turbine_compressor_calculation(
                         entropies[0],
                         Temperatures[0],
                         w_tur[0],
-                    ) = turbine(Temperatures[i], Pressures[i], Pressures[0], ntur, m)
-                if equipment[0] == 3:
+                    ) = turbine(
+                        Temperatures[i], Pressures[i], Pressures[0], ntur, mass_flow[0]
+                    )
+                elif equipment[0] == 3:
                     (
                         enthalpies[0],
                         entropies[0],
                         Temperatures[0],
                         w_comp[0],
                     ) = compressor(
-                        Temperatures[i], Pressures[i], Pressures[0], ncomp, m
+                        Temperatures[i], Pressures[i], Pressures[0], ncomp, mass_flow[0]
                     )
+                elif equipment[0] == 9:
+                    enthalpies[0] = enthalpies[i]
+                    entropies[0] = entropies[i]
+                    Temperatures[0] = Temperatures[i]
 
             else:
                 if equipment[i + 1] == 1:
@@ -378,17 +421,26 @@ def turbine_compressor_calculation(
                         Temperatures[i + 1],
                         w_tur[i + 1],
                     ) = turbine(
-                        Temperatures[i], Pressures[i], Pressures[i + 1], ntur, m
+                        Temperatures[i],
+                        Pressures[i],
+                        Pressures[i + 1],
+                        ntur,
+                        mass_flow[i + 1],
                     )
-                if equipment[i + 1] == 3:
+                elif equipment[i + 1] == 3:
                     (
                         enthalpies[i + 1],
                         entropies[i + 1],
                         Temperatures[i + 1],
                         w_comp[i + 1],
                     ) = compressor(
-                        Temperatures[i], Pressures[i], Pressures[i + 1], ncomp, m
+                        Temperatures[i],
+                        Pressures[i],
+                        Pressures[i + 1],
+                        ncomp,
+                        mass_flow[i + 1],
                     )
+
     return (Temperatures, enthalpies, entropies, w_tur, w_comp)
 
 
@@ -400,7 +452,7 @@ def cooler_calculation(
     entropies,
     q_cooler,
     cooler_pdrop,
-    m,
+    mass_flow,
 ):
     cooler_position = [i for i, j in enumerated_equipment if j == 2]
     for i in cooler_position:
@@ -409,7 +461,11 @@ def cooler_calculation(
             entropies[i],
             q_cooler[i],
         ) = cooler(
-            Temperatures[i - 1], Pressures[i - 1], Temperatures[i], cooler_pdrop, m
+            Temperatures[i - 1],
+            Pressures[i - 1],
+            Temperatures[i],
+            cooler_pdrop,
+            mass_flow[i],
         )
     return (enthalpies, entropies, q_cooler)
 
@@ -422,7 +478,7 @@ def heater_calculation(
     entropies,
     q_heater,
     heater_pdrop,
-    m,
+    mass_flow,
 ):
     heater_position = [i for i, j in enumerated_equipment if j == 4]
     for i in heater_position:
@@ -431,7 +487,11 @@ def heater_calculation(
             entropies[i],
             q_heater[i],
         ) = heater(
-            Temperatures[i - 1], Pressures[i - 1], Temperatures[i], heater_pdrop, m
+            Temperatures[i - 1],
+            Pressures[i - 1],
+            Temperatures[i],
+            heater_pdrop,
+            mass_flow[i],
         )
     return (enthalpies, entropies, q_heater)
 
@@ -444,3 +504,56 @@ def hx_side_selection(hx_position, Temperatures):
         hotside_index = hx_position[1]
         coldside_index = hx_position[0]
     return (hotside_index, coldside_index)
+
+
+def splitter_mixer_calc(
+    Temperatures, Pressures, enthalpies, entropies, mass_flow, equipment
+):
+    splitter = np.where(equipment == 9)[0]
+    mixer1, mixer2 = np.where(equipment == 7)[0]
+    if Temperatures[splitter] != 0:
+        Temperatures[mixer1] = Temperatures[splitter]
+        enthalpies[mixer1] = enthalpies[splitter]
+        entropies[mixer1] = entropies[splitter]
+    if Pressures[mixer1 - 1] == Pressures[mixer2 - 1]:
+        inlet1 = Fluid(FluidsList.CarbonDioxide).with_state(
+            Input.temperature(Temperatures[mixer1 - 1]),
+            Input.pressure(Pressures[mixer1 - 1]),
+        )
+        inlet2 = Fluid(FluidsList.CarbonDioxide).with_state(
+            Input.temperature(Temperatures[mixer2 - 1]),
+            Input.pressure(Pressures[mixer2 - 1]),
+        )
+        outlet = Fluid(FluidsList.CarbonDioxide).mixing(
+            mass_flow[mixer1], inlet1, mass_flow[mixer2], inlet2
+        )
+        Temperatures[mixer2] = outlet.temperature
+        enthalpies[mixer2] = outlet.enthalpy
+        entropies[mixer2] = outlet.entropy
+        return (Temperatures, enthalpies, entropies)
+    if Temperatures[mixer1 - 1] != 0 and Temperatures[mixer2 - 1] != 0:
+        if Pressures[mixer1 - 1] > Pressures[mixer2 - 1]:
+            hp_index = mixer1 - 1
+            lp_index = mixer2 - 2
+        elif Pressures[mixer1 - 1] < Pressures[mixer2 - 1]:
+            hp_index = mixer2 - 1
+            lp_index = mixer1 - 2
+        hp_inlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(
+                Input.temperature(Temperatures[hp_index]),
+                Input.pressure(Pressures[hp_index]),
+            )
+            .isenthalpic_expansion_to_pressure(Pressures[lp_index])
+        )
+        lp_inlet = Fluid(FluidsList.CarbonDioxide).with_state(
+            Input.temperature(Temperatures[lp_index]),
+            Input.pressure(Pressures[lp_index]),
+        )
+        outlet = Fluid(FluidsList.CarbonDioxide).mixing(
+            mass_flow[hp_index + 1], hp_inlet, mass_flow[lp_index + 1], lp_inlet
+        )
+        Temperatures[mixer2] = outlet.temperature
+        enthalpies[mixer2] = outlet.enthalpy
+        entropies[mixer2] = outlet.entropy
+        return (Temperatures, enthalpies, entropies)

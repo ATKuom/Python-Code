@@ -148,7 +148,10 @@ def result_analyses(x):
     m2 = np.asarray(zk[:4] + [0, 0, 8.9e-9 * 3600, 0, 0, 0, 0]).reshape(
         -1,
     )
-
+    print(m1)
+    print(m1.shape)
+    print(m2)
+    print(m2.shape)
     try:
         costs = np.linalg.solve(m1, m2)
     except:
@@ -217,5 +220,12 @@ if __name__ == "__main__":
     # PSO_1a using c=lcoex
     a2 = [32, 430.5046261817056, 7816866.407857994, 30000000.0, 70.36707712421733, 11]
     fit2 = 97.87292554166655
-
-    result_analyses(x1)
+    x = [
+        32,
+        370.3707932393079,
+        13742441.796251044,
+        30000000.0,
+        160,
+        4,
+    ]
+    result_analyses(x)

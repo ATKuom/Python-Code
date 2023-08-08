@@ -617,3 +617,37 @@
 #     for i in [[0] * (len(equipment) + equipment.count(1) + equipment.count(3) + 3)]
 #     * len(equipment)
 # ]
+
+# a = Fluid(FluidsList.CarbonDioxide).with_state(
+#     Input.temperature(100), Input.pressure(101.3e5)
+# )
+# b = Fluid(FluidsList.CarbonDioxide).with_state(
+#     Input.temperature(200), Input.pressure(101.3e5)
+# )
+# c = b.isenthalpic_expansion_to_pressure(90e5)
+# print(c.temperature, b.enthalpy, c.enthalpy)
+# d = Fluid(FluidsList.CarbonDioxide).mixing(4, a, 0.4, b)
+# print(d.temperature)
+# import numpy as np
+
+# ee = [(0, 1), (1, 5), (2, 2), (3, 3), (4, 9), (5, 4), (6, 7), (7, 5), (8, 7), (9, 4)]
+# equipment = [1, 5, 2, 3, 9, 4, 7, 5, 7, 4]
+# ee2 = np.asarray(ee)
+# start = np.where(9 == ee2[:, 1])[0][0]
+# end1, end2 = np.where(7 == ee2[:, 1])[0]
+# print(start, end1, end2)
+# print(equipment)
+# equipment = np.roll(equipment, -start)
+# ee2 = np.roll(ee2, -start, axis=0)
+# start = np.where(9 == ee2[:, 1])[0][0]
+# end1, end2 = np.where(7 == ee2[:, 1])[0]
+# print(start, end1, end2)
+# print(equipment)
+# mass = np.ones(len(equipment))
+# split_ratio = 0.4
+# for i in range(start + 1, end1 + 1):
+#     mass[i] = mass[i] * split_ratio
+# for i in range(end1 + 1, end2 + 1):
+#     mass[i] = mass[i] * (1 - split_ratio)
+# print(mass)
+# print(np.where(equipment == 7)[0])
