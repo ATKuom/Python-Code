@@ -337,7 +337,11 @@ def results_analysis(x, equipment):
     lcoe_calculated = (costs[-1] * Ep + Cdiss + Closs) / (Ep / 1e6)
     c = lcoe_calculated
     np.set_printoptions(precision=2, suppress=True)
-
+    thermal_efficiency = (Ep) / 40.53e6
+    if thermal_efficiency < 0.1575:
+        j = 1000 * (0.30 - thermal_efficiency)
+    else:
+        j = c + max(0, 0.1 - sum(q_hx) / sum(q_heater))
     print(
         f"""
     Turbine Pratio = {tur_pratio[np.where(tur_pratio>1)[0]]}
@@ -355,7 +359,8 @@ def results_analysis(x, equipment):
     Total Zk  = {sum(zk):.2f} $/h
     Cdiss = {Cdiss:.2f} Cl = {Closs:.2f} Cp ={costs[-1]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
     Cp/Ep = {Cproduct/(Ep/1e6):.2f}
-    Thermal efficiency = {Ep/40.53e6*100:.2f}%
+    Thermal efficiency = {thermal_efficiency:.2f}%
+    j = {j:.2f}
         """
     )
     return c
@@ -414,5 +419,13 @@ if __name__ == "__main__":
     #     411.4,
     #     93.18,
     # ]
-    x = [13777054.506923994, 4.0, 32.0, 30000000.0, 4.0, 372.0376012578609, 160.0]
+    x = [
+        10877767.337246142,
+        4.819268742401082,
+        35.10533285719053,
+        20057147.03993073,
+        0.0,
+        354.25265693030866,
+        153.4111500436299,
+    ]
     results_analysis(x, equipment)

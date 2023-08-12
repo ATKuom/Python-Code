@@ -148,10 +148,7 @@ def result_analyses(x):
     m2 = np.asarray(zk[:4] + [0, 0, 8.9e-9 * 3600, 0, 0, 0, 0]).reshape(
         -1,
     )
-    print(m1)
-    print(m1.shape)
-    print(m2)
-    print(m2.shape)
+
     try:
         costs = np.linalg.solve(m1, m2)
     except:
@@ -164,7 +161,7 @@ def result_analyses(x):
     Ep = w_tur - w_comp  # MW
     cdiss = costs[1] * e2 - costs[2] * e3 + zk[-1]
     lcoex = (costs[-3] * Ep + cdiss + Cl) / (Ep / 1e6)
-    c = lcoex
+    c = lcoe
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [
         w_tur / 1e6,

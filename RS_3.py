@@ -342,7 +342,7 @@ def result_analyses(x):
     Equipment Cost = Tur={cost_tur/1e3:.0f}    HX={cost_hx/1e3:.0f}    Cooler={cost_cooler/1e3:.0f}    Compr={cost_comp/1e3:.0f}   Heater={cost_heater/1e3:.0f}
     Equipment Energy = Qheater={unit_energy[2]:.2f}MW  Qcooler={unit_energy[3]:.2f}MW  Qhx={unit_energy[4]:.2f}MW
     Objective Function value = {c}
-    Exergy of streams = {e1/1e6:.2f}MW {e2/1e6:.2f}MW {e3/1e6:.2f}MW {e4/1e6:.2f}MW {e5/1e6:.2f}MW {e6/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
+    Exergy of streams = {e8/1e6:.2f}MW {e9/1e6:.2f}MW {e10/1e6:.2f}MW {e11/1e6:.2f}MW {e12/1e6:.2f}MW {e7/1e6:.2f}MW {e_fgin/1e6:.2f}MW {e_fgout/1e6:.2f}MW
     {costs/3600*1e9}
     {sum(pec)}
     {sum(zk)}

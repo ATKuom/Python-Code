@@ -105,7 +105,7 @@ if 5 in equipment:
     particle_size += -1 * swarmsize_factor
 if 7 in equipment:
     particle_size += -2 * swarmsize_factor
-iterations = 100
+iterations = 30
 nv = len(bounds)
 
 
@@ -423,6 +423,11 @@ def objective_function(x, equipment):
     Cdiss = sum(dissipation)
     lcoe_calculated = (costs[-1] * Ep + Cdiss + Closs) / (Ep / 1e6)
     c = lcoe_calculated
+    thermal_efficiency = (Ep) / 40.53e6
+    if thermal_efficiency < 0.1575:
+        j = 1000 * (0.30 - thermal_efficiency)
+    else:
+        j = c + max(0, 0.1 - sum(q_hx) / sum(q_heater))
     return c
 
 

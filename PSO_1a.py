@@ -36,7 +36,7 @@ bounds = [
 
 # PARAMETERS OF PSO
 particle_size = 7 * len(bounds)  # number of particles
-iterations = 30  # max number of iterations
+iterations = 100  # max number of iterations
 nv = len(bounds)  # number of variables
 
 
@@ -197,7 +197,7 @@ def objective_function(x):
     Ep = w_tur - w_comp  # W
     cdiss = costs[1] * e2 - costs[2] * e3 + zk[-1]
     lcoex = (costs[-3] * Ep + cdiss + Cl) / (Ep / 1e6)
-    c = lcoex
+    c = lcoe
     return c
 
 
