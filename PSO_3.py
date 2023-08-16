@@ -1,6 +1,7 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 from RS_3 import result_analyses
 from econ import economics
 from functions import (
@@ -25,6 +26,8 @@ from functions import (
     K,
 )
 
+st = time.time()
+st2 = time.process_time()
 bounds = [
     (32, 100),
     (180, 530),
@@ -36,7 +39,7 @@ bounds = [
 
 # PARAMETERS OF PSO
 particle_size = 7 * len(bounds)  # number of particles
-iterations = 100  # max number of iterations
+iterations = 30  # max number of iterations
 nv = len(bounds)  # number of variables
 
 
@@ -322,10 +325,10 @@ def objective_function(x):
     c = lcoex
     thermal_efficiency = (w_tur - w_comp) / 40.53e6
     if thermal_efficiency < 0.1575:
-        j = 1000 * (0.30 - thermal_efficiency)
+        j = 1e5 * (0.30 - thermal_efficiency)
     else:
-        j = c + max(0, 0.1 - q_hx / q_heater)
-    return c
+        j = c + 1e2 * max(0, 0.5 - q_hx / q_heater)
+    return j
 
 
 # Visualization
@@ -417,8 +420,9 @@ class PSO:
             w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
             c1 = -3 * (i / iterations) + 3.5
             c2 = 3 * (i / iterations) + 0.5
-            print("iteration = ", i)
-            print(w, c1, c2)
+            if i % 10 == 0:
+                print("iteration = ", i)
+                print(w, c1, c2)
             for j in range(particle_size):
                 swarm_particle[j].evaluate(objective_function)
                 while swarm_particle[j].fitness_particle_position == PENALTY_VALUE:
@@ -447,6 +451,10 @@ class PSO:
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)
         result_analyses(global_best_particle_position)
+        et = time.time()
+        et2 = time.process_time()
+        print("Time:", et - st)
+        print("Process Time:", et2 - st2)
         # plt.plot(A)
 
 

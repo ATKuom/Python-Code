@@ -319,9 +319,9 @@ def result_analyses(x):
     c = lcoex
     thermal_efficiency = (w_tur - w_comp) / 40.53e6
     if thermal_efficiency < 0.1575:
-        j = 100 * (0.30 - thermal_efficiency)
+        j = 1e5 * (0.30 - thermal_efficiency)
     else:
-        j = c + max(0, 0.1 - q_hx / q_heater)
+        j = c + 1e2 * max(0, 0.1 - q_hx / q_heater)
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [
         w_tur / 1e6,
@@ -348,8 +348,9 @@ def result_analyses(x):
     {sum(zk)}
     Cdiss = {cdiss:.2f} Cl = {Cl:.2f} Cp ={costs[-1]*Ep:.2f} LCOEX = {lcoex:.2f} LCOE = {lcoe:.2f}
     Cp/Ep = {Cp/(Ep/1e6)}
-    {thermal_efficiency:.2f}
-    {j:.2f}
+    Thermal Efficiency = {thermal_efficiency:.2f}
+    j = {j:.2f}
+    Heat recuperation ratio = {q_hx/q_heater:.2f}
     """
     )
 
@@ -388,4 +389,12 @@ if __name__ == "__main__":
         74.68430647939505,
         10.7,
     ]
-    result_analyses(x1)
+    x3 = [
+        32,
+        318.1573706397627,
+        12520602.594968567,
+        30000000.0,
+        160,
+        7.848849835089949,
+    ]
+    result_analyses(x3)

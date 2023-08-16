@@ -207,6 +207,7 @@ def objective_function(x, equipment):
             ):
                 # print("Infeasible HX")
                 return PENALTY_VALUE
+            # 0 0 0 0 0 0 output catch needed
             try:
                 (
                     Temperatures[hotside_index],

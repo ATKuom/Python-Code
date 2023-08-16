@@ -221,7 +221,7 @@ def result_analyses(x):
     # c = Cp / Ep  # $/MWh
     cdiss = costs[1] * e2 - costs[2] * e3 + zk[-2]
     lcoex = (costs[-1] * Ep + cdiss + Cl) / (Ep / 1e6)
-    c = lcoex
+    c = lcoe
     Pressure = [p1 / 1e5, p2 / 1e5, p3 / 1e5, p4 / 1e5, p5 / 1e5, p6 / 1e5]
     unit_energy = [
         w_tur / 1e6,

@@ -213,7 +213,6 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
             .with_state(Input.temperature(Thotin), Input.pressure(photin))
             .cooling_to_temperature(tcoldin + dt, hx_pdrop)
         )
-
         dh = hhotin - hotside_outlet.enthalpy
         q_hx = dh * m
         coldside_outlet = (
@@ -230,7 +229,6 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
                 .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
                 .heating_to_temperature(Thotin - dt, hx_pdrop)
             )
-
             dh = coldside_outlet.enthalpy - hcoldin
             q_hx = dh * m
             hotside_outlet = (
