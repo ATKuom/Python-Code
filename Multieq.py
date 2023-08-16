@@ -15,7 +15,7 @@ import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
-from split_rs_stl import results_analysis
+from Multieq_rs import results_analysis
 from econ import economics
 from split_functions import (
     lmtd,
@@ -40,6 +40,7 @@ from split_functions import (
     T0,
     P0,
     K,
+    FGINLETEXERGY,
 )
 
 
@@ -47,10 +48,14 @@ layout = torch.tensor(
     [
         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        # [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        # [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        # [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        # [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
     ]
@@ -159,10 +164,9 @@ def objective_function(x, equipment):
     # Turbine and Compressor pressure ratio calculation and checking
     tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
 
-    if np.any(tur_pratio < 1) or np.any(comp_pratio < 1):
+    if np.any(tur_pratio <= 1) or np.any(comp_pratio <= 1):
         # print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
-
     while Temperatures.prod() == 0:
         (
             Temperatures,
@@ -231,6 +235,7 @@ def objective_function(x, equipment):
                 )
             except:
                 breakpoint()
+
     if sum(w_tur) < sum(w_comp):
         # print("Negative Net Power Production")
         return PENALTY_VALUE
@@ -239,7 +244,6 @@ def objective_function(x, equipment):
         if Temperatures[index] >= Temperatures[index - 1]:
             # print("Infeasible Cooler")
             return PENALTY_VALUE
-
     enthalpies, entropies, q_cooler = cooler_calculation(
         cooler_position,
         Temperatures,
@@ -252,12 +256,13 @@ def objective_function(x, equipment):
     )
     for work in q_cooler:
         if work < 0:
-            # print("Infeasible Cooler")
+            # print("Negative Cooler Work")
             return PENALTY_VALUE
+
     heater_position = [i for i, j in enumerated_equipment if j == 4]
     for index in heater_position:
         if Temperatures[index] <= Temperatures[index - 1]:
-            # print("Infeasible heater")
+            # print("Infeasible Temperatures for heater")
             return PENALTY_VALUE
     enthalpies, entropies, q_heater = heater_calculation(
         heater_position,
@@ -271,25 +276,11 @@ def objective_function(x, equipment):
     )
 
     total_heat = sum(q_heater)
+    # breakpoint()
     fg_tout = fg_calculation(fg_m, total_heat)
     if fg_tout < 90:
         # print("Too low stack temperature")
         return PENALTY_VALUE
-    hout_fg, sout_fg = h_s_fg(fg_tout, P0)
-
-    # Exergy Analysis
-    for streams in range(len(exergies)):
-        exergies[streams] = mass_flow[streams] * (
-            enthalpies[streams] - h0 - (T0 + K) * (entropies[streams] - s0)
-        )
-
-    for i, work in enumerate(q_heater):
-        e_fgin[i] = (work / total_heat) * (
-            fg_m * (hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)) + 0.5e6
-        )
-        e_fgout[i] = (work / total_heat) * (
-            fg_m * (hout_fg - h0_fg - (T0 + K) * (sout_fg - s0_fg)) + 0.5e6
-        )
 
     # Economic Analysis
     for index, work in enumerate(w_tur):
@@ -316,16 +307,35 @@ def objective_function(x, equipment):
             else:
                 ft_cooler = 1
             cost_cooler[index] = 49.45 * UA_cooler**0.7544 * ft_cooler  # $
-
-    for index, work in enumerate(q_heater):
-        if work > 0:
-            fg_tout_i = fg_calculation(fg_m * work / total_heat, work)
+    fg_tinlist = np.zeros(len(equipment))
+    fg_toutlist = np.zeros(len(equipment))
+    fg_mlist = np.ones(len(equipment)) * fg_m
+    try:
+        descending_Temp = np.sort(Temperatures[heater_position])[::-1]
+        for Temp in descending_Temp:
+            index = np.where(Temperatures == Temp)[0][0]
+            fg_tinlist[index] = fg_tin
+            fg_tout = fg_calculation(fg_m, q_heater[index], fg_tin)
             dt1_heater = fg_tin - Temperatures[index]
-            dt2_heater = fg_tout_i - Temperatures[index - 1]
+            dt2_heater = fg_tout - Temperatures[index - 1]
+            fg_tin = fg_tout
+            fg_toutlist[index] = fg_tout
             if dt2_heater < 0 or dt1_heater < 0:
-                return PENALTY_VALUE
-            UA_heater = (work / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
+                raise Exception
+            UA_heater = (q_heater[index] / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
             cost_heater[index] = 5000 * UA_heater  # Thesis 97/pdf116
+    except:
+        for index, work in enumerate(q_heater):
+            if work > 0:
+                fg_mlist[index] = fg_m * (work / total_heat)
+                fg_toutlist[index] = fg_calculation(fg_mlist[index], work)
+                dt1_heater = fg_tin - Temperatures[index]
+                dt2_heater = fg_toutlist[index] - Temperatures[index - 1]
+                if dt2_heater < 0 or dt1_heater < 0:
+                    return PENALTY_VALUE
+                UA_heater = (work / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
+                cost_heater[index] = 5000 * UA_heater  # Thesis 97/pdf116
+
     for index, work in enumerate(q_hx):
         if work > 0:
             dt1_hx = Temperatures[hotside_index - 1] - Temperatures[coldside_index]
@@ -341,6 +351,23 @@ def objective_function(x, equipment):
     pec = cost_tur + cost_hx + cost_cooler + cost_comp + cost_heater
     prod_capacity = (sum(w_tur) - sum(w_comp)) / 1e6
     zk, cfueltot, lcoe = economics(pec, prod_capacity)
+
+    # Exergy Analysis
+    for streams in range(len(exergies)):
+        exergies[streams] = mass_flow[streams] * (
+            enthalpies[streams] - h0 - (T0 + K) * (entropies[streams] - s0)
+        )
+
+    for i, work in enumerate(q_heater):
+        if work > 0:
+            hin_fg, sin_fg = h_s_fg(fg_tinlist[i], P0)
+            hout_fg, sout_fg = h_s_fg(fg_toutlist[i], P0)
+            e_fgin[i] = (
+                fg_mlist[i] * (hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)) + 0.5e6
+            )
+            e_fgout[i] = (
+                fg_mlist[i] * (hout_fg - h0_fg - (T0 + K) * (sout_fg - s0_fg)) + 0.5e6
+            )
 
     # Thermo-economic Analysis
     m1 = np.zeros(
@@ -421,10 +448,10 @@ def objective_function(x, equipment):
     try:
         costs = np.linalg.solve(m1, m2)
     except:
-        # print("Matrix solution problem")
+        print("Matrix solution problem")
         return PENALTY_VALUE
-    Closs = costs[len(equipment) + 1] * sum(e_fgout)
-    Cfuel = costs[len(equipment)] * sum(e_fgin)
+    Closs = costs[len(equipment) + 1] * min(x for x in e_fgout if x != 0)
+    Cfuel = costs[len(equipment)] * FGINLETEXERGY
     Ztot = sum(zk)
     Cproduct = Cfuel + Ztot - Closs
     Ep = sum(w_tur) - sum(w_comp)

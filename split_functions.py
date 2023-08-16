@@ -178,13 +178,13 @@ def heater(tin, pin, tout, pdrop, m):
     )
 
 
-def fg_calculation(fg_m, q_heater):
+def fg_calculation(fg_m, q_heater, fg_tin=539.76):
     fg_in_h = CP.PropsSI(
         "H",
         "P|gas",
         101325,
         "T",
-        539.76 + K,
+        fg_tin + K,
         "Nitrogen[0.7643]&Oxygen[0.1382]&Water[0.0650]&CarbonDioxide[0.0325]",
     )
 
@@ -280,7 +280,8 @@ K = 273.15
 h0, s0 = enthalpy_entropy(T0, P0)
 h0_fg, s0_fg = h_s_fg(T0, P0)
 hin_fg, sin_fg = h_s_fg(539.76, 101325)
-exergy_new = hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)
+fg_m = 68.75
+FGINLETEXERGY = fg_m * (hin_fg - h0_fg - (T0 + K) * (sin_fg - s0_fg)) + 0.5e6
 
 
 def NG_exergy():
@@ -365,8 +366,8 @@ def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pd
 
 
 def tur_comp_pratio(enumerated_equipment, Pressures):
-    tur_pratio = np.ones(len(enumerated_equipment))
-    comp_pratio = np.ones(len(enumerated_equipment))
+    tur_pratio = np.ones(len(enumerated_equipment)) * 1.0001
+    comp_pratio = np.ones(len(enumerated_equipment)) * 1.0001
     for index, equip in enumerated_equipment:
         if equip == 1:
             tur_pratio[index] = Pressures[index - 1] / Pressures[index]
@@ -445,7 +446,7 @@ def turbine_compressor_calculation(
 
 
 def cooler_calculation(
-    enumerated_equipment,
+    cooler_position,
     Temperatures,
     Pressures,
     enthalpies,
@@ -454,7 +455,6 @@ def cooler_calculation(
     cooler_pdrop,
     mass_flow,
 ):
-    cooler_position = [i for i, j in enumerated_equipment if j == 2]
     for i in cooler_position:
         (
             enthalpies[i],
@@ -471,7 +471,7 @@ def cooler_calculation(
 
 
 def heater_calculation(
-    enumerated_equipment,
+    heater_position,
     Temperatures,
     Pressures,
     enthalpies,
@@ -480,7 +480,6 @@ def heater_calculation(
     heater_pdrop,
     mass_flow,
 ):
-    heater_position = [i for i, j in enumerated_equipment if j == 4]
     for i in heater_position:
         (
             enthalpies[i],
