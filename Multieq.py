@@ -48,14 +48,10 @@ layout = torch.tensor(
     [
         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        # [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        # [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        # [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        # [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
     ]
@@ -118,7 +114,7 @@ def objective_function(x, equipment):
     ntur = 85  # turbine efficiency     2019 Nabil
     ncomp = 82  # compressor efficiency 2019 Nabil
     cw_temp = 19  # °C
-    fg_tin = 539  # °C
+    fg_tin = 539.76  # °C
     fg_m = 68.75  # kg/s
     cooler_pdrop = 1e5
     heater_pdrop = 0
@@ -167,6 +163,7 @@ def objective_function(x, equipment):
     if np.any(tur_pratio <= 1) or np.any(comp_pratio <= 1):
         # print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
+    while_counter = 0
     while Temperatures.prod() == 0:
         (
             Temperatures,
@@ -234,7 +231,9 @@ def objective_function(x, equipment):
                     mass_flow[coldside_index],
                 )
             except:
-                breakpoint()
+                print("HX calculation error")
+                return PENALTY_VALUE
+        while_counter += 1
 
     if sum(w_tur) < sum(w_comp):
         # print("Negative Net Power Production")
@@ -310,8 +309,9 @@ def objective_function(x, equipment):
     fg_tinlist = np.zeros(len(equipment))
     fg_toutlist = np.zeros(len(equipment))
     fg_mlist = np.ones(len(equipment)) * fg_m
+    descending_Temp = np.sort(Temperatures[heater_position])[::-1]
+
     try:
-        descending_Temp = np.sort(Temperatures[heater_position])[::-1]
         for Temp in descending_Temp:
             index = np.where(Temperatures == Temp)[0][0]
             fg_tinlist[index] = fg_tin
@@ -368,19 +368,20 @@ def objective_function(x, equipment):
             e_fgout[i] = (
                 fg_mlist[i] * (hout_fg - h0_fg - (T0 + K) * (sout_fg - s0_fg)) + 0.5e6
             )
-
     # Thermo-economic Analysis
+    turbine_number = equipment.count(1)
+    compressor_number = equipment.count(3)
+    heater_number = equipment.count(4)
     m1 = np.zeros(
         (
             len(equipment),
-            (len(equipment) + equipment.count(1) + equipment.count(3) + 3),
+            (len(equipment) + turbine_number + compressor_number + heater_number + 2),
         )
     )
     zero_row = np.zeros(m1.shape[1]).reshape(1, -1)
     total_electricity_production = np.copy(zero_row)
-    total_electricity_aux = np.copy(zero_row)
-    turbine_token = equipment.count(1)
-    comp_token = equipment.count(3)
+    turbine_token = turbine_number
+    comp_token = compressor_number
     hx_token = 1
     for i, j in enumerated_equipment:
         if i == 0:
@@ -391,10 +392,10 @@ def objective_function(x, equipment):
         if j == 1:
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
-            m1[i][len(equipment) + 1 + turbine_token] = w_tur[outlet]
-            total_electricity_production[0][len(equipment) + 1 + turbine_token] = w_tur[
-                outlet
-            ]
+            m1[i][len(equipment) + heater_number + turbine_token] = w_tur[outlet]
+            total_electricity_production[0][
+                len(equipment) + heater_number + turbine_token
+            ] = w_tur[outlet]
             turbine_aux = np.copy(zero_row)
             turbine_aux[0][inlet] = 1
             turbine_aux[0][outlet] = -1
@@ -408,18 +409,28 @@ def objective_function(x, equipment):
         elif j == 3:
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
-            m1[i][-(1 + comp_token)] = -1 * w_comp[outlet]
-            total_electricity_production[0][-(1 + comp_token)] = -1 * w_comp[outlet]
-            total_electricity_aux[0][-(1 + comp_token)] = -1
+            m1[i][len(equipment) + heater_number + turbine_number + comp_token] = (
+                -1 * w_comp[outlet]
+            )
+            total_electricity_production[0][
+                len(equipment) + heater_number + turbine_number + comp_token
+            ] = (-1 * w_comp[outlet])
+            comp_aux = np.copy(zero_row)
+            comp_aux[0][
+                len(equipment) + heater_number + turbine_number + comp_token
+            ] = -1
+            comp_aux[0][-1] = 1
+            m1 = np.concatenate((m1, comp_aux), axis=0)
             comp_token -= 1
         elif j == 4:
+            order = np.where(Temperatures[outlet] == descending_Temp)[0][0]
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
-            m1[i][len(equipment)] = -1 * e_fgin[outlet]
-            m1[i][len(equipment) + 1] = e_fgout[outlet]
+            m1[i][len(equipment) + order] = -1 * e_fgin[outlet]
+            m1[i][len(equipment) + 1 + order] = e_fgout[outlet]
             heater_aux = np.copy(zero_row)
-            heater_aux[0][len(equipment)] = 1
-            heater_aux[0][len(equipment) + 1] = -1
+            heater_aux[0][len(equipment) + order] = 1
+            heater_aux[0][len(equipment) + 1 + order] = -1
             m1 = np.concatenate((m1, heater_aux), axis=0)
             ### needs more specification for each possible heater
         elif j == 5 and hx_token == 1:
@@ -433,9 +444,8 @@ def objective_function(x, equipment):
             m1 = np.concatenate((m1, hxer_aux), axis=0)
             hx_token = 0
     total_electricity_production[0][-1] = -1 * (sum(w_tur) - sum(w_comp))
-    total_electricity_aux[0][-1] = 1
+    comp_aux[0][-1] = 1
     m1 = np.concatenate((m1, total_electricity_production), axis=0)
-    m1 = np.concatenate((m1, total_electricity_aux), axis=0)
     cost_of_fg = np.copy(zero_row)
     cost_of_fg[0][len(equipment)] = 1
     m1 = np.concatenate((m1, cost_of_fg), axis=0)
@@ -556,7 +566,11 @@ class PSO:
             for j in range(particle_size):
                 swarm_particle[j].evaluate(objective_function)
                 total_number_of_particle_evaluation += 1
-                while swarm_particle[j].fitness_particle_position == PENALTY_VALUE:
+                while (
+                    swarm_particle[j].fitness_particle_position == PENALTY_VALUE
+                    and i == 0
+                    and total_number_of_particle_evaluation < 1e5
+                ):
                     swarm_particle[j] = Particle(bounds)
                     swarm_particle[j].evaluate(objective_function)
                     total_number_of_particle_evaluation += 1

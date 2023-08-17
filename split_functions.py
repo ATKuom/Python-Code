@@ -202,7 +202,8 @@ def fg_calculation(fg_m, q_heater, fg_tin=539.76):
     try:
         fg_tout = opt.newton(objective, T0 + K)
     except:
-        breakpoint()
+        print("fg_tout not found")
+        return 0
     return fg_tout
 
 

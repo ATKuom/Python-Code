@@ -25,3 +25,8 @@ for Temp in descending_Temp:
     dt1_heater = fg_tin - Temperatures[index]
     dt2_heater = fg_tout - Temperatures[index - 1]
     fg_tin = fg_tout
+
+a = 1
+b = a
+a = 2
+print(a, b)

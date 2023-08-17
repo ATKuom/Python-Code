@@ -251,19 +251,21 @@ def results_analysis(x, equipment):
             e_fgout[i] = (
                 fg_mlist[i] * (hout_fg - h0_fg - (T0 + K) * (sout_fg - s0_fg)) + 0.5e6
             )
-    breakpoint()
+
     # Thermo-economic Analysis
+    turbine_number = equipment.count(1)
+    compressor_number = equipment.count(3)
+    heater_number = equipment.count(4)
     m1 = np.zeros(
         (
             len(equipment),
-            (len(equipment) + equipment.count(1) + equipment.count(3) + 3),
+            (len(equipment) + turbine_number + compressor_number + heater_number + 2),
         )
     )
     zero_row = np.zeros(m1.shape[1]).reshape(1, -1)
     total_electricity_production = np.copy(zero_row)
-    total_electricity_aux = np.copy(zero_row)
-    turbine_token = equipment.count(1)
-    comp_token = equipment.count(3)
+    turbine_token = turbine_number
+    comp_token = compressor_number
     hx_token = 1
     for i, j in enumerated_equipment:
         if i == 0:
@@ -271,14 +273,13 @@ def results_analysis(x, equipment):
         else:
             inlet = i - 1
         outlet = i
-
         if j == 1:
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
-            m1[i][len(equipment) + 1 + turbine_token] = w_tur[outlet]
-            total_electricity_production[0][len(equipment) + 1 + turbine_token] = w_tur[
-                outlet
-            ]
+            m1[i][len(equipment) + heater_number + turbine_token] = w_tur[outlet]
+            total_electricity_production[0][
+                len(equipment) + heater_number + turbine_token
+            ] = w_tur[outlet]
             turbine_aux = np.copy(zero_row)
             turbine_aux[0][inlet] = 1
             turbine_aux[0][outlet] = -1
@@ -292,18 +293,28 @@ def results_analysis(x, equipment):
         elif j == 3:
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
-            m1[i][-(1 + comp_token)] = -1 * w_comp[outlet]
-            total_electricity_production[0][-(1 + comp_token)] = -1 * w_comp[outlet]
-            total_electricity_aux[0][-(1 + comp_token)] = -1
+            m1[i][len(equipment) + heater_number + turbine_number + comp_token] = (
+                -1 * w_comp[outlet]
+            )
+            total_electricity_production[0][
+                len(equipment) + heater_number + turbine_number + comp_token
+            ] = (-1 * w_comp[outlet])
+            comp_aux = np.copy(zero_row)
+            comp_aux[0][
+                len(equipment) + heater_number + turbine_number + comp_token
+            ] = -1
+            comp_aux[0][-1] = 1
+            m1 = np.concatenate((m1, comp_aux), axis=0)
             comp_token -= 1
         elif j == 4:
+            order = np.where(Temperatures[outlet] == descending_Temp)[0][0]
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
-            m1[i][len(equipment)] = -1 * e_fgin[outlet]
-            m1[i][len(equipment) + 1] = e_fgout[outlet]
+            m1[i][len(equipment) + order] = -1 * e_fgin[outlet]
+            m1[i][len(equipment) + 1 + order] = e_fgout[outlet]
             heater_aux = np.copy(zero_row)
-            heater_aux[0][len(equipment)] = 1
-            heater_aux[0][len(equipment) + 1] = -1
+            heater_aux[0][len(equipment) + order] = 1
+            heater_aux[0][len(equipment) + 1 + order] = -1
             m1 = np.concatenate((m1, heater_aux), axis=0)
             ### needs more specification for each possible heater
         elif j == 5 and hx_token == 1:
@@ -317,9 +328,7 @@ def results_analysis(x, equipment):
             m1 = np.concatenate((m1, hxer_aux), axis=0)
             hx_token = 0
     total_electricity_production[0][-1] = -1 * (sum(w_tur) - sum(w_comp))
-    total_electricity_aux[0][-1] = 1
     m1 = np.concatenate((m1, total_electricity_production), axis=0)
-    m1 = np.concatenate((m1, total_electricity_aux), axis=0)
     cost_of_fg = np.copy(zero_row)
     cost_of_fg[0][len(equipment)] = 1
     m1 = np.concatenate((m1, cost_of_fg), axis=0)
@@ -354,9 +363,9 @@ def results_analysis(x, equipment):
         j = c + max(0, 0.1 - sum(q_hx) / sum(q_heater))
     print(
         f"""
-    Turbine Pratio = {tur_pratio[np.where(tur_pratio>1.01)[0]]}
+    Turbine Pratio = {tur_pratio[np.where(tur_pratio>1.0001)[0]]}
     Turbine Output = {w_tur[np.where(w_tur>0)[0]]/1e6}MW
-    Compressor Pratio = {comp_pratio[np.where(comp_pratio>1.01)[0]]}
+    Compressor Pratio = {comp_pratio[np.where(comp_pratio>1.0001)[0]]}
     Compressor Input = {w_comp[np.where(w_comp>0)[0]]/1e6}MW
     Temperatures = {Temperatures}   Tstack = {fg_tout:.1f}    DT = {approach_temp} 
     Pressures =    {Pressures/1e5}bar
@@ -430,12 +439,16 @@ if __name__ == "__main__":
     #     93.18,
     # ]
     x = [
-        7869592.968287906,
-        4.777743038605745,
+        9840538.73402616,
+        8152093.989128533,
+        4,
+        38,
         32,
-        29435433.557574533,
+        7903821.960454039,
+        30000000.0,
         0,
-        394.7165051775357,
-        91.97375577011937,
+        286.66670303775487,
+        391.6558775324561,
+        94.4598156011101,
     ]
     results_analysis(x, equipment)
