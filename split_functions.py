@@ -322,7 +322,7 @@ def decision_variable_placement(x, enumerated_equipment):
             approach_temp = x[index]
             hx_token = 0
         elif equip == 5 and hx_token == 0:
-            x[index] = 0
+            x[index] = approach_temp
         elif equip == 9:
             split_ratio = x[index]
             branching_start = index

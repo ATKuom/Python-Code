@@ -1,16 +1,15 @@
-# Mixing with different pressures is unit_type problem.
-# Assumption of flashing the higher pressure stream to the lower pressure stream can be made to mix them.
 # Splitter/mixer sitatuion will create different m values which necessitates unit_type more complex approach to the hx.
-# All the m inputs in the functions must be changed accordingly after the implementation of splitter/mixer
-# After determining the pressures of the system without the mixer, then the mixer must adjust the pressure of the output using the lowest pressure input
-# Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
-# Splitter/mixer effects on exergy and overall structure must be analysed
-# 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
 # ------------Completed Tasks------------
 # More than one heater fg_out and exergy analysis maybe necessary?
 # At least unit_type partioning between the heaters based on their share on the total heat duty is unit_type reasonable appraoch?
 # The partioning is done but the extra e_fgin and e_fgout may be necessary to include per each heater to satisfy the square matrix requirement of the exergy analysis
-
+# Mixing with different pressures is unit_type problem.
+# Assumption of flashing the higher pressure stream to the lower pressure stream can be made to mix them.
+# After determining the pressures of the system without the mixer, then the mixer must adjust the pressure of the output using the lowest pressure input
+# All the m inputs in the functions must be changed accordingly after the implementation of splitter/mixer
+# 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
+# Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
+# Splitter/mixer effects on exergy and overall structure must be analysed
 import numpy as np
 import torch
 import random
@@ -90,7 +89,7 @@ ED3 = torch.tensor(
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     ]
 )
-layout = ED3
+layout = ED2
 units = layout[1:-1]
 print(units)
 x = []
@@ -141,7 +140,7 @@ if 5 in equipment:
     particle_size += -1 * swarmsize_factor
 if 9 in equipment:
     particle_size += -2 * swarmsize_factor
-iterations = 1
+iterations = 10
 nv = len(bounds)
 
 
