@@ -15,7 +15,7 @@ import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
-from Multieq_rs import results_analysis
+from ED_Test_rs import results_analysis
 from econ import economics
 from split_functions import (
     lmtd,
@@ -43,23 +43,54 @@ from split_functions import (
     FGINLETEXERGY,
 )
 
-
-layout = torch.tensor(
+ED1 = torch.tensor(
     [
         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
     ]
 )
+
+ED2 = torch.tensor(
+    [
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ]
+)
+
+ED3 = torch.tensor(
+    [
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ]
+)
+layout = ED3
 units = layout[1:-1]
 print(units)
 x = []
@@ -85,7 +116,7 @@ for i in range(len(units)):
         equipment[i] = 5
         if hx_token == 1:
             bounds[i] = (4, 11)
-            hx_token = 0
+            # hx_token = 0
         else:
             bounds[i] = (0, 0)
     elif unit_type == 7:
@@ -93,7 +124,7 @@ for i in range(len(units)):
         bounds[i] = (0, 0)
     elif unit_type == 9:
         equipment[i] = 9
-        bounds[i] = (0.001, 0.999)
+        bounds[i] = (0.01, 0.99)
         splitter = True
         branch_start = i
 if splitter == True:
@@ -110,7 +141,7 @@ if 5 in equipment:
     particle_size += -1 * swarmsize_factor
 if 9 in equipment:
     particle_size += -2 * swarmsize_factor
-iterations = 10
+iterations = 1
 nv = len(bounds)
 
 
@@ -169,7 +200,7 @@ def objective_function(x, equipment):
         return PENALTY_VALUE
 
     while_counter = 0
-    while Temperatures.prod() == 0:
+    while Temperatures.prod() == 0 and while_counter < 5:
         (
             Temperatures,
             enthalpies,
@@ -188,6 +219,7 @@ def objective_function(x, equipment):
             ncomp,
             mass_flow,
         )
+
         for work in w_tur:
             if work < 0:
                 # print("Turbine work is negative")
@@ -286,6 +318,7 @@ def objective_function(x, equipment):
     ):
         # print("Same Temperature for heater")
         return PENALTY_VALUE
+
     total_heat = sum(q_heater)
     # breakpoint()
     fg_tout = fg_calculation(fg_m, total_heat)
@@ -310,7 +343,7 @@ def objective_function(x, equipment):
         if work > 0:
             dt1_cooler = Temperatures[index] - cw_temp
             dt2_cooler = Temperatures[index - 1] - cw_Tout(work)
-            if dt2_cooler < 0 or dt1_cooler < 0:
+            if dt2_cooler <= 0 or dt1_cooler <= 0:
                 return PENALTY_VALUE
             UA_cooler = (work / 1) / lmtd(dt1_cooler, dt2_cooler)  # W / °C
             if Temperatures[index - 1] > 550:
@@ -321,18 +354,20 @@ def objective_function(x, equipment):
     fg_tinlist = np.zeros(len(equipment))
     fg_toutlist = np.zeros(len(equipment))
     fg_mlist = np.ones(len(equipment)) * fg_m
-    descending_Temp = np.sort(Temperatures[heater_position])[::-1]
+    descending_temp = np.sort(Temperatures[heater_position])[::-1]
 
     try:
-        for Temp in descending_Temp:
+        for Temp in descending_temp:
             index = np.where(Temperatures == Temp)[0][0]
             fg_tinlist[index] = fg_tin
             fg_tout = fg_calculation(fg_m, q_heater[index], fg_tin)
+            if fg_tout < 90:
+                breakpoint()
             dt1_heater = fg_tin - Temperatures[index]
             dt2_heater = fg_tout - Temperatures[index - 1]
             fg_tin = fg_tout
             fg_toutlist[index] = fg_tout
-            if dt2_heater < 0 or dt1_heater < 0:
+            if dt2_heater <= 0 or dt1_heater <= 0:
                 raise Exception
             UA_heater = (q_heater[index] / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
             cost_heater[index] = 5000 * UA_heater  # Thesis 97/pdf116
@@ -343,7 +378,7 @@ def objective_function(x, equipment):
                 fg_toutlist[index] = fg_calculation(fg_mlist[index], work)
                 dt1_heater = fg_tin - Temperatures[index]
                 dt2_heater = fg_toutlist[index] - Temperatures[index - 1]
-                if dt2_heater < 0 or dt1_heater < 0:
+                if dt2_heater <= 0 or dt1_heater <= 0:
                     return PENALTY_VALUE
                 UA_heater = (work / 1e3) / lmtd(dt1_heater, dt2_heater)  # W / °C
                 cost_heater[index] = 5000 * UA_heater  # Thesis 97/pdf116
@@ -352,7 +387,7 @@ def objective_function(x, equipment):
         if work > 0:
             dt1_hx = Temperatures[hotside_index - 1] - Temperatures[coldside_index]
             dt2_hx = Temperatures[hotside_index] - Temperatures[coldside_index - 1]
-            if dt2_hx < 0 or dt1_hx < 0:
+            if dt2_hx <= 0 or dt1_hx <= 0:
                 return PENALTY_VALUE
             UA_hx = (work / 1) / lmtd(dt1_hx, dt2_hx)  # W / °C
             if Temperatures[hotside_index - 1] > 550:
@@ -392,9 +427,12 @@ def objective_function(x, equipment):
     )
     zero_row = np.zeros(m1.shape[1]).reshape(1, -1)
     total_electricity_production = np.copy(zero_row)
+    splitter_aux = np.copy(zero_row)
+    mixer = np.copy(zero_row)
     turbine_token = turbine_number
     comp_token = compressor_number
     hx_token = 1
+    mixer_token = 0
     for i, j in enumerated_equipment:
         if i == 0:
             inlet = len(Temperatures) - 1
@@ -435,7 +473,7 @@ def objective_function(x, equipment):
             m1 = np.concatenate((m1, comp_aux), axis=0)
             comp_token -= 1
         elif j == 4:
-            order = np.where(Temperatures[outlet] == descending_Temp)[0][0]
+            order = np.where(Temperatures[outlet] == descending_temp)[0][0]
             m1[i][inlet] = -1 * exergies[inlet]
             m1[i][outlet] = exergies[outlet]
             m1[i][len(equipment) + order] = -1 * e_fgin[outlet]
@@ -444,7 +482,6 @@ def objective_function(x, equipment):
             heater_aux[0][len(equipment) + order] = 1
             heater_aux[0][len(equipment) + 1 + order] = -1
             m1 = np.concatenate((m1, heater_aux), axis=0)
-            ### needs more specification for each possible heater
         elif j == 5 and hx_token == 1:
             m1[i][hotside_index - 1] = -1 * exergies[hotside_index - 1]
             m1[i][hotside_index] = exergies[hotside_index]
@@ -455,9 +492,21 @@ def objective_function(x, equipment):
             hxer_aux[0][hotside_index] = -1
             m1 = np.concatenate((m1, hxer_aux), axis=0)
             hx_token = 0
+        elif j == 7:
+            mixer[0][inlet] = -1 * exergies[inlet]
+            mixer_token += 1
+            if mixer_token == 1:
+                splitter_aux[0][outlet] = -1
+            if mixer_token == 2:
+                mixer[0][outlet] = exergies[outlet]
+                m1 = np.concatenate((m1, mixer), axis=0)
+        elif j == 9:
+            m1[i][inlet] = -1
+            m1[i][outlet] = 1
+            splitter_aux[0][inlet] = 1
     total_electricity_production[0][-1] = -1 * (sum(w_tur) - sum(w_comp))
-    comp_aux[0][-1] = 1
     m1 = np.concatenate((m1, total_electricity_production), axis=0)
+    m1 = np.concatenate((m1, splitter_aux), axis=0)
     cost_of_fg = np.copy(zero_row)
     cost_of_fg[0][len(equipment)] = 1
     m1 = np.concatenate((m1, cost_of_fg), axis=0)
@@ -573,15 +622,15 @@ class PSO:
             w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
             c1 = -3 * (i / iterations) + 3.5
             c2 = 3 * (i / iterations) + 0.5
-            # print("iteration = ", i)
-            # print(w, c1, c2)
+            print("iteration = ", i)
+            print(w, c1, c2)
             for j in range(particle_size):
                 swarm_particle[j].evaluate(objective_function)
                 total_number_of_particle_evaluation += 1
                 while (
                     swarm_particle[j].fitness_particle_position == PENALTY_VALUE
                     and i == 0
-                    and total_number_of_particle_evaluation < 1e5
+                    and total_number_of_particle_evaluation < 1e3
                 ):
                     swarm_particle[j] = Particle(bounds)
                     swarm_particle[j].evaluate(objective_function)

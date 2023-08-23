@@ -1,32 +1,51 @@
 import numpy as np
-from split_functions import fg_calculation
 
-fg_m = 68.75
+enumerated_equipment = [
+    (0, 9),
+    (1, 4),
+    (2, 7),
+    (3, 5),
+    (4, 7),
+    (5, 4),
+    (6, 1),
+    (7, 5),
+    (8, 2),
+    (9, 3),
+]
+Pressures = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10, 0.0, 0.0, 15])
+equipment = [9, 4, 7, 5, 7, 4, 1, 5, 2, 3]
+cooler_pdrop = 1
+heater_pdrop = 0
+hx_pdrop = 0.5
+equipment = np.asarray(equipment)
+if np.where(7 == equipment)[0].size != 0:
+    mixer1, mixer2 = np.where(7 == equipment)[0]
 
-heater_position = [0, 5, 6]
-q_heater = np.array([100.0, 0.0, 0.0, 0.0, 0.0, 5466954.45221552, 11421174.90100743])
-Temperatures = np.array(
-    [
-        431.3698234,
-        59.08819002,
-        32.95478462,
-        48.20620119,
-        400.46996853,
-        503.48001517,
-        504.05666833,
-    ]
-)
-print(q_heater / 1e6)
-descending_Temp = np.sort(Temperatures[heater_position])[::-1]
-fg_tin = 539.76
-for Temp in descending_Temp:
-    index = np.where(Temperatures == Temp)[0][0]
-    fg_tout = fg_calculation(fg_m, q_heater[index], fg_tin)
-    dt1_heater = fg_tin - Temperatures[index]
-    dt2_heater = fg_tout - Temperatures[index - 1]
-    fg_tin = fg_tout
 
-a = 1
-b = a
-a = 2
-print(a, b)
+for i in range(3):
+    if Pressures[mixer1 - 1] != 0 and Pressures[mixer2 - 1] != 0:
+        Pressures[mixer2] = min(Pressures[mixer1 - 1], Pressures[mixer2 - 1])
+    for i in range(len(Pressures)):
+        if Pressures[i] != 0:
+            if i == len(Pressures) - 1:
+                if equipment[0] == 2:
+                    Pressures[0] = Pressures[i] - cooler_pdrop
+                if equipment[0] == 4:
+                    Pressures[0] = Pressures[i] - heater_pdrop
+                if equipment[0] == 5:
+                    Pressures[0] = Pressures[i] - hx_pdrop
+                if equipment[0] == 9:
+                    Pressures[0] = Pressures[i]
+                    Pressures[mixer1] = Pressures[i]
+
+            else:
+                if equipment[i + 1] == 2:
+                    Pressures[i + 1] = Pressures[i] - cooler_pdrop
+                if equipment[i + 1] == 4:
+                    Pressures[i + 1] = Pressures[i] - heater_pdrop
+                if equipment[i + 1] == 5:
+                    Pressures[i + 1] = Pressures[i] - hx_pdrop
+                if equipment[i + 1] == 9:
+                    Pressures[i + 1] = Pressures[i]
+                    Pressures[mixer1] = Pressures[i]
+    print(Pressures)

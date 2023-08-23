@@ -178,13 +178,13 @@ def heater(tin, pin, tout, pdrop, m):
     )
 
 
-def fg_calculation(fg_m, q_heater):
+def fg_calculation(fg_m, q_heater, fg_tin=539.76):
     fg_in_h = CP.PropsSI(
         "H",
         "P|gas",
         101325,
         "T",
-        539.76 + K,
+        fg_tin + K,
         "Nitrogen[0.7643]&Oxygen[0.1382]&Water[0.0650]&CarbonDioxide[0.0325]",
     )
 
@@ -202,11 +202,15 @@ def fg_calculation(fg_m, q_heater):
     try:
         fg_tout = opt.newton(objective, T0 + K)
     except:
-        breakpoint()
+        fg_tout = 0
     return fg_tout
 
 
-def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdrop, m):
+def HX_calculation(
+    Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdrop, m1, m2=None
+):
+    if m2 is None:
+        m2 = m1
     try:
         hotside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
@@ -214,7 +218,8 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
             .cooling_to_temperature(tcoldin + dt, hx_pdrop)
         )
         dh = hhotin - hotside_outlet.enthalpy
-        q_hx = dh * m
+        q_hx = dh * m1
+        dh = q_hx / m2
         coldside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
             .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
@@ -230,7 +235,8 @@ def HX_calculation(Thotin, photin, hhotin, tcoldin, pcoldin, hcoldin, dt, hx_pdr
                 .heating_to_temperature(Thotin - dt, hx_pdrop)
             )
             dh = coldside_outlet.enthalpy - hcoldin
-            q_hx = dh * m
+            q_hx = dh * m2
+            dh = q_hx / m1
             hotside_outlet = (
                 Fluid(FluidsList.CarbonDioxide)
                 .with_state(Input.temperature(Thotin), Input.pressure(photin))

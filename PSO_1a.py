@@ -197,13 +197,13 @@ def objective_function(x):
     Ep = w_tur - w_comp  # W
     cdiss = costs[1] * e2 - costs[2] * e3 + zk[-1]
     lcoex = (costs[-3] * Ep + cdiss + Cl) / (Ep / 1e6)
-    c = lcoex
+    c = lcoe
     thermal_efficiency = (w_tur - w_comp) / 40.53e6
     if thermal_efficiency < 0.1575:
         j = 1e5 * (0.30 - thermal_efficiency)
     else:
         j = c + 1e2 * max(0, 0.95 - q_hx / q_heater) + fg_tout
-    return j
+    return c
 
 
 # ------------------------------------------------------------------------------

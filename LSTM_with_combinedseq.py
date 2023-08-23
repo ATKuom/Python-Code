@@ -82,21 +82,20 @@ optimizer = optim.Adam(
 
 
 if __name__ == "__main__":
-    datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
+    # datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
 
-    # datalist = np.array(
-    #     [
-    #         "TaACaH",
-    #         "TaAC-1H1a1H",
-    #         "TaACH-1H1a1H",
-    #         "Ta1bAC-2H2b2-1aT1H",
-    #     ],
-    #     dtype=object,
-    # )
+    datalist = np.array(
+        [
+            # "TaACaH",
+            "TaAC-1H1a1H",
+            "TaACH-1H1a1H",
+            # "Ta1bAC-2H2b2-1aT1H",
+        ],
+        dtype=object,
+    )
     datalist = gandetoken(datalist)
     one_hot_tensors = one_hot_encoding(datalist)
     padded_tensors = padding(one_hot_tensors)
-
     # Training loop
     num_epochs = 1000
     for epoch in range(num_epochs):

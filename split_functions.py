@@ -202,8 +202,8 @@ def fg_calculation(fg_m, q_heater, fg_tin=539.76):
     try:
         fg_tout = opt.newton(objective, T0 + K)
     except:
-        print("fg_tout not found")
-        return 0
+        # print("unfeasible fg_exit temperature")
+        fg_tout = 0
     return fg_tout
 
 
@@ -229,12 +229,14 @@ def HX_calculation(
         dh_hotside = hhotin - hotside_outlet.enthalpy
         q_hotside = dh_hotside * m_hotside
         dh_coldside = q_hotside / m_coldside
+
         coldside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
             .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
             .heating_to_enthalpy(hcoldin + dh_coldside, hx_pdrop)
         )
         q_hx = q_hotside
+
         if Thotin - coldside_outlet.temperature < dt:
             raise Exception
     except:
@@ -319,49 +321,59 @@ def decision_variable_placement(x, enumerated_equipment):
         elif equip == 5 and hx_token == 1:
             approach_temp = x[index]
             hx_token = 0
+        elif equip == 5 and hx_token == 0:
+            x[index] = 0
         elif equip == 9:
             split_ratio = x[index]
             branching_start = index
-            branching_end1, branching_end2 = np.where(7 == enumerated_equipment[:, 1])[
-                0
-            ]
-            for i in range(branching_start + 1, branching_end1 + 1):
+            branching_end1, branching_end2 = np.where(
+                7 == np.array(enumerated_equipment)[:, 1]
+            )[0]
+            for i in range(branching_start, branching_end1):
                 mass_flow[i] = mass_flow[i] * split_ratio
-            for i in range(branching_end1 + 1, branching_end2 + 1):
+            for i in range(branching_end1, branching_end2):
                 mass_flow[i] = mass_flow[i] * (1 - split_ratio)
 
     return (Pressures, Temperatures, approach_temp, split_ratio, mass_flow)
 
 
-def Pressure_calculation(Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop):
-    while Pressures.prod() == 0:
+def Pressure_calculation(
+    Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop, splitter=False
+):
+    if splitter == True:
         equipment = np.asarray(equipment)
-        if np.where(7 == equipment)[0].size != 0:
-            mixer1, mixer2 = np.where(7 == equipment)[0]
-            if Pressures[mixer1 - 1] != 0 and Pressures[mixer2 - 1] != 0:
-                Pressures[mixer2] = min(Pressures[mixer1 - 1], Pressures[mixer2 - 1])
-        for i in range(len(Pressures)):
-            if Pressures[i] != 0:
-                if i == len(Pressures) - 1:
-                    if equipment[0] == 2:
-                        Pressures[0] = Pressures[i] - cooler_pdrop
-                    if equipment[0] == 4:
-                        Pressures[0] = Pressures[i] - heater_pdrop
-                    if equipment[0] == 5:
-                        Pressures[0] = Pressures[i] - hx_pdrop
-                    if equipment[0] == 9:
-                        Pressures[0] = Pressures[i]
+        mixer1, mixer2 = np.where(7 == equipment)[0]
+    while Pressures.prod() == 0:
+        if (
+            splitter == True
+            and Pressures[mixer1 - 1] != 0
+            and Pressures[mixer2 - 1] != 0
+        ):
+            Pressures[mixer2] = min(Pressures[mixer1 - 1], Pressures[mixer2 - 1])
+        if Pressures.prod() == 0:
+            for i in range(len(Pressures)):
+                if Pressures[i] != 0:
+                    if i == len(Pressures) - 1:
+                        if equipment[0] == 2:
+                            Pressures[0] = Pressures[i] - cooler_pdrop
+                        if equipment[0] == 4:
+                            Pressures[0] = Pressures[i] - heater_pdrop
+                        if equipment[0] == 5:
+                            Pressures[0] = Pressures[i] - hx_pdrop
+                        if equipment[0] == 9:
+                            Pressures[0] = Pressures[i]
+                            Pressures[mixer1] = Pressures[i]
 
-                else:
-                    if equipment[i + 1] == 2:
-                        Pressures[i + 1] = Pressures[i] - cooler_pdrop
-                    if equipment[i + 1] == 4:
-                        Pressures[i + 1] = Pressures[i] - heater_pdrop
-                    if equipment[i + 1] == 5:
-                        Pressures[i + 1] = Pressures[i] - hx_pdrop
-                    if equipment[i + 1] == 9:
-                        Pressures[i + 1] = Pressures[i]
-                        Pressures[mixer1] = Pressures[i]
+                    else:
+                        if equipment[i + 1] == 2:
+                            Pressures[i + 1] = Pressures[i] - cooler_pdrop
+                        if equipment[i + 1] == 4:
+                            Pressures[i + 1] = Pressures[i] - heater_pdrop
+                        if equipment[i + 1] == 5:
+                            Pressures[i + 1] = Pressures[i] - hx_pdrop
+                        if equipment[i + 1] == 9:
+                            Pressures[i + 1] = Pressures[i]
+                            Pressures[mixer1] = Pressures[i]
 
     return Pressures
 
@@ -392,56 +404,66 @@ def turbine_compressor_calculation(
     for i in range(len(Temperatures)):
         if Temperatures[i] != 0:
             if i == len(Temperatures) - 1:
-                if equipment[0] == 1:
-                    (
-                        enthalpies[0],
-                        entropies[0],
-                        Temperatures[0],
-                        w_tur[0],
-                    ) = turbine(
-                        Temperatures[i], Pressures[i], Pressures[0], ntur, mass_flow[0]
-                    )
-                elif equipment[0] == 3:
-                    (
-                        enthalpies[0],
-                        entropies[0],
-                        Temperatures[0],
-                        w_comp[0],
-                    ) = compressor(
-                        Temperatures[i], Pressures[i], Pressures[0], ncomp, mass_flow[0]
-                    )
-                elif equipment[0] == 9:
-                    enthalpies[0] = enthalpies[i]
-                    entropies[0] = entropies[i]
-                    Temperatures[0] = Temperatures[i]
+                if Temperatures[0] == 0:
+                    if equipment[0] == 1:
+                        (
+                            enthalpies[0],
+                            entropies[0],
+                            Temperatures[0],
+                            w_tur[0],
+                        ) = turbine(
+                            Temperatures[i],
+                            Pressures[i],
+                            Pressures[0],
+                            ntur,
+                            mass_flow[0],
+                        )
+                    elif equipment[0] == 3:
+                        (
+                            enthalpies[0],
+                            entropies[0],
+                            Temperatures[0],
+                            w_comp[0],
+                        ) = compressor(
+                            Temperatures[i],
+                            Pressures[i],
+                            Pressures[0],
+                            ncomp,
+                            mass_flow[0],
+                        )
+                    elif equipment[0] == 9:
+                        enthalpies[0] = enthalpies[i]
+                        entropies[0] = entropies[i]
+                        Temperatures[0] = Temperatures[i]
 
             else:
-                if equipment[i + 1] == 1:
-                    (
-                        enthalpies[i + 1],
-                        entropies[i + 1],
-                        Temperatures[i + 1],
-                        w_tur[i + 1],
-                    ) = turbine(
-                        Temperatures[i],
-                        Pressures[i],
-                        Pressures[i + 1],
-                        ntur,
-                        mass_flow[i + 1],
-                    )
-                elif equipment[i + 1] == 3:
-                    (
-                        enthalpies[i + 1],
-                        entropies[i + 1],
-                        Temperatures[i + 1],
-                        w_comp[i + 1],
-                    ) = compressor(
-                        Temperatures[i],
-                        Pressures[i],
-                        Pressures[i + 1],
-                        ncomp,
-                        mass_flow[i + 1],
-                    )
+                if Temperatures[i + 1] == 0:
+                    if equipment[i + 1] == 1:
+                        (
+                            enthalpies[i + 1],
+                            entropies[i + 1],
+                            Temperatures[i + 1],
+                            w_tur[i + 1],
+                        ) = turbine(
+                            Temperatures[i],
+                            Pressures[i],
+                            Pressures[i + 1],
+                            ntur,
+                            mass_flow[i + 1],
+                        )
+                    elif equipment[i + 1] == 3:
+                        (
+                            enthalpies[i + 1],
+                            entropies[i + 1],
+                            Temperatures[i + 1],
+                            w_comp[i + 1],
+                        ) = compressor(
+                            Temperatures[i],
+                            Pressures[i],
+                            Pressures[i + 1],
+                            ncomp,
+                            mass_flow[i + 1],
+                        )
 
     return (Temperatures, enthalpies, entropies, w_tur, w_comp)
 
@@ -509,13 +531,14 @@ def hx_side_selection(hx_position, Temperatures):
 def splitter_mixer_calc(
     Temperatures, Pressures, enthalpies, entropies, mass_flow, equipment
 ):
+    equipment = np.asarray(equipment)
     splitter = np.where(equipment == 9)[0]
     mixer1, mixer2 = np.where(equipment == 7)[0]
-    if Temperatures[splitter] != 0:
+    if Temperatures[splitter] != 0 and Temperatures[mixer1] == 0:
         Temperatures[mixer1] = Temperatures[splitter]
         enthalpies[mixer1] = enthalpies[splitter]
         entropies[mixer1] = entropies[splitter]
-    if Pressures[mixer1 - 1] == Pressures[mixer2 - 1]:
+    if Pressures[mixer1 - 1] == Pressures[mixer2 - 1] and Temperatures[mixer2] == 0:
         inlet1 = Fluid(FluidsList.CarbonDioxide).with_state(
             Input.temperature(Temperatures[mixer1 - 1]),
             Input.pressure(Pressures[mixer1 - 1]),
@@ -531,13 +554,18 @@ def splitter_mixer_calc(
         enthalpies[mixer2] = outlet.enthalpy
         entropies[mixer2] = outlet.entropy
         return (Temperatures, enthalpies, entropies)
-    if Temperatures[mixer1 - 1] != 0 and Temperatures[mixer2 - 1] != 0:
+    if (
+        Temperatures[mixer1 - 1] != 0
+        and Temperatures[mixer2 - 1] != 0
+        and Temperatures[mixer2] == 0
+    ):
         if Pressures[mixer1 - 1] > Pressures[mixer2 - 1]:
             hp_index = mixer1 - 1
-            lp_index = mixer2 - 2
+            lp_index = mixer2 - 1
         elif Pressures[mixer1 - 1] < Pressures[mixer2 - 1]:
             hp_index = mixer2 - 1
-            lp_index = mixer1 - 2
+            lp_index = mixer1 - 1
+
         hp_inlet = (
             Fluid(FluidsList.CarbonDioxide)
             .with_state(
@@ -551,9 +579,9 @@ def splitter_mixer_calc(
             Input.pressure(Pressures[lp_index]),
         )
         outlet = Fluid(FluidsList.CarbonDioxide).mixing(
-            mass_flow[hp_index + 1], hp_inlet, mass_flow[lp_index + 1], lp_inlet
+            mass_flow[hp_index], hp_inlet, mass_flow[lp_index], lp_inlet
         )
         Temperatures[mixer2] = outlet.temperature
         enthalpies[mixer2] = outlet.enthalpy
         entropies[mixer2] = outlet.entropy
-        return (Temperatures, enthalpies, entropies)
+    return (Temperatures, enthalpies, entropies)
