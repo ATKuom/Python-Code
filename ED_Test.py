@@ -30,6 +30,7 @@ from split_functions import (
     cooler_calculation,
     heater_calculation,
     hx_side_selection,
+    enthalpy_entropy,
     h0_fg,
     s0_fg,
     hin_fg,
@@ -89,6 +90,20 @@ ED3 = torch.tensor(
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     ]
 )
+
+ED1m = torch.tensor(
+    [
+        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+    ]
+)
+
 layout = ED2
 units = layout[1:-1]
 print(units)
@@ -104,13 +119,13 @@ for i in range(len(units)):
         bounds[i] = (74e5, 300e5)
     elif unit_type == 2:
         equipment[i] = 2
-        bounds[i] = (32, 38)
+        bounds[i] = (32, 530)
     elif unit_type == 3:
         equipment[i] = 3
         bounds[i] = (74e5, 300e5)
     elif unit_type == 4:
         equipment[i] = 4
-        bounds[i] = (180, 530)
+        bounds[i] = (32, 530)
     elif unit_type == 5:
         equipment[i] = 5
         if hx_token == 1:
@@ -140,7 +155,7 @@ if 5 in equipment:
     particle_size += -1 * swarmsize_factor
 if 9 in equipment:
     particle_size += -2 * swarmsize_factor
-iterations = 10
+iterations = 30
 nv = len(bounds)
 
 
@@ -198,6 +213,17 @@ def objective_function(x, equipment):
         # print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
 
+    cooler_position = [i for i, j in enumerated_equipment if j == 2]
+    for index in cooler_position:
+        enthalpies[index], entropies[index] = enthalpy_entropy(
+            Temperatures[index], Pressures[index]
+        )
+
+    heater_position = [i for i, j in enumerated_equipment if j == 4]
+    for index in heater_position:
+        enthalpies[index], entropies[index] = enthalpy_entropy(
+            Temperatures[index], Pressures[index]
+        )
     while_counter = 0
     while Temperatures.prod() == 0 and while_counter < 5:
         (
@@ -246,6 +272,12 @@ def objective_function(x, equipment):
             ):
                 # print("Infeasible HX")
                 return PENALTY_VALUE
+            if (
+                mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
+                < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
+            ):
+                # print("Infeasible HX")
+                return PENALTY_VALUE
             # 0 0 0 0 0 0 output catch needed
             # HX different m problem ? It is important that I need to be sure.
             try:
@@ -272,15 +304,16 @@ def objective_function(x, equipment):
             except:
                 print("HX calculation error")
                 return PENALTY_VALUE
+
         while_counter += 1
 
     if sum(w_tur) < sum(w_comp):
-        # print("Negative Net Power Production")
+        print("Negative Net Power Production")
         return PENALTY_VALUE
-    cooler_position = [i for i, j in enumerated_equipment if j == 2]
+
     for index in cooler_position:
         if Temperatures[index] >= Temperatures[index - 1]:
-            # print("Infeasible Cooler")
+            print("Infeasible Cooler")
             return PENALTY_VALUE
     enthalpies, entropies, q_cooler = cooler_calculation(
         cooler_position,
@@ -294,13 +327,12 @@ def objective_function(x, equipment):
     )
     for work in q_cooler:
         if work < 0:
-            # print("Negative Cooler Work")
+            print("Negative Cooler Work")
             return PENALTY_VALUE
 
-    heater_position = [i for i, j in enumerated_equipment if j == 4]
     for index in heater_position:
         if Temperatures[index] <= Temperatures[index - 1]:
-            # print("Infeasible Temperatures for heater")
+            print("Infeasible Temperatures for heater")
             return PENALTY_VALUE
     enthalpies, entropies, q_heater = heater_calculation(
         heater_position,
@@ -312,17 +344,18 @@ def objective_function(x, equipment):
         heater_pdrop,
         mass_flow,
     )
+
     if np.unique(Temperatures[heater_position]).size != len(
         Temperatures[heater_position]
     ):
-        # print("Same Temperature for heater")
+        print("Same Temperature for heater")
         return PENALTY_VALUE
 
     total_heat = sum(q_heater)
     # breakpoint()
     fg_tout = fg_calculation(fg_m, total_heat)
     if fg_tout < 90:
-        # print("Too low stack temperature")
+        print("Too low stack temperature")
         return PENALTY_VALUE
 
     # Economic Analysis
@@ -357,11 +390,11 @@ def objective_function(x, equipment):
 
     try:
         for Temp in descending_temp:
-            index = np.where(Temperatures == Temp)[0][0]
+            index = heater_position[
+                np.where(Temperatures[heater_position] == Temp)[0][0]
+            ]
             fg_tinlist[index] = fg_tin
             fg_tout = fg_calculation(fg_m, q_heater[index], fg_tin)
-            if fg_tout < 90:
-                breakpoint()
             dt1_heater = fg_tin - Temperatures[index]
             dt2_heater = fg_tout - Temperatures[index - 1]
             fg_tin = fg_tout
@@ -533,9 +566,10 @@ def objective_function(x, equipment):
     c = lcoe
     thermal_efficiency = (Ep) / 40.53e6
     if thermal_efficiency < 0.1575:
-        j = 1000 * (0.30 - thermal_efficiency)
+        j = 10000 * (0.30 - thermal_efficiency)
     else:
         j = c + max(0, 0.1 - sum(q_hx) / sum(q_heater))
+    print("Succesful Completion")
     return c
 
 
@@ -629,7 +663,7 @@ class PSO:
                 while (
                     swarm_particle[j].fitness_particle_position == PENALTY_VALUE
                     and i == 0
-                    and total_number_of_particle_evaluation < 1e3
+                    # and total_number_of_particle_evaluation < 1e4
                 ):
                     swarm_particle[j] = Particle(bounds)
                     swarm_particle[j].evaluate(objective_function)

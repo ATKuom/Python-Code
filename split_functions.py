@@ -3,10 +3,16 @@ import numpy as np
 import scipy.optimize as opt
 import CoolProp.CoolProp as CP
 
+T0 = 15
+P0 = 101325
+K = 273.15
+
 
 ##Specific heat calculation works fine with DT similar to estimate h2-h1
 ##However, h2 =/= cp*T_hotout
 def lmtd(dthin, dt2):
+    if dthin == dt2:
+        return dthin
     return (dthin - dt2) / np.log(dthin / dt2)
 
 
@@ -268,6 +274,61 @@ def HX_calculation(
     )
 
 
+def new_HX_calculation(
+    Thotin,
+    photin,
+    hhotin,
+    tcoldin,
+    pcoldin,
+    hcoldin,
+    dt,
+    hx_pdrop,
+    m_hotside,
+    m_coldside,
+):
+    try:
+        hotside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(Thotin), Input.pressure(photin))
+            .cooling_to_temperature(tcoldin + dt, hx_pdrop)
+        )
+
+        dh_hotside = hhotin - hotside_outlet.enthalpy
+        q_hotside = dh_hotside * m_hotside
+        dh_coldside = q_hotside / m_coldside
+
+        coldside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
+            .heating_to_enthalpy(hcoldin + dh_coldside, hx_pdrop)
+        )
+        q_hx = q_hotside
+    except:
+        coldside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
+            .heating_to_temperature(Thotin - dt, hx_pdrop)
+        )
+        dh_coldside = coldside_outlet.enthalpy - hcoldin
+        q_coldside = dh_coldside * m_coldside
+        dh_hotside = q_coldside / m_hotside
+        hotside_outlet = (
+            Fluid(FluidsList.CarbonDioxide)
+            .with_state(Input.temperature(Thotin), Input.pressure(photin))
+            .cooling_to_enthalpy(hhotin - dh_hotside, hx_pdrop)
+        )
+        q_hx = q_coldside
+    return (
+        hotside_outlet.temperature,
+        hotside_outlet.enthalpy,
+        hotside_outlet.entropy,
+        coldside_outlet.temperature,
+        coldside_outlet.enthalpy,
+        coldside_outlet.entropy,
+        q_hx,
+    )
+
+
 def cw_Tout(q_cooler):
     m_cw = 200  # kg/s
     cw = Fluid(FluidsList.Water).with_state(
@@ -277,9 +338,6 @@ def cw_Tout(q_cooler):
     return cw_outlet.temperature
 
 
-T0 = 15
-P0 = 101325
-K = 273.15
 h0, s0 = enthalpy_entropy(T0, P0)
 h0_fg, s0_fg = h_s_fg(T0, P0)
 hin_fg, sin_fg = h_s_fg(539.76, 101325)

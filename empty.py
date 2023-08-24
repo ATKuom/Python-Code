@@ -1,51 +1,46 @@
 import numpy as np
+from pyfluids import Fluid, Input, FluidsList
+from split_functions import lmtd
 
-enumerated_equipment = [
-    (0, 9),
-    (1, 4),
-    (2, 7),
-    (3, 5),
-    (4, 7),
-    (5, 4),
-    (6, 1),
-    (7, 5),
-    (8, 2),
-    (9, 3),
-]
-Pressures = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10, 0.0, 0.0, 15])
-equipment = [9, 4, 7, 5, 7, 4, 1, 5, 2, 3]
-cooler_pdrop = 1
-heater_pdrop = 0
-hx_pdrop = 0.5
-equipment = np.asarray(equipment)
-if np.where(7 == equipment)[0].size != 0:
-    mixer1, mixer2 = np.where(7 == equipment)[0]
+lmtd(3, 3)
+# Thotin = 245.39
+# photin = 79e5
+# tcoldin = 195.25
+# pcoldin = 233e5
+# hx_pdrop = 0.5e5
+# m_hotside = 56.33
+# m_coldside = 19.85
+# hhotin = 466367
+# hcoldin = 637797
+# dt = 9.4
+# hotside_outlet = (
+#     Fluid(FluidsList.CarbonDioxide)
+#     .with_state(Input.temperature(Thotin), Input.pressure(photin))
+#     .cooling_to_temperature(tcoldin + dt, hx_pdrop)
+# )
+# breakpoint()
+# dh_hotside = hhotin - hotside_outlet.enthalpy
+# q_hotside = dh_hotside * m_hotside
+# dh_coldside = q_hotside / m_coldside
+# print(dh_hotside, q_hotside / 1e6, dh_coldside)
+# coldside_outlet = (
+#     Fluid(FluidsList.CarbonDioxide)
+#     .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
+#     .heating_to_enthalpy(hcoldin + dh_coldside, hx_pdrop)
+# )
+# q_hx = q_hotside
 
-
-for i in range(3):
-    if Pressures[mixer1 - 1] != 0 and Pressures[mixer2 - 1] != 0:
-        Pressures[mixer2] = min(Pressures[mixer1 - 1], Pressures[mixer2 - 1])
-    for i in range(len(Pressures)):
-        if Pressures[i] != 0:
-            if i == len(Pressures) - 1:
-                if equipment[0] == 2:
-                    Pressures[0] = Pressures[i] - cooler_pdrop
-                if equipment[0] == 4:
-                    Pressures[0] = Pressures[i] - heater_pdrop
-                if equipment[0] == 5:
-                    Pressures[0] = Pressures[i] - hx_pdrop
-                if equipment[0] == 9:
-                    Pressures[0] = Pressures[i]
-                    Pressures[mixer1] = Pressures[i]
-
-            else:
-                if equipment[i + 1] == 2:
-                    Pressures[i + 1] = Pressures[i] - cooler_pdrop
-                if equipment[i + 1] == 4:
-                    Pressures[i + 1] = Pressures[i] - heater_pdrop
-                if equipment[i + 1] == 5:
-                    Pressures[i + 1] = Pressures[i] - hx_pdrop
-                if equipment[i + 1] == 9:
-                    Pressures[i + 1] = Pressures[i]
-                    Pressures[mixer1] = Pressures[i]
-    print(Pressures)
+# coldside_outlet = (
+#     Fluid(FluidsList.CarbonDioxide)
+#     .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
+#     .heating_to_temperature(Thotin - dt, hx_pdrop)
+# )
+# dh_coldside = coldside_outlet.enthalpy - hcoldin
+# q_coldside = dh_coldside * m_coldside
+# dh_hotside = q_coldside / m_hotside
+# hotside_outlet = (
+#     Fluid(FluidsList.CarbonDioxide)
+#     .with_state(Input.temperature(Thotin), Input.pressure(photin))
+#     .cooling_to_enthalpy(hhotin - dh_hotside, hx_pdrop)
+# )
+# q_hx = q_coldside

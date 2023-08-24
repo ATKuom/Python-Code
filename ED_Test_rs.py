@@ -16,6 +16,7 @@ from split_functions import (
     cooler_calculation,
     heater_calculation,
     hx_side_selection,
+    enthalpy_entropy,
     h0_fg,
     s0_fg,
     hin_fg,
@@ -79,8 +80,19 @@ def results_analysis(x, equipment):
 
     # Turbine and Compressor pressure ratio calculation and checking
     tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
+    cooler_position = [i for i, j in enumerated_equipment if j == 2]
+    for index in cooler_position:
+        enthalpies[index], entropies[index] = enthalpy_entropy(
+            Temperatures[index], Pressures[index]
+        )
 
-    while Temperatures.prod() == 0:
+    heater_position = [i for i, j in enumerated_equipment if j == 4]
+    for index in heater_position:
+        enthalpies[index], entropies[index] = enthalpy_entropy(
+            Temperatures[index], Pressures[index]
+        )
+    while_counter = 0
+    while Temperatures.prod() == 0 and while_counter < 5:
         (
             Temperatures,
             enthalpies,
@@ -143,7 +155,6 @@ def results_analysis(x, equipment):
                 print("Infeasible HX")
                 return PENALTY_VALUE
 
-    cooler_position = [i for i, j in enumerated_equipment if j == 2]
     enthalpies, entropies, q_cooler = cooler_calculation(
         cooler_position,
         Temperatures,
@@ -154,7 +165,7 @@ def results_analysis(x, equipment):
         cooler_pdrop,
         mass_flow,
     )
-    heater_position = [i for i, j in enumerated_equipment if j == 4]
+
     enthalpies, entropies, q_heater = heater_calculation(
         heater_position,
         Temperatures,
@@ -200,7 +211,9 @@ def results_analysis(x, equipment):
     try:
         descending_temp = np.sort(Temperatures[heater_position])[::-1]
         for Temp in descending_temp:
-            index = np.where(Temperatures == Temp)[0][0]
+            index = heater_position[
+                np.where(Temperatures[heater_position] == Temp)[0][0]
+            ]
             fg_tinlist[index] = fg_tin
             fg_tout = fg_calculation(fg_m, q_heater[index], fg_tin)
             dt1_heater = fg_tin - Temperatures[index]
@@ -375,9 +388,9 @@ def results_analysis(x, equipment):
     c = lcoe
     thermal_efficiency = (Ep) / 40.53e6
     if thermal_efficiency < 0.1575:
-        j = 1000 * (0.30 - thermal_efficiency)
+        j = 10000 * (0.30 - thermal_efficiency)
     else:
-        j = c + max(0, 0.1 - sum(q_hx) / sum(q_heater))
+        j = c + max(0, 0.6 - sum(q_hx) / sum(q_heater))
     print(
         f"""
     Equipment = {equipment}
@@ -394,6 +407,7 @@ def results_analysis(x, equipment):
     Exergy of streams = {exergies/1e6}MW 
     Exergy of FG streams = {e_fgin[np.where(e_fgin>0)]/1e6} 
                            {e_fgout[np.where(e_fgout>0)]/1e6}
+                           {fg_mlist[np.where(e_fgout>0)]}
     Exergy costing of streams = {costs/3600*1e9} $/GJ
     Total PEC = {sum(pec):.2f} $
     Total Zk  = {sum(zk):.2f} $/h
@@ -455,7 +469,7 @@ if __name__ == "__main__":
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
         ]
     )
-    layout = ED2
+    layout = ED3
     units = layout[1:-1]
     x = []
     splitter = False
@@ -502,29 +516,17 @@ if __name__ == "__main__":
     #     93.18,
     # ]
     x = [
-        0.3561645430400168,
-        255.33378753197786,
-        0.0,
-        5.625349402478117,
-        0.0,
-        416.7682586165582,
-        8211982.196368376,
-        11.0,
-        32.177218734790074,
-        30000000.0,
-        103.79631236116823,
-    ]
-    x = [
-        0.30157520076369004,
-        237.74553433394203,
+        0.01,
+        530.0,
         0.0,
         11.0,
         0.0,
-        394.989990912247,
-        7774497.549178499,
+        473.7059427076416,
+        8506178.458468681,
         11.0,
         32.0,
-        30000000.0,
-        108.69692615454855,
+        17011390.549356423,
+        416.88559492368364,
+        50,
     ]
     results_analysis(x, equipment)
