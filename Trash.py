@@ -729,3 +729,70 @@
 #                     Pressures[i + 1] = Pressures[i]
 #                     Pressures[mixer1] = Pressures[i]
 #     print(Pressures)
+
+# def old_Pressure_calculation(tur_pratio, comp_pratio):
+#     # [p1,p2,p3,p4,p5,p6]
+#     pres = np.array(
+#         [
+#             [1, 0, 0, 0, 0, -1 / tur_pratio],
+#             [1, -1, 0, 0, 0, 0],
+#             [0, 1, -1, 0, 0, 0],
+#             [0, 0, comp_pratio, -1, 0, 0],
+#             [0, 0, 0, 1, -1, 0],
+#             [0, 0, 0, 0, 1, -1],
+#         ]
+#     )
+#     dp = np.array([0, 1e5, 0.5e5, 0, 1e5, 1e5]).reshape(-1, 1)
+#     try:
+#         Pressures = np.linalg.solve(pres, dp)
+#     except:
+#         # print("singular matrix", tur_pratio, comp_pratio)
+#         return [0, 0, 0, 0, 0, 0]
+#     p1 = Pressures.item(0)
+#     if p1 < 0:
+#         # print("negative Pressure")
+#         return [0, 0, 0, 0, 0, 0]
+#     # ub = 300e5 / max(Pressures)
+#     # lb = 74e5 / max(Pressures)
+#     # pres_coeff = np.random.uniform(lb, ub)
+#     # Pressures = pres_coeff * Pressures
+#     p1 = Pressures.item(0)
+#     p2 = Pressures.item(1)
+#     p3 = Pressures.item(2)
+#     p4 = Pressures.item(3)
+#     p5 = Pressures.item(4)
+#     p6 = Pressures.item(5)
+#     return (p1, p2, p3, p4, p5, p6)
+
+# def pinch_calculation(
+#     T_hin, H_hotin, T_coldin, H_coldin, P_hotout, P_coldout, m, pinch_temp
+# ):
+#     list_T_hotout = [
+#         T_hotout for T_hotout in range(int(T_coldin) + int(pinch_temp), int(T_hin))
+#     ]
+#     if len(list_T_hotout) == 0:
+#         return (0, 0)
+#     h2 = list()
+#     for temp in list_T_hotout:
+#         a, _ = enthalpy_entropy(temp, P_hotout)
+#         h2.append(a)
+#     h2 = np.asarray(h2)
+#     q_hx1 = m * H_hotin - m * h2
+#     list_T_coldout = [
+#         T_coldout for T_coldout in range(int(T_coldin), int(T_hin) - int(pinch_temp))
+#     ]
+#     if len(list_T_coldout) == 0:
+#         return (0, 0)
+#     h5 = list()
+#     for temp in list_T_coldout:
+#         a, _ = enthalpy_entropy(temp, P_coldout)
+#         h5.append(a)
+#     h5 = np.asarray(h5)
+#     q_hx2 = m * h5 - m * H_coldin
+#     q_hx = q_hx1 - q_hx2
+#     index = np.where(q_hx[:-1] * q_hx[1:] < 0)[0]
+#     if len(index) == 0:
+#         return (0, 0)
+#     T_hotout = list_T_hotout[index[0]]
+#     T_coldout = list_T_coldout[index[0]]
+#     return (T_hotout, T_coldout)

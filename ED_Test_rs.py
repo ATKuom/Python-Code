@@ -385,7 +385,7 @@ def results_analysis(x, equipment):
             dissipation[i] = costs[i] * (exergies[i - 1] - exergies[i]) + zk[i]
     Cdiss = sum(dissipation)
     lcoe_calculated = (costs[-1] * Ep + Cdiss + Closs) / (Ep / 1e6)
-    c = lcoe
+    c = lcoe_calculated
     thermal_efficiency = (Ep) / 40.53e6
     if thermal_efficiency < 0.1575:
         j = 10000 * (0.30 - thermal_efficiency)

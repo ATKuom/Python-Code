@@ -8,12 +8,10 @@ P0 = 101325
 K = 273.15
 
 
-##Specific heat calculation works fine with DT similar to estimate h2-h1
-##However, h2 =/= cp*T_hotout
-def lmtd(dthin, dt2):
-    if dthin == dt2:
-        return dthin
-    return (dthin - dt2) / np.log(dthin / dt2)
+def lmtd(dt1, dt2):
+    if dt1 == dt2:
+        return dt1
+    return (dt1 - dt2) / np.log(dt1 / dt2)
 
 
 def enthalpy_entropy(T, P):
@@ -27,75 +25,6 @@ def enthalpy_entropy(T, P):
         Input.pressure(P), Input.temperature(T)
     )
     return (substance.enthalpy, substance.entropy)
-
-
-def pinch_calculation(
-    T_hin, H_hotin, T_coldin, H_coldin, P_hotout, P_coldout, m, pinch_temp
-):
-    list_T_hotout = [
-        T_hotout for T_hotout in range(int(T_coldin) + int(pinch_temp), int(T_hin))
-    ]
-    if len(list_T_hotout) == 0:
-        return (0, 0)
-    h2 = list()
-    for temp in list_T_hotout:
-        a, _ = enthalpy_entropy(temp, P_hotout)
-        h2.append(a)
-    h2 = np.asarray(h2)
-    q_hx1 = m * H_hotin - m * h2
-    list_T_coldout = [
-        T_coldout for T_coldout in range(int(T_coldin), int(T_hin) - int(pinch_temp))
-    ]
-    if len(list_T_coldout) == 0:
-        return (0, 0)
-    h5 = list()
-    for temp in list_T_coldout:
-        a, _ = enthalpy_entropy(temp, P_coldout)
-        h5.append(a)
-    h5 = np.asarray(h5)
-    q_hx2 = m * h5 - m * H_coldin
-    q_hx = q_hx1 - q_hx2
-    index = np.where(q_hx[:-1] * q_hx[1:] < 0)[0]
-    if len(index) == 0:
-        return (0, 0)
-    T_hotout = list_T_hotout[index[0]]
-    T_coldout = list_T_coldout[index[0]]
-    return (T_hotout, T_coldout)
-
-
-def old_Pressure_calculation(tur_pratio, comp_pratio):
-    # [p1,p2,p3,p4,p5,p6]
-    pres = np.array(
-        [
-            [1, 0, 0, 0, 0, -1 / tur_pratio],
-            [1, -1, 0, 0, 0, 0],
-            [0, 1, -1, 0, 0, 0],
-            [0, 0, comp_pratio, -1, 0, 0],
-            [0, 0, 0, 1, -1, 0],
-            [0, 0, 0, 0, 1, -1],
-        ]
-    )
-    dp = np.array([0, 1e5, 0.5e5, 0, 1e5, 1e5]).reshape(-1, 1)
-    try:
-        Pressures = np.linalg.solve(pres, dp)
-    except:
-        # print("singular matrix", tur_pratio, comp_pratio)
-        return [0, 0, 0, 0, 0, 0]
-    p1 = Pressures.item(0)
-    if p1 < 0:
-        # print("negative Pressure")
-        return [0, 0, 0, 0, 0, 0]
-    # ub = 300e5 / max(Pressures)
-    # lb = 74e5 / max(Pressures)
-    # pres_coeff = np.random.uniform(lb, ub)
-    # Pressures = pres_coeff * Pressures
-    p1 = Pressures.item(0)
-    p2 = Pressures.item(1)
-    p3 = Pressures.item(2)
-    p4 = Pressures.item(3)
-    p5 = Pressures.item(4)
-    p6 = Pressures.item(5)
-    return (p1, p2, p3, p4, p5, p6)
 
 
 def h_s_fg(t, p):
@@ -206,7 +135,7 @@ def fg_calculation(fg_m, q_heater, fg_tin=539.76):
         return fg_m * (fg_in_h - fg_out_h) - q_heater
 
     try:
-        fg_tout = opt.newton(objective, T0 + K)
+        fg_tout = opt.newton(objective, 100)
     except:
         # print("unfeasible fg_exit temperature")
         fg_tout = 0
@@ -246,64 +175,7 @@ def HX_calculation(
         if Thotin - coldside_outlet.temperature < dt:
             raise Exception
     except:
-        try:
-            coldside_outlet = (
-                Fluid(FluidsList.CarbonDioxide)
-                .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
-                .heating_to_temperature(Thotin - dt, hx_pdrop)
-            )
-            dh_coldside = coldside_outlet.enthalpy - hcoldin
-            q_coldside = dh_coldside * m_coldside
-            dh_hotside = q_coldside / m_hotside
-            hotside_outlet = (
-                Fluid(FluidsList.CarbonDioxide)
-                .with_state(Input.temperature(Thotin), Input.pressure(photin))
-                .cooling_to_enthalpy(hhotin - dh_hotside, hx_pdrop)
-            )
-            q_hx = q_coldside
-        except:
-            return (0, 0, 0, 0, 0, 0, 0)
-    return (
-        hotside_outlet.temperature,
-        hotside_outlet.enthalpy,
-        hotside_outlet.entropy,
-        coldside_outlet.temperature,
-        coldside_outlet.enthalpy,
-        coldside_outlet.entropy,
-        q_hx,
-    )
-
-
-def new_HX_calculation(
-    Thotin,
-    photin,
-    hhotin,
-    tcoldin,
-    pcoldin,
-    hcoldin,
-    dt,
-    hx_pdrop,
-    m_hotside,
-    m_coldside,
-):
-    try:
-        hotside_outlet = (
-            Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(Thotin), Input.pressure(photin))
-            .cooling_to_temperature(tcoldin + dt, hx_pdrop)
-        )
-
-        dh_hotside = hhotin - hotside_outlet.enthalpy
-        q_hotside = dh_hotside * m_hotside
-        dh_coldside = q_hotside / m_coldside
-
-        coldside_outlet = (
-            Fluid(FluidsList.CarbonDioxide)
-            .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
-            .heating_to_enthalpy(hcoldin + dh_coldside, hx_pdrop)
-        )
-        q_hx = q_hotside
-    except:
+        # try:
         coldside_outlet = (
             Fluid(FluidsList.CarbonDioxide)
             .with_state(Input.temperature(tcoldin), Input.pressure(pcoldin))
@@ -318,6 +190,8 @@ def new_HX_calculation(
             .cooling_to_enthalpy(hhotin - dh_hotside, hx_pdrop)
         )
         q_hx = q_coldside
+    # except:
+    #     return (0, 0, 0, 0, 0, 0, 0)
     return (
         hotside_outlet.temperature,
         hotside_outlet.enthalpy,
@@ -643,3 +517,49 @@ def splitter_mixer_calc(
         enthalpies[mixer2] = outlet.enthalpy
         entropies[mixer2] = outlet.entropy
     return (Temperatures, enthalpies, entropies)
+
+
+def bound_creation(layout):
+    units = layout[1:-1]
+    print(units)
+    x = []
+    splitter = False
+    equipment = np.zeros(len(units)).tolist()
+    bounds = list(range(len(units)))
+    hx_token = 1
+    for i in range(len(units)):
+        unit_type = np.where(units[i] == 1)[0][0]
+        if unit_type == 1:
+            equipment[i] = 1
+            bounds[i] = (74e5, 300e5)
+        elif unit_type == 2:
+            equipment[i] = 2
+            bounds[i] = (32, 38)
+        elif unit_type == 3:
+            equipment[i] = 3
+            bounds[i] = (74e5, 300e5)
+        elif unit_type == 4:
+            equipment[i] = 4
+            bounds[i] = (180, 530)
+        elif unit_type == 5:
+            equipment[i] = 5
+            if hx_token == 1:
+                bounds[i] = (4, 11)
+                # hx_token = 0
+            else:
+                bounds[i] = (0, 0)
+        elif unit_type == 7:
+            equipment[i] = 7
+            bounds[i] = (0, 0)
+        elif unit_type == 9:
+            equipment[i] = 9
+            bounds[i] = (0.5, 0.99)
+            splitter = True
+            branch_start = i
+    if splitter == True:
+        equipment = np.roll(equipment, -branch_start, axis=0).tolist()
+        bounds = np.roll(bounds, -branch_start, axis=0).tolist()
+    bounds.append((50, 160))
+    print(equipment)
+    print(bounds)
+    return (equipment, bounds, x, splitter)

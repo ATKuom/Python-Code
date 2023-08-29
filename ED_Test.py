@@ -31,6 +31,7 @@ from split_functions import (
     heater_calculation,
     hx_side_selection,
     enthalpy_entropy,
+    bound_creation,
     h0_fg,
     s0_fg,
     hin_fg,
@@ -104,49 +105,10 @@ ED1m = torch.tensor(
     ]
 )
 
-layout = ED2
-units = layout[1:-1]
-print(units)
-x = []
-splitter = False
-equipment = np.zeros(len(units)).tolist()
-bounds = list(range(len(units)))
-hx_token = 1
-for i in range(len(units)):
-    unit_type = np.where(units[i] == 1)[0][0]
-    if unit_type == 1:
-        equipment[i] = 1
-        bounds[i] = (74e5, 300e5)
-    elif unit_type == 2:
-        equipment[i] = 2
-        bounds[i] = (32, 530)
-    elif unit_type == 3:
-        equipment[i] = 3
-        bounds[i] = (74e5, 300e5)
-    elif unit_type == 4:
-        equipment[i] = 4
-        bounds[i] = (32, 530)
-    elif unit_type == 5:
-        equipment[i] = 5
-        if hx_token == 1:
-            bounds[i] = (4, 11)
-            # hx_token = 0
-        else:
-            bounds[i] = (0, 0)
-    elif unit_type == 7:
-        equipment[i] = 7
-        bounds[i] = (0, 0)
-    elif unit_type == 9:
-        equipment[i] = 9
-        bounds[i] = (0.01, 0.99)
-        splitter = True
-        branch_start = i
-if splitter == True:
-    equipment = np.roll(equipment, -branch_start, axis=0).tolist()
-    bounds = np.roll(bounds, -branch_start, axis=0).tolist()
-bounds.append((50, 160))
-print(equipment)
-print(bounds)
+layout = ED1
+
+equipment, bounds, x, splitter = bound_creation(layout)
+
 
 # PSO Parameters
 swarmsize_factor = 7
@@ -171,18 +133,13 @@ def objective_function(x, equipment):
     PENALTY_VALUE = float(1e6)
 
     enumerated_equipment = list(enumerate(equipment))
-    # Temperatures = np.zeros(len(equipment))
-    # Pressures = np.zeros(len(equipment))
-    # mass_flow = np.zeros(len(equipment))
     enthalpies = np.zeros(len(equipment))
     entropies = np.zeros(len(equipment))
     exergies = np.zeros(len(equipment))
     w_comp = np.zeros(len(equipment))
     cost_comp = np.zeros(len(equipment))
-    # comp_pratio = np.ones(len(equipment))
     w_tur = np.zeros(len(equipment))
     cost_tur = np.zeros(len(equipment))
-    # tur_pratio = np.ones(len(equipment))
     q_cooler = np.zeros(len(equipment))
     cost_cooler = np.zeros(len(equipment))
     dissipation = np.zeros(len(equipment))
@@ -205,27 +162,30 @@ def objective_function(x, equipment):
     Pressures = Pressure_calculation(
         Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop, splitter
     )
-
+    # it can benefit from tur_ppisition and comp_position
     # Turbine and Compressor pressure ratio calculation and checking
     tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
 
     if np.any(tur_pratio <= 1) or np.any(comp_pratio <= 1):
         # print("Turbine or Compressor pressure ratio is less than 1")
         return PENALTY_VALUE
-
+    # Positional info can be gathered at the beginning of the code
     cooler_position = [i for i, j in enumerated_equipment if j == 2]
     for index in cooler_position:
         enthalpies[index], entropies[index] = enthalpy_entropy(
             Temperatures[index], Pressures[index]
         )
-
+    # Positional info can be gathered at the beginning of the code
     heater_position = [i for i, j in enumerated_equipment if j == 4]
     for index in heater_position:
         enthalpies[index], entropies[index] = enthalpy_entropy(
             Temperatures[index], Pressures[index]
         )
+
     while_counter = 0
-    while Temperatures.prod() == 0 and while_counter < 5:
+    while Temperatures.prod() == 0:
+        # restructuring this part can be useful, separating splitter information from tur/comp calculation while adding if checks
+        # combinnig two power checks within the if check
         (
             Temperatures,
             enthalpies,
@@ -245,14 +205,9 @@ def objective_function(x, equipment):
             mass_flow,
         )
 
-        for work in w_tur:
-            if work < 0:
-                # print("Turbine work is negative")
-                return PENALTY_VALUE
-        for work in w_comp:
-            if work < 0:
-                # print("Compressor work is negative")
-                return PENALTY_VALUE
+        if np.any(w_tur < 0) or np.any(w_comp < 0):
+            # print("Turbine or Compressor pressure ratio is less than 1")
+            return PENALTY_VALUE
 
         if splitter == True:
             (Temperatures, enthalpies, entropies) = splitter_mixer_calc(
@@ -278,8 +233,6 @@ def objective_function(x, equipment):
             ):
                 # print("Infeasible HX")
                 return PENALTY_VALUE
-            # 0 0 0 0 0 0 output catch needed
-            # HX different m problem ? It is important that I need to be sure.
             try:
                 (
                     Temperatures[hotside_index],
@@ -302,18 +255,20 @@ def objective_function(x, equipment):
                     mass_flow[coldside_index],
                 )
             except:
-                print("HX calculation error")
+                # print("HX calculation error")
                 return PENALTY_VALUE
-
+        if while_counter == 4:
+            print("Infeasible Temperatures")
+            return PENALTY_VALUE
         while_counter += 1
 
     if sum(w_tur) < sum(w_comp):
-        print("Negative Net Power Production")
+        # print("Negative Net Power Production")
         return PENALTY_VALUE
 
     for index in cooler_position:
         if Temperatures[index] >= Temperatures[index - 1]:
-            print("Infeasible Cooler")
+            # print("Infeasible Cooler")
             return PENALTY_VALUE
     enthalpies, entropies, q_cooler = cooler_calculation(
         cooler_position,
@@ -325,14 +280,13 @@ def objective_function(x, equipment):
         cooler_pdrop,
         mass_flow,
     )
-    for work in q_cooler:
-        if work < 0:
-            print("Negative Cooler Work")
-            return PENALTY_VALUE
+    if np.any(q_cooler < 0):
+        # print("Negative Cooler Work")
+        return PENALTY_VALUE
 
     for index in heater_position:
         if Temperatures[index] <= Temperatures[index - 1]:
-            print("Infeasible Temperatures for heater")
+            # print("Infeasible Temperatures for heater")
             return PENALTY_VALUE
     enthalpies, entropies, q_heater = heater_calculation(
         heater_position,
@@ -348,14 +302,14 @@ def objective_function(x, equipment):
     if np.unique(Temperatures[heater_position]).size != len(
         Temperatures[heater_position]
     ):
-        print("Same Temperature for heater")
+        # print("Same Temperature for heater")
         return PENALTY_VALUE
 
     total_heat = sum(q_heater)
     # breakpoint()
     fg_tout = fg_calculation(fg_m, total_heat)
     if fg_tout < 90:
-        print("Too low stack temperature")
+        # print("Too low stack temperature")
         return PENALTY_VALUE
 
     # Economic Analysis
@@ -563,13 +517,13 @@ def objective_function(x, equipment):
             dissipation[i] = costs[i] * (exergies[i - 1] - exergies[i]) + zk[i]
     Cdiss = sum(dissipation)
     lcoe_calculated = (costs[-1] * Ep + Cdiss + Closs) / (Ep / 1e6)
-    c = lcoe
+    c = lcoe_calculated
     thermal_efficiency = (Ep) / 40.53e6
     if thermal_efficiency < 0.1575:
         j = 10000 * (0.30 - thermal_efficiency)
     else:
         j = c + max(0, 0.1 - sum(q_hx) / sum(q_heater))
-    print("Succesful Completion")
+    # print("Succesful Completion")
     return c
 
 
