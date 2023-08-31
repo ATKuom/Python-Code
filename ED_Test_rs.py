@@ -390,7 +390,7 @@ def results_analysis(x, equipment):
     if thermal_efficiency < 0.1575:
         j = 10000 * (0.30 - thermal_efficiency)
     else:
-        j = c + max(0, 0.6 - sum(q_hx) / sum(q_heater))
+        j = c + 1 * max(0, 0.1 - sum(q_hx) / sum(q_heater))
     print(
         f"""
     Equipment = {equipment}

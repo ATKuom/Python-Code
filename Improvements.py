@@ -14,9 +14,9 @@ import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
-from ED_Test_rs import results_analysis
+from Improvements_rs import results_analysis
 from econ import economics
-from split_functions import (
+from Improvements_functions import (
     lmtd,
     h_s_fg,
     fg_calculation,
@@ -105,9 +105,9 @@ ED1m = torch.tensor(
     ]
 )
 
-layout = ED3
+layout = ED2
 
-equipment, bounds, x, splitter = bound_creation(layout)
+equipment, bounds, x, splitter, hx = bound_creation(layout)
 
 
 # PSO Parameters

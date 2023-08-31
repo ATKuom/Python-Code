@@ -526,7 +526,8 @@ def bound_creation(layout):
     splitter = False
     equipment = np.zeros(len(units)).tolist()
     bounds = list(range(len(units)))
-    hx_token = 1
+    hx = False
+
     for i in range(len(units)):
         unit_type = np.where(units[i] == 1)[0][0]
         if unit_type == 1:
@@ -543,11 +544,8 @@ def bound_creation(layout):
             bounds[i] = (180, 530)
         elif unit_type == 5:
             equipment[i] = 5
-            if hx_token == 1:
-                bounds[i] = (4, 11)
-                # hx_token = 0
-            else:
-                bounds[i] = (0, 0)
+            bounds[i] = (4, 11)
+            hx = True
         elif unit_type == 7:
             equipment[i] = 7
             bounds[i] = (0, 0)
@@ -559,7 +557,13 @@ def bound_creation(layout):
     if splitter == True:
         equipment = np.roll(equipment, -branch_start, axis=0).tolist()
         bounds = np.roll(bounds, -branch_start, axis=0).tolist()
-    bounds.append((50, 160))
+    bounds.append([50, 160])
     print(equipment)
     print(bounds)
-    return (equipment, bounds, x, splitter)
+    return (
+        equipment,
+        bounds,
+        x,
+        splitter,
+        hx,
+    )
