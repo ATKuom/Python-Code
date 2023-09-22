@@ -1,0 +1,48 @@
+# Prepadding
+# max_input_length = len(max(train_input, key=len))
+# prepadded_train_input = []
+# for input in train_input:
+#     pad_length = max_input_length - len(input)
+#     prepadded_train_input.append(
+#         torch.cat(
+#             (torch.zeros(pad_length, len(classes)).float(), input), dim=0
+#         ).reshape(1, -1, len(classes))
+#     )
+# prepadded_train_input = torch.cat(prepadded_train_input, dim=0)
+# padded_train_input = padding(prepadded_train_input)
+
+# Sorting
+# datalist = sorted(datalist, key=len)
+# validation_set = sorted(validation_set, key=len)
+
+# LSTM Model
+# self.lstm1 = nn.LSTM(input_size, hidden_size)
+# self.lstm2 = nn.LSTM(hidden_size, hidden_size)
+# def forward(self, x):
+# out, hidden = self.lstm1(x)
+# out, _ = self.lstm2(out, hidden)
+
+# Expert design dataset
+
+# datalist = np.array(
+#     [
+#         # "TaACaH",
+#         "TaAC-1H1a1H",
+#         "TaACH-1H1a1H",
+#         # "Ta1bAC-2H2b2-1aT1H",
+#     ],
+#     dtype=object,
+# )
+
+# Sample Checking
+# if n == 0 and epoch % 10 == 0:
+#     print(
+#         output[: len(validation_set[0]) - 1].argmax(axis=1),
+#         batch_output[: len(validation_set[0]) - 1].argmax(axis=1),
+#     )
+
+# Accuracy
+#         train_accuracy.append(100 * train_correct / train_total)
+#         validation_accuracy.append(100 * correct / total)
+# # print(train_accuracy)
+# # print(validation_accuracy)

@@ -80,24 +80,25 @@ optimizer = optim.Adam(
     learning_rate,
 )
 
-
+# 15% of the data is used for validation
 if __name__ == "__main__":
-    # datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
+    datalist = np.load(config.DATA_DIRECTORY / "D0.npy", allow_pickle=True)
 
-    datalist = np.array(
-        [
-            # "TaACaH",
-            "TaAC-1H1a1H",
-            "TaACH-1H1a1H",
-            # "Ta1bAC-2H2b2-1aT1H",
-        ],
-        dtype=object,
-    )
-    datalist = gandetoken(datalist)
+    # datalist = np.array(
+    #     [
+    #         # "TaACaH",
+    #         "TaAC-1H1a1H",
+    #         "TaACH-1H1a1H",
+    #         # "Ta1bAC-2H2b2-1aT1H",
+    #     ],
+    #     dtype=object,
+    # )
+    datalist = gandetoken(datalist[:])
     one_hot_tensors = one_hot_encoding(datalist)
     padded_tensors = padding(one_hot_tensors)
     # Training loop
     num_epochs = 1000
+    print(datalist[0])
     for epoch in range(num_epochs):
         # Forward pass
         output = model(padded_tensors)
@@ -108,8 +109,8 @@ if __name__ == "__main__":
         optimizer.step()
         optimizer.zero_grad()
         # # Printing the loss
-        if (epoch + 1) % 250 == 0:
-            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
-            print(f"{torch.argmax(output, axis= 1)[:13]}")
-    print("Ground Truths")
-    print(torch.argmax(padded_tensors, axis=1)[:13])
+        if (epoch) % 100 == 0 or epoch == num_epochs - 1:
+            print(f"Epoch [{epoch}/{num_epochs}], Loss: {loss.item()}")
+            print(f"{torch.argmax(output[:len(datalist[0])-1], axis= 1)}")
+            print("Ground Truths")
+            print(torch.argmax(padded_tensors[: len(datalist[0]) - 1], axis=1))

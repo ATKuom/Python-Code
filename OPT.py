@@ -10,8 +10,9 @@
 # 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
 # Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
 # Splitter/mixer effects on exergy and overall structure must be analysed
-import numpy as np
+from LSTM_comb import one_hot_encoding, gandetoken
 import config
+import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
@@ -44,98 +45,6 @@ from split_functions import (
     K,
     FGINLETEXERGY,
 )
-
-ED1 = torch.tensor(
-    [
-        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-    ]
-)
-
-ED2 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-ED3 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-ED1m = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-# layout = ED1m
-layout = np.load(config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True)[0]
-# 0 Pressure calc error
-# 1 Pressure calc error
-# 2 Compressor saturation pressure error
-# 3 Pressure calc error
-# 4 Pressure calc error
-# 5 Compresor saturation pressure error
-# 6 Pressure calc error
-# 7 Pressure calc error
-# 8 Pressure calc error
-# 9 Compressor saturation pressure error
-# 10 Pressure calc error
-# 11 Pressure calc error
-# 12 Pressure calc error
-
-equipment, bounds, x, splitter = bound_creation(layout)
-
-
-# PSO Parameters
-swarmsize_factor = 7
-particle_size = swarmsize_factor * len(bounds)
-if 5 in equipment:
-    particle_size += -1 * swarmsize_factor
-if 9 in equipment:
-    particle_size += -2 * swarmsize_factor
-iterations = 30
-nv = len(bounds)
 
 
 def objective_function(x, equipment):
@@ -179,7 +88,6 @@ def objective_function(x, equipment):
     Pressures = Pressure_calculation(
         Pressures, equipment, cooler_pdrop, heater_pdrop, hx_pdrop, splitter
     )
-
     # it can benefit from tur_ppisition and comp_position
     # Turbine and Compressor pressure ratio calculation and checking
     tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
@@ -626,15 +534,15 @@ class PSO:
             w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
             c1 = -3 * (i / iterations) + 3.5
             c2 = 3 * (i / iterations) + 0.5
-            print("iteration = ", i)
-            print(w, c1, c2)
+            # print("iteration = ", i)
+            # print(w, c1, c2)
             for j in range(particle_size):
                 swarm_particle[j].evaluate(objective_function)
                 total_number_of_particle_evaluation += 1
                 while (
                     swarm_particle[j].fitness_particle_position == PENALTY_VALUE
                     and i == 0
-                    and total_number_of_particle_evaluation < 1e4
+                    and total_number_of_particle_evaluation < 5e3
                 ):
                     swarm_particle[j] = Particle(bounds)
                     swarm_particle[j].evaluate(objective_function)
@@ -657,11 +565,12 @@ class PSO:
                 swarm_particle[j].update_position(bounds)
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
-        print("Result:")
-        print("Optimal solutions:", global_best_particle_position)
-        print("Objective function value:", fitness_global_best_particle_position)
-        results_analysis(global_best_particle_position, equipment)
-        print(total_number_of_particle_evaluation)
+            self.result = fitness_global_best_particle_position
+        # print("Result:")
+        # print("Optimal solutions:", global_best_particle_position)
+        # print("Objective function value:", fitness_global_best_particle_position)
+        # results_analysis(global_best_particle_position, equipment)
+        # print(total_number_of_particle_evaluation)
         # plt.plot(A)
 
 
@@ -669,14 +578,33 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 
-PSO(objective_function, bounds, particle_size, iterations)
-
-# x = [
-#     78.5e5,
-#     10.8,
-#     32.3,
-#     241.3e5,
-#     10.8,
-#     411.4,
-#     93.18,
-# ]
+# datalist = np.load(config.DATA_DIRECTORY / "D0.npy", allow_pickle=True)
+# datalist = gandetoken(datalist)
+# one_hot_tensors = one_hot_encoding(datalist)
+one_hot_tensors = np.load(
+    config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True
+)
+valid_layouts = []
+penalty_layouts = []
+broken_layouts = []
+for layout in one_hot_tensors:
+    equipment, bounds, x, splitter = bound_creation(layout)
+    # PSO Parameters
+    swarmsize_factor = 7
+    particle_size = swarmsize_factor * len(bounds)
+    if 5 in equipment:
+        particle_size += -1 * swarmsize_factor
+    if 9 in equipment:
+        particle_size += -2 * swarmsize_factor
+    iterations = 3
+    nv = len(bounds)
+    try:
+        a = PSO(objective_function, bounds, particle_size, iterations)
+        if a.result < 1e6:
+            print(a.result)
+            valid_layouts.append(layout)
+            print(len(valid_layouts))
+        else:
+            penalty_layouts.append(layout)
+    except:
+        broken_layouts.append(layout)

@@ -39,6 +39,9 @@ def HX_restrictions(sequence, char_occur_dict):
 
     if sequence.count("aa") or sequence.count("bb"):
         return False
+    if sequence[-1] == "a" or sequence[-1] == "b":
+        if sequence[0] == "a" or sequence[0] == "b":
+            return False
 
     if (
         sequence.find("-1a") != -1
@@ -108,8 +111,11 @@ def validity(datalist):
 
 if __name__ == "__main__":
     # datalist = arr_expert
-    datalist = np.load(config.DATA_DIRECTORY / "r_g_strings.npy", allow_pickle=True)
+    datalist = np.load(config.DATA_DIRECTORY / "D3_generated.npy", allow_pickle=True)
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
-    print(valid_strings)
-    print(len(valid_strings))
-    np.save(config.DATA_DIRECTORY / "D0test.npy", valid_strings)
+    print(valid_strings, len(valid_strings))
+    p_datalist = np.load(config.DATA_DIRECTORY / "D3.npy", allow_pickle=True)
+    n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
+    n_valid_strings = np.unique(n_datalist)
+    print(len(n_valid_strings))
+    np.save(config.DATA_DIRECTORY / "D4.npy", n_valid_strings)

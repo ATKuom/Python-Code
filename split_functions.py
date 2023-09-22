@@ -282,6 +282,7 @@ def Pressure_calculation(
             and Pressures[mixer2 - 1] != 0
         ):
             Pressures[mixer2] = min(Pressures[mixer1 - 1], Pressures[mixer2 - 1])
+
         if Pressures.prod() == 0:
             for i in range(len(Pressures)):
                 if Pressures[i] != 0:
@@ -306,7 +307,7 @@ def Pressure_calculation(
                         if equipment[i + 1] == 9:
                             Pressures[i + 1] = Pressures[i]
                             Pressures[mixer1] = Pressures[i]
-
+        breakpoint()
     return Pressures
 
 
@@ -521,7 +522,7 @@ def splitter_mixer_calc(
 
 def bound_creation(layout):
     units = layout[1:-1]
-    print(units)
+    # print(units)
     x = []
     splitter = False
     equipment = np.zeros(len(units)).tolist()
@@ -561,5 +562,5 @@ def bound_creation(layout):
         bounds = np.roll(bounds, -branch_start, axis=0).tolist()
     bounds.append((50, 160))
     print(equipment)
-    print(bounds)
+    # print(bounds)
     return (equipment, bounds, x, splitter)
