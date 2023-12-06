@@ -5,7 +5,9 @@ import torch.nn as nn
 import torch.optim as optim
 import config
 import torch.utils.data as data
+import time
 
+s = time.time()
 classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
 
 
@@ -58,41 +60,8 @@ def padding(one_hot_tensors):
     return padded_tensors  # .view(-1, len(classes))
 
 
-class LSTMtry(nn.Module):
-    def __init__(self, input_size, hidden_size, num_classes):
-        super(LSTMtry, self).__init__()
-        self.lstm = nn.LSTM(
-            input_size,
-            hidden_size,
-            num_layers=2,
-            batch_first=True,
-            dropout=0.2,
-        )
-        self.dlayer = nn.Linear(hidden_size, num_classes)
-
-    def forward(self, x):
-        out, hlstm = self.lstm(x)
-        # out = out[:, -1, :]
-        # out = self.dlayer(out)
-        out = self.dlayer(hlstm[0][-1])
-
-        return out
-
-
-model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
-
-criterion = nn.CrossEntropyLoss()
-
-# Define the optimizer
-learning_rate = 0.001
-optimizer = optim.Adam(
-    model.parameters(),
-    learning_rate,
-)
-if __name__ == "__main__":
-    datalist = np.load(config.DATA_DIRECTORY / "D0.npy", allow_pickle=True)
-
-    datalist = gandetoken(datalist[:]).tolist()
+def preprocessing(datalist):
+    datalist = gandetoken(datalist).tolist()
     validation_set = []
     while len(validation_set) < 0.15 * len(datalist):
         i = np.random.randint(0, len(datalist))
@@ -109,6 +78,62 @@ if __name__ == "__main__":
     padded_validation_input = padding(validation_input)
     validation_output = torch.stack(validation_output)
     print(datalist.shape[0], validation_set.shape[0])
+    return padded_train_input, train_output, padded_validation_input, validation_output
+
+
+class LSTMtry(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes):
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size,
+            hidden_size,
+            num_layers=2,
+            batch_first=True,
+            # dropout=0.2,
+        )
+        # self.l1 = nn.LSTM(input_size, hidden_size, batch_first=True)
+        # self.l2 = nn.LSTM(hidden_size, hidden_size, batch_first=True)
+        self.dlayer = nn.Linear(
+            hidden_size,
+            num_classes,
+        )
+        # self.dropout = nn.Dropout(0.2)
+        self.softmax = nn.LogSoftmax(dim=1)
+
+    def forward(self, x):
+        out, hlstm = self.lstm(x)
+        # out = self.bn(hlstm[0][-1])
+        # o1, (h1, c1) = self.l1(x)
+        # o2, (h2, c2) = self.l2(self.dropout(h1))
+        # breakpoint()
+        out = self.dlayer(hlstm[0][1])
+        out = self.softmax(out)
+
+        return out
+
+
+model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
+
+criterion = nn.NLLLoss()
+
+# Define the optimizer
+learning_rate = 0.001
+optimizer = optim.Adam(
+    model.parameters(),
+    learning_rate,
+    # weight_decay=0.0001,
+)
+num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+if __name__ == "__main__":
+    datalist = np.load(config.DATA_DIRECTORY / "D4.npy", allow_pickle=True)
+
+    (
+        padded_train_input,
+        train_output,
+        padded_validation_input,
+        validation_output,
+    ) = preprocessing(datalist)
 
     # Training loop
     num_epochs = 100
@@ -116,7 +141,9 @@ if __name__ == "__main__":
     best_loss = np.inf
     train_accuracy = []
     validation_accuracy = []
-
+    train_loss = []
+    test_loss = []
+    indices = np.arange(len(padded_train_input))
     for epoch in range(num_epochs):
         batch_size = 32
         train_correct = 0
@@ -129,6 +156,7 @@ if __name__ == "__main__":
             batch_output = train_output[n : n + batch_size]
 
             output = model(batch_input)
+
             loss = criterion(output, batch_output.argmax(axis=1))
 
             optimizer.zero_grad()
@@ -142,13 +170,18 @@ if __name__ == "__main__":
                 (output.argmax(axis=1) == batch_output.argmax(axis=1)).sum().item()
             )
             steps += 1
+        # print(output[0].argmax(axis=1), batch_output.argmax(axis=1))
         t_loss = t_loss / steps
+        train_loss.append(t_loss)
+        np.random.shuffle(indices)
+        padded_train_input = padded_train_input[indices]
+        train_output = train_output[indices]
         # Validation Step
         model.eval()
         v_loss = 0
         v_correct = 0
         v_total = 0
-
+        v_steps = 0
         with torch.no_grad():
             for n in range(0, len(padded_validation_input), batch_size):
                 batch_input = padded_validation_input[n : n + batch_size]
@@ -163,27 +196,36 @@ if __name__ == "__main__":
                     (output.argmax(axis=1) == batch_output.argmax(axis=1)).sum().item()
                 )
 
+                v_steps += 1
+            v_loss = v_loss / v_steps
+            test_loss.append(v_loss)
             if v_loss < best_loss:
                 best_loss = v_loss
                 best_model = model.state_dict()
-            if epoch % 10 == 0 or epoch == num_epochs - 1:
-                print("Epoch %d: TrainingLoss: %.4f" % (epoch, t_loss))
-                print("Epoch %d: ValidationLoss: %.4f" % (epoch, v_loss))
-                print(
-                    "Accuracy of the network on the training set: %d %%"
-                    % (100 * train_correct / train_total)
-                )
-                print(
-                    "Accuracy of the network on the validation set: %d %%"
-                    % (100 * v_correct / v_total)
-                )
+        if epoch % 10 == 0 or epoch == num_epochs - 1:
+            print("Epoch %d: TrainingLoss: %.4f" % (epoch, t_loss))
+            print("Epoch %d: ValidationLoss: %.4f" % (epoch, v_loss))
+            print(
+                "Accuracy of the network on the training set: %d %%"
+                % (100 * train_correct / train_total)
+            )
+            print(
+                "Accuracy of the network on the validation set: %d %%"
+                % (100 * v_correct / v_total)
+            )
 
-            train_accuracy.append(100 * train_correct / train_total)
-            validation_accuracy.append(100 * v_correct / v_total)
+        train_accuracy.append(100 * train_correct / train_total)
+        validation_accuracy.append(100 * v_correct / v_total)
+    e = time.time()
+    print(e - s)
     import matplotlib.pyplot as plt
 
     plt.plot(train_accuracy, label="Training Accuracy")
     plt.plot(validation_accuracy, label="Validation Accuracy")
+    plt.legend()
+    plt.show()
+    plt.plot(train_loss, label="Training Loss")
+    plt.plot(test_loss, label="Validation Loss")
     plt.legend()
     plt.show()
 

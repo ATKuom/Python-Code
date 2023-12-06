@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from econ import economics
-from split_functions import (
+from TH_econ import economics
+from TH_split_functions import (
     fg_calculation,
     HX_calculation,
     decision_variable_placement,

@@ -33,7 +33,6 @@ def splthxnmbrcheck(datalist):
 
 if __name__ == "__main__":
     # datalist = arr_expert
-    datalist = np.load(config.DATA_DIRECTORY / "D0test.npy", allow_pickle=True)
-    print(datalist[0])
+    datalist = np.load(config.DATA_DIRECTORY / "len20d10.npy", allow_pickle=True)
     total, splitter, hx, both, ed, edlist = splthxnmbrcheck(datalist)
     print(total, splitter, hx, both, ed, edlist)

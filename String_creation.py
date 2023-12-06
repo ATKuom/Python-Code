@@ -8,7 +8,9 @@ import config
 
 RESTRICTED_EQUIP = [
     "a",
+    "a",
     # "b",
+    "1",
     "1",
     # "2",
     "-1",
@@ -58,6 +60,8 @@ def word_creation():
     while new_word.count("") > 0:
         i = random.choice(indexes_new_word)
         new_word[i] = random.choice(equip_str)
+        if new_word[i] in RESTRICTED_EQUIP:
+            equip_str.remove(new_word[i])
         indexes_new_word.remove(i)
     return "".join(new_word)
 
@@ -79,6 +83,7 @@ if __name__ == "__main__":
     print(
         "Longest string character length:",
         len(max(randomly_generated_strings, key=len)),
+        max(randomly_generated_strings, key=len),
     )
     print(len(randomly_generated_strings))
-    np.save(config.DATA_DIRECTORY / "D0_base.npy", randomly_generated_strings)
+    np.save(config.DATA_DIRECTORY / "v3D0_base.npy", randomly_generated_strings)

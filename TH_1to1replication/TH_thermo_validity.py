@@ -50,10 +50,10 @@ def basic_structure(sequence, char_occur_dict):
     if "E" in char_occur_dict.keys():
         if char_occur_dict["E"] != 1:
             return False
-    starting_index = 0
+
     for elements in BASIC_LIST:
-        starting_index = sequence.find(elements, starting_index)
-        if starting_index == -1:
+        index = sequence.find(elements)
+        if index == -1:
             return False
 
     return True

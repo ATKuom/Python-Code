@@ -54,6 +54,14 @@ def padding(one_hot_tensors):
 
 
 def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32):
+    print(
+        "datalist_length:",
+        len(datalist),
+        "Total_epoch:",
+        num_epochs,
+        "Batch_size:",
+        batch_size,
+    )
     validation_set = []
     while len(validation_set) < 0.15 * len(datalist):
         i = np.random.randint(0, len(datalist))
@@ -71,7 +79,6 @@ def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32
     validation_lengths = [x for x in map(len, validation_input)]
     validation_output = torch.stack(validation_output)
     print(datalist.shape[0], validation_set.shape[0], padded_train_input.shape[0])
-    # Training loop
     best_model = None
     best_loss = np.inf
     indices = np.arange(len(padded_train_input))
@@ -79,7 +86,6 @@ def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32
     val_acc = []
     train_loss = []
     val_loss = []
-
     for epoch in range(num_epochs):
         train_correct = 0
         train_total = 0
@@ -191,7 +197,7 @@ class LSTMtry(nn.Module):
 
 
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
-
+model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
 criterion = nn.CrossEntropyLoss()
 
 # Define the optimizer
@@ -204,10 +210,10 @@ optimizer = optim.Adam(
 # 15% of the data is used for validation
 if __name__ == "__main__":
     datalist = np.load(
-        config.DATA_DIRECTORY / "v3D1_m1.npy", allow_pickle=True
+        config.DATA_DIRECTORY / "v3D0_m2.npy", allow_pickle=True
     ).tolist()
     best_model, train_acc, train_loss, val_acc, val_loss = training(
-        model, optimizer, criterion, datalist, 10, 100
+        model, optimizer, criterion, datalist, 30, 32
     )
     e = time.time()
     print(e - s)
@@ -219,4 +225,4 @@ if __name__ == "__main__":
     plt.plot(val_loss, label="Validation Loss")
     plt.legend()
     plt.show()
-    # torch.save(best_model, config.MODEL_DIRECTORY / "v3D10_m1.pt")
+    # torch.save(best_model, config.MODEL_DIRECTORY / "v3D0_m2.pt")

@@ -15,6 +15,8 @@ import config
 import torch
 import random
 import matplotlib.pyplot as plt
+import time
+from empty import string_to_layout
 from ED_Test_rs import results_analysis
 from econ import economics
 from split_functions import (
@@ -45,6 +47,7 @@ from split_functions import (
     FGINLETEXERGY,
 )
 
+s = time.time()
 ED1 = torch.tensor(
     [
         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -96,11 +99,7 @@ ED3 = torch.tensor(
 ED1m = torch.tensor(
     [
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
         [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
@@ -108,8 +107,39 @@ ED1m = torch.tensor(
     ]
 )
 
-# layout = ED1m
-layout = np.load(config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True)[0]
+best1 = torch.tensor(
+    [
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ]
+)
+best2 = torch.tensor(
+    [
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ]
+)
+layout = ED3
 # 0 Pressure calc error
 # 1 Pressure calc error
 # 2 Compressor saturation pressure error
@@ -124,8 +154,14 @@ layout = np.load(config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True
 # 11 Pressure calc error
 # 12 Pressure calc error
 
-equipment, bounds, x, splitter = bound_creation(layout)
 
+# layouts = np.load(
+#     config.DATA_DIRECTORY / "len20m2_final_sorted_layouts_lessthanED2.npy",
+#     allow_pickle=True,
+# )
+# layout = layouts[0]
+# layout = string_to_layout(layout)
+equipment, bounds, x, splitter = bound_creation(layout)
 
 # PSO Parameters
 swarmsize_factor = 7
@@ -139,14 +175,14 @@ nv = len(bounds)
 
 
 def objective_function(x, equipment):
-    ntur = 85  # turbine efficiency     2019 Nabil
-    ncomp = 82  # compressor efficiency 2019 Nabil
+    ntur = 85  # 2019 Nabil 93
+    ncomp = 82  #  89
     cw_temp = 19  # °C
-    fg_tin = 539.76  # °C
-    fg_m = 68.75  # kg/s
-    cooler_pdrop = 1e5
-    heater_pdrop = 0
-    hx_pdrop = 0.5e5
+    fg_tin = 539.76  # °C 630
+    fg_m = 68.75  # kg/s 935
+    cooler_pdrop = 1e5  # 0.5e5
+    heater_pdrop = 0  # 1e5
+    hx_pdrop = 0.5e5  # 1e5
     PENALTY_VALUE = float(1e6)
 
     enumerated_equipment = list(enumerate(equipment))
@@ -173,7 +209,7 @@ def objective_function(x, equipment):
         approach_temp,
         split_ratio,
         mass_flow,
-    ) = decision_variable_placement(x, enumerated_equipment)
+    ) = decision_variable_placement(x, enumerated_equipment, len(equipment))
 
     # Pressure calculation splitter part is missing still
     Pressures = Pressure_calculation(
@@ -182,7 +218,9 @@ def objective_function(x, equipment):
 
     # it can benefit from tur_ppisition and comp_position
     # Turbine and Compressor pressure ratio calculation and checking
-    tur_pratio, comp_pratio = tur_comp_pratio(enumerated_equipment, Pressures)
+    tur_pratio, comp_pratio = tur_comp_pratio(
+        enumerated_equipment, Pressures, len(equipment)
+    )
 
     if np.any(tur_pratio <= 1) or np.any(comp_pratio <= 1):
         # print("Turbine or Compressor pressure ratio is less than 1")
@@ -537,11 +575,11 @@ def objective_function(x, equipment):
     c = lcoe_calculated
     thermal_efficiency = (Ep) / 40.53e6
     if thermal_efficiency < 0.1575:
-        j = 10000 * (0.30 - thermal_efficiency)
+        j = 100 * (0.30 - thermal_efficiency)
     else:
         j = c + 1 * max(0, 0.1 - sum(q_hx) / sum(q_heater))
     # print("Succesful Completion")
-    return j
+    return c
 
 
 # ------------------------------------------------------------------------------
@@ -626,15 +664,15 @@ class PSO:
             w = (0.4 / iterations**2) * (i - iterations) ** 2 + 0.4
             c1 = -3 * (i / iterations) + 3.5
             c2 = 3 * (i / iterations) + 0.5
-            print("iteration = ", i)
-            print(w, c1, c2)
+            # print("iteration = ", i)
+            # print(w, c1, c2)
             for j in range(particle_size):
                 swarm_particle[j].evaluate(objective_function)
                 total_number_of_particle_evaluation += 1
                 while (
                     swarm_particle[j].fitness_particle_position == PENALTY_VALUE
                     and i == 0
-                    and total_number_of_particle_evaluation < 1e4
+                    and total_number_of_particle_evaluation < 5e3
                 ):
                     swarm_particle[j] = Particle(bounds)
                     swarm_particle[j].evaluate(objective_function)
@@ -660,7 +698,7 @@ class PSO:
         print("Result:")
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)
-        results_analysis(global_best_particle_position, equipment)
+        self.result = results_analysis(global_best_particle_position, equipment)
         print(total_number_of_particle_evaluation)
         # plt.plot(A)
 
@@ -670,7 +708,37 @@ class PSO:
 # Main PSO
 
 PSO(objective_function, bounds, particle_size, iterations)
+e = time.time()
+print(e - s)
+# layouts = np.load(
+#     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1.npy",
+#     allow_pickle=True,
+# )
+# results = []
+# for layout in layouts:
+#     layout = string_to_layout(layout)
 
+#     equipment, bounds, x, splitter = bound_creation(layout)
+
+#     # PSO Parameters
+#     swarmsize_factor = 7
+#     particle_size = swarmsize_factor * len(bounds)
+#     if 5 in equipment:
+#         particle_size += -1 * swarmsize_factor
+#     if 9 in equipment:
+#         particle_size += -2 * swarmsize_factor
+#     iterations = 30
+#     nv = len(bounds)
+#     try:
+#         a = PSO(objective_function, bounds, particle_size, iterations)
+#         results.append(a.result)
+#     except:
+#         results.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+# results_array = np.asarray(results)
+# np.save(
+#     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1_results.npy",
+#     results_array,
+# )
 # x = [
 #     78.5e5,
 #     10.8,

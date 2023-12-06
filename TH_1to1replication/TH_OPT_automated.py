@@ -1,24 +1,14 @@
-# Splitter/mixer sitatuion will create different m values which necessitates unit_type more complex approach to the hx.
-# ------------Completed Tasks------------
-# More than one heater fg_out and exergy analysis maybe necessary?
-# At least unit_type partioning between the heaters based on their share on the total heat duty is unit_type reasonable appraoch?
-# The partioning is done but the extra e_fgin and e_fgout may be necessary to include per each heater to satisfy the square matrix requirement of the exergy analysis
-# Mixing with different pressures is unit_type problem.
-# Assumption of flashing the higher pressure stream to the lower pressure stream can be made to mix them.
-# After determining the pressures of the system without the mixer, then the mixer must adjust the pressure of the output using the lowest pressure input
-# All the m inputs in the functions must be changed accordingly after the implementation of splitter/mixer
-# 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
-# Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
-# Splitter/mixer effects on exergy and overall structure must be analysed
+from LSTM_batch_pack_m2 import *
+from LSTM_generation_m2 import generation
+from thermo_validity import *
+from LSTM_comb import one_hot_encoding
 import config
 import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
-from ED_Test_rs import results_analysis
-from econ import economics
-from split_functions import (
-    one_hot_encoding,
+from TH_econ import economics
+from TH_split_functions import (
     fg_calculation,
     HX_calculation,
     decision_variable_placement,
@@ -445,56 +435,146 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 if __name__ == "__main__":
-    datalist = np.load(
-        config.DATA_DIRECTORY / "v3D1_m2_candidates.npy", allow_pickle=True
-    )
-    # index = np.load(
-    #     config.DATA_DIRECTORY / "len20_valid_layouts_all.npy", allow_pickle=True
-    # )
-    # datalist = np.array(datalist, dtype=object)[index]
-    one_hot_tensors = one_hot_encoding(datalist)
-    # one_hot_tensors = np.load(
-    #     config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True
-    # )
-    valid_layouts = set()
-    penalty_layouts = set()
-    broken_layouts = set()
-    one_hot_tensors = np.array(one_hot_tensors, dtype=object)
-    results = np.zeros(len(datalist))
-    print(len(datalist))
-    for i in range(len(datalist)):
-        layout = one_hot_tensors[i]
-        equipment, bounds, x, splitter = bound_creation(layout)
-        # PSO Parameters
-        swarmsize_factor = 7
-        particle_size = swarmsize_factor * len(bounds)
-        if 5 in equipment:
-            particle_size += -1 * swarmsize_factor
-        if 9 in equipment:
-            particle_size += -2 * swarmsize_factor
-        iterations = 30
-        nv = len(bounds)
-        try:
-            a = PSO(objective_function, bounds, particle_size, iterations)
-            if a.result < 1e6:
-                valid_layouts.add(i)
-                results[i] = a.result
-            else:
-                penalty_layouts.add(i)
-        except:
-            broken_layouts.add(i)
-        if i % 100 == 0:
-            print(len(valid_layouts), len(penalty_layouts), len(broken_layouts))
-    # np.save(config.DATA_DIRECTORY / "v3m2D0_results.npy", results)
-    # np.save(
-    #     config.DATA_DIRECTORY / "v3m2D0_valid.npy",
-    #     np.array(list(valid_layouts)),
-    # )
-    # np.save(
-    #     config.DATA_DIRECTORY / "v3m2D0_penalty.npy",
-    #     np.array(list(penalty_layouts)),
-    # )
-    # np.save(
-    #     config.DATA_DIRECTORY / "v3m2D0_broken.npy",
-    #     np.array(list(broken_layouts)),
-    # )
+    N = 3000
+    datasets = [
+        "D0",
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+    ]
+    next_datasets = [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+        "D8",
+    ]
+    version = "v3.1"
+    model_phase = "_m2"
+
+    for dataset, next_dataset in zip(datasets, next_datasets):
+        datalist_name = version + dataset + model_phase + ".npy"
+        model_name = version + dataset + model_phase + ".pt"
+        generated_name = version + dataset + model_phase + "_generated.npy"
+        candidates_name = version + next_dataset + model_phase + "_candidates.npy"
+        results_name = version + next_dataset + model_phase + "_results.npy"
+        valid_name = version + next_dataset + model_phase + "_valid.npy"
+        penalty_name = version + next_dataset + model_phase + "_penalty.npy"
+        broken_name = version + next_dataset + model_phase + "_broken.npy"
+        good_layouts_name = version + next_dataset + model_phase + "_goodlayouts.npy"
+        next_datalist_name = version + next_dataset + model_phase + ".npy"
+
+        # ML Training
+        datalist = np.load(
+            config.DATA_DIRECTORY / datalist_name, allow_pickle=True
+        ).tolist()
+        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
+        best_model, train_acc, train_loss, val_acc, val_loss = training(
+            model, optimizer, criterion, datalist, 30, 100
+        )
+        torch.save(best_model, config.MODEL_DIRECTORY / model_name)
+
+        # ML Generation
+        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / model_name))
+        layout_list = generation(N, model)
+        np.save(config.DATA_DIRECTORY / generated_name, layout_list)
+
+        # Validity Filter
+        datalist = np.load(config.DATA_DIRECTORY / generated_name, allow_pickle=True)
+        print(len(datalist), "V", len(validity(datalist)))
+        valid_strings = np.unique(np.array(validity(datalist), dtype=object))
+        print("V/U", len(valid_strings))
+        p_datalist = np.load(config.DATA_DIRECTORY / datalist_name, allow_pickle=True)
+        print(len(p_datalist))
+        n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
+        n_valid_strings = np.unique(n_datalist)
+        print(len(n_valid_strings))
+        index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
+        new_ones = n_valid_strings[index]
+        print("V/U/N", new_ones, len(new_ones))
+        np.save(config.DATA_DIRECTORY / candidates_name, new_ones)
+
+        # Optimization Filter
+        datalist = np.load(config.DATA_DIRECTORY / candidates_name, allow_pickle=True)
+        one_hot_tensors = one_hot_encoding(datalist)
+        valid_layouts = set()
+        penalty_layouts = set()
+        broken_layouts = set()
+        one_hot_tensors = np.array(one_hot_tensors, dtype=object)
+        results = np.zeros(len(datalist))
+        print(len(datalist))
+        for i in range(len(datalist)):
+            layout = one_hot_tensors[i]
+            equipment, bounds, x, splitter = bound_creation(layout)
+
+            # PSO Parameters
+            swarmsize_factor = 7
+            particle_size = swarmsize_factor * len(bounds)
+            if 5 in equipment:
+                particle_size += -1 * swarmsize_factor
+            if 9 in equipment:
+                particle_size += -2 * swarmsize_factor
+            iterations = 30
+            nv = len(bounds)
+            try:
+                a = PSO(objective_function, bounds, particle_size, iterations)
+                if a.result < 1e6:
+                    valid_layouts.add(i)
+                    results[i] = a.result
+                else:
+                    penalty_layouts.add(i)
+            except:
+                broken_layouts.add(i)
+            if i % 100 == 0:
+                print(
+                    "Valid/Penalty/Broken",
+                    len(valid_layouts),
+                    len(penalty_layouts),
+                    len(broken_layouts),
+                )
+        np.save(config.DATA_DIRECTORY / results_name, results)
+        np.save(
+            config.DATA_DIRECTORY / valid_name,
+            np.array(list(valid_layouts)),
+        )
+        np.save(
+            config.DATA_DIRECTORY / penalty_name,
+            np.array(list(penalty_layouts)),
+        )
+        np.save(
+            config.DATA_DIRECTORY / broken_name,
+            np.array(list(broken_layouts)),
+        )
+
+        # Optimization Result Check
+        results = np.load(config.DATA_DIRECTORY / results_name, allow_pickle=True)
+        datalist = np.load(config.DATA_DIRECTORY / candidates_name, allow_pickle=True)
+        nonzero_results = results[np.where(results > 0)]
+        cutoff = 143.957
+        good_layouts = []
+        print(
+            "Optimization Results:", len(nonzero_results), len(results), len(datalist)
+        )
+        for i in range(len(results)):
+            if results[i] < cutoff and results[i] > 0:
+                good_layouts.append(datalist[i])
+        print("Good layouts", len(good_layouts))
+        good_layouts = np.array(good_layouts, dtype=object)
+        np.save(config.DATA_DIRECTORY / good_layouts_name, good_layouts)
+
+        # New Dataset Formation
+        datalist = np.load(config.DATA_DIRECTORY / good_layouts_name, allow_pickle=True)
+        valid_strings = np.unique(np.array(validity(datalist), dtype=object))
+        p_datalist = np.load(config.DATA_DIRECTORY / datalist_name, allow_pickle=True)
+        print(datalist_name, len(p_datalist))
+        n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
+        n_valid_strings = np.unique(n_datalist)
+        print(next_datalist_name, len(n_valid_strings))
+        np.save(config.DATA_DIRECTORY / next_datalist_name, n_valid_strings)

@@ -2,88 +2,6 @@ from pyfluids import Fluid, FluidsList, Input, Mixture
 import numpy as np
 import scipy.optimize as opt
 import CoolProp.CoolProp as CP
-import torch
-
-classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
-
-
-def layout_to_string(layouts):
-    int_to_char = dict((i, c) for i, c in enumerate(classes))
-
-    sequences = []
-    for layout in layouts:
-        x = ""
-        for i in range(len(layout)):
-            x += int_to_char[layout[i].argmax().item()]
-        sequences.append(x)
-    return sequences
-
-
-def string_to_equipment(sequences):
-    char_to_int = dict((c, i) for i, c in enumerate(classes))
-    equipments = []
-    for sequence in sequences:
-        equipment = []
-        splitter = False
-        for char in sequence:
-            try:
-                equipment.append(char_to_int[char])
-            except:
-                equipment.append(char_to_int["-1"])
-                splitter = True
-        if splitter == True:
-            equipment.pop(equipment.index(9) + 1)
-            splitter = False
-        equipments.append(equipment)
-    return equipments
-
-
-def string_to_layout(sequence):
-    one_hot_encoded = []
-    i = 0
-    while i < len(sequence):
-        char = sequence[i]
-        vector = [0] * len(classes)  # Initialize with zeros
-        if char == "-":
-            next_char = sequence[i + 1]
-            unit = char + next_char
-            if unit in classes:
-                vector[classes.index(unit)] = 1
-                i += 1  # Skip the next character since it forms a unit
-        elif char in classes:
-            vector[classes.index(char)] = 1
-        one_hot_encoded.append(vector)
-        i += 1
-    return torch.tensor(one_hot_encoded)
-
-
-def one_hot_encoding(datalist):
-    one_hot_tensors = []
-    for sequence in datalist:
-        # Perform one-hot encoding for the sequence
-        one_hot_encoded = []
-        i = 0
-        while i < len(sequence):
-            char = sequence[i]
-            vector = [0] * len(classes)  # Initialize with zeros
-
-            if char == "-":
-                next_char = sequence[i + 1]
-                unit = char + next_char
-                if unit in classes:
-                    vector[classes.index(unit)] = 1
-                    i += 1  # Skip the next character since it forms a unit
-            elif char in classes:
-                vector[classes.index(char)] = 1
-
-            one_hot_encoded.append(vector)
-            i += 1
-
-        # Convert the list to a PyTorch tensor
-        one_hot_tensor = torch.tensor(one_hot_encoded)
-        one_hot_tensors.append(one_hot_tensor)
-
-    return one_hot_tensors
 
 
 def lmtd(dt1, dt2):
@@ -611,17 +529,17 @@ def bound_creation(layout):
             bounds[i] = (74e5, 300e5)
         elif unit_type == 2:
             equipment[i] = 2
-            bounds[i] = (32, 38)
+            bounds[i] = (32.25, 610)
         elif unit_type == 3:
             equipment[i] = 3
             bounds[i] = (74e5, 300e5)
         elif unit_type == 4:
             equipment[i] = 4
-            bounds[i] = (180, 530)
+            bounds[i] = (32.25, 610)
         elif unit_type == 5:
             equipment[i] = 5
             if hx_token == 1:
-                bounds[i] = (4, 11)
+                bounds[i] = (3, 20)
                 # hx_token = 0
             else:
                 bounds[i] = (0, 0)
@@ -630,7 +548,7 @@ def bound_creation(layout):
             bounds[i] = (0, 0)
         elif unit_type == 9:
             equipment[i] = 9
-            bounds[i] = (0.01, 0.99)
+            bounds[i] = (0.1, 0.9)
             splitter = True
             branch_start = i
     if splitter == True:
