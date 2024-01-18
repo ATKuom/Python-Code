@@ -1,10 +1,10 @@
 #
 from collections import Counter
-from designs import arr_expert
-from String_creation import BASIC_LIST
+from designs import goeos_expert
 import numpy as np
 import config
 
+BASIC_LIST = ["T", "A", "C", "H"]
 classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
 char_to_int = dict((c, i) for i, c in enumerate(classes))
 
@@ -12,29 +12,16 @@ char_to_int = dict((c, i) for i, c in enumerate(classes))
 def string_to_equipment(sequence, char_to_int=char_to_int, classes=classes):
     equipment = []
     splitter = False
-    for char in sequence:
+    for i, char in list(enumerate(sequence)):
         try:
+            if splitter == True:
+                splitter = False
+                continue
             equipment.append(char_to_int[char])
         except:
-            equipment.append(char_to_int["-1"])
+            equipment.append(char_to_int[char + sequence[i + 1]])
             splitter = True
-    if splitter == True:
-        equipment.pop(equipment.index(9) + 1)
-        splitter = False
     return np.array(equipment)
-
-
-def length(sequence):
-    length = 0
-    for char in sequence:
-        if char == "-":
-            continue
-        else:
-            length += 1
-    if length > 22:
-        return False
-    else:
-        return True
 
 
 def basic_structure(sequence, char_occur_dict):
@@ -76,8 +63,9 @@ def HX_restrictions(sequence, char_occur_dict):
 
     if sequence.count("aa") or sequence.count("bb"):
         return False
-    if sequence[-1] == "a" or sequence[-1] == "b":
-        if sequence[0] == "a" or sequence[0] == "b":
+
+    if sequence[-2] == "a" or sequence[-2] == "b":
+        if sequence[1] == "a" or sequence[1] == "b":
             return False
 
     if (
@@ -122,7 +110,7 @@ def splitter_restrictions(sequence, char_occur_dict):
         sequence.count("11")
         or sequence.count("-11")
         or sequence.count("22")
-        or sequence.count("2-2")
+        or sequence.count("-22")
     ):
         return False
 
@@ -133,6 +121,11 @@ def splitter_restrictions(sequence, char_occur_dict):
 
 def special_rules(sequence):
     equipment = string_to_equipment(sequence)
+    if len(equipment) > 22:
+        return False
+    for current, next in zip(equipment, np.roll(equipment, -1)):
+        if current == next:
+            return False
     if 9 in equipment:
         splitter = np.where(equipment == 9)[0][0]
         equipment = np.roll(equipment, -splitter)
@@ -159,7 +152,6 @@ def validity(datalist):
         char_occur_dict = Counter(sequence)
         if (
             basic_structure(sequence, char_occur_dict)
-            and length(sequence)
             and HX_restrictions(sequence, char_occur_dict)
             and splitter_restrictions(sequence, char_occur_dict)
             and special_rules(sequence)
@@ -174,20 +166,20 @@ if __name__ == "__main__":
     # layouts = np.load(config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True)
     # datalist = layout_to_string(layouts)
     # print(len(datalist))
-    datalist = np.load(
-        config.DATA_DIRECTORY / "v3D0_m2_generated.npy", allow_pickle=True
-    )
+    datalist = np.load(config.DATA_DIRECTORY / "v810k.npy", allow_pickle=True)
+    # datalist = ["GTACHE", "GTCAHE", "GTTCAHE", "GHTCAHE", "GaTCAHaE"]
+    # datalist = goeos_expert
     print(len(datalist), len(validity(datalist)))
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
-    print(len(valid_strings))
-    # np.save(config.DATA_DIRECTORY / "v3m2D0_candidates.npy", valid_strings)
-    p_datalist = np.load(config.DATA_DIRECTORY / "v3D0_m2.npy", allow_pickle=True)
-    print(len(p_datalist))
+    print(len(valid_strings), valid_strings)
+    # np.save(config.DATA_DIRECTORY / "v5m2D0_candidates.npy", valid_strings)
+    p_datalist = np.load(config.DATA_DIRECTORY / "v8D0_m1.npy", allow_pickle=True)
+    # print(len(p_datalist))
     n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
     n_valid_strings = np.unique(n_datalist)
     print(len(n_valid_strings))
-    # np.save(config.DATA_DIRECTORY / "v3DF_m1.npy", n_valid_strings)
+    # # np.save(config.DATA_DIRECTORY / "v3DF_m1.npy", n_valid_strings)
     index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
     new_ones = n_valid_strings[index]
-    print(new_ones, len(new_ones))
-    np.save(config.DATA_DIRECTORY / "v3D1_m2_candidates.npy", new_ones)
+    print(len(new_ones))
+    # np.save(config.DATA_DIRECTORY / "v81k_QA.npy", new_ones)

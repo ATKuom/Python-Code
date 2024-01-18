@@ -4,7 +4,6 @@ from torch.nn.utils.rnn import pad_sequence
 import torch.nn as nn
 import torch.optim as optim
 import config
-import torch.utils.data as data
 import time
 import matplotlib.pyplot as plt
 
@@ -51,6 +50,10 @@ def padding(one_hot_tensors):
         one_hot_tensors, batch_first=True, padding_value=0
     ).float()
     return padded_tensors  # .view(-1, len(classes))
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32):
@@ -204,19 +207,19 @@ optimizer = optim.Adam(
 # 15% of the data is used for validation
 if __name__ == "__main__":
     datalist = np.load(
-        config.DATA_DIRECTORY / "v3D1_m1.npy", allow_pickle=True
+        config.DATA_DIRECTORY / "v8D0_m1.npy", allow_pickle=True
     ).tolist()
     best_model, train_acc, train_loss, val_acc, val_loss = training(
-        model, optimizer, criterion, datalist, 10, 100
+        model, optimizer, criterion, datalist, 30, 100
     )
     e = time.time()
     print(e - s)
     plt.plot(train_acc, label="Training Accuracy")
     plt.plot(val_acc, label="Validation Accuracy")
     plt.legend()
-    plt.show()
+    # plt.show()
     plt.plot(train_loss, label="Training Loss")
     plt.plot(val_loss, label="Validation Loss")
     plt.legend()
-    plt.show()
-    # torch.save(best_model, config.MODEL_DIRECTORY / "v3D10_m1.pt")
+    # plt.show()
+    torch.save(best_model, config.MODEL_DIRECTORY / "v8D0_m1.pt")

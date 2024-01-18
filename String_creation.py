@@ -4,7 +4,7 @@ import numpy as np
 import random as random
 from itertools import repeat
 import config
-
+from thermo_validity import validity
 
 RESTRICTED_EQUIP = [
     "a",
@@ -79,11 +79,42 @@ def numberofstrings(N):
 
 
 if __name__ == "__main__":
-    randomly_generated_strings = np.array(numberofstrings(20000), dtype=object)
+    # randomly_generated_strings = np.array(numberofstrings(20000), dtype=object)
+    # print(
+    #     "Longest string character length:",
+    #     len(max(randomly_generated_strings, key=len)),
+    #     max(randomly_generated_strings, key=len),
+    # )
+    # randomly_generated_strings = [
+    #     "G" + string + "E" for string in randomly_generated_strings
+    # ]
+    # print(len(validity(randomly_generated_strings)))
+    N = 50000
+    randomly_generated_strings = []
+    i = 0
+    while len(randomly_generated_strings) < N:
+        string = "G" + word_creation() + "E"
+        i += 1
+        if validity([string]):
+            randomly_generated_strings.append(string)
+        randomly_generated_strings = np.unique(
+            np.array(randomly_generated_strings, dtype=object)
+        )
+        randomly_generated_strings = list(randomly_generated_strings)
+    print(i, len(randomly_generated_strings), randomly_generated_strings[:10])
+    randomly_generated_strings = np.array(randomly_generated_strings, dtype=object)
     print(
         "Longest string character length:",
         len(max(randomly_generated_strings, key=len)),
         max(randomly_generated_strings, key=len),
     )
-    print(len(randomly_generated_strings))
-    np.save(config.DATA_DIRECTORY / "v3D0_base.npy", randomly_generated_strings)
+    j, k, l = 0, 0, 0
+    for string in randomly_generated_strings:
+        if "a" in string:
+            j += 1
+            if "-1" in string:
+                l += 1
+        if "-1" in string:
+            k += 1
+    print(j, k, l)
+    np.save(config.DATA_DIRECTORY / "v8D0_m1.npy", randomly_generated_strings)

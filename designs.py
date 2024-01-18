@@ -14,4 +14,4 @@ arr_expert = np.array(expert_designs, dtype=object)
 #     goeos_expert.append(sequence)
 # print(goeos_expert)
 
-# goeos_expert = ["GTaACaHE", "GTaAC-1H1a1HE", "GTaACH-1H1a1HE", "GTa1bAC-2H2b2-1aT1HE"]
+goeos_expert = ["GTaACaHE", "GTaAC-1H1a1HE", "GTaACH-1H1a1HE", "GTa1bAC-2H2b2-1aT1HE"]

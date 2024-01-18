@@ -433,6 +433,7 @@ class PSO:
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
             self.result = fitness_global_best_particle_position
+            self.position = global_best_particle_position
         # print("Result:")
         # print("Optimal solutions:", global_best_particle_position)
         # print("Objective function value:", fitness_global_best_particle_position)
@@ -445,9 +446,7 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 if __name__ == "__main__":
-    datalist = np.load(
-        config.DATA_DIRECTORY / "v3D1_m2_candidates.npy", allow_pickle=True
-    )
+    datalist = np.load(config.DATA_DIRECTORY / "v51k_QA.npy", allow_pickle=True)
     # index = np.load(
     #     config.DATA_DIRECTORY / "len20_valid_layouts_all.npy", allow_pickle=True
     # )
@@ -461,7 +460,9 @@ if __name__ == "__main__":
     broken_layouts = set()
     one_hot_tensors = np.array(one_hot_tensors, dtype=object)
     results = np.zeros(len(datalist))
+    positions = np.zeros(len(datalist), dtype=object)
     print(len(datalist))
+
     for i in range(len(datalist)):
         layout = one_hot_tensors[i]
         equipment, bounds, x, splitter = bound_creation(layout)
@@ -479,22 +480,24 @@ if __name__ == "__main__":
             if a.result < 1e6:
                 valid_layouts.add(i)
                 results[i] = a.result
+                positions[i] = a.position
             else:
                 penalty_layouts.add(i)
         except:
             broken_layouts.add(i)
         if i % 100 == 0:
             print(len(valid_layouts), len(penalty_layouts), len(broken_layouts))
-    # np.save(config.DATA_DIRECTORY / "v3m2D0_results.npy", results)
+    np.save(config.DATA_DIRECTORY / "v51k_QA_positions.npy", positions)
+    np.save(config.DATA_DIRECTORY / "v51k_QA.npy_results", results)
     # np.save(
-    #     config.DATA_DIRECTORY / "v3m2D0_valid.npy",
+    #     config.DATA_DIRECTORY / "v4D0_5k+_valid.npy",
     #     np.array(list(valid_layouts)),
     # )
     # np.save(
-    #     config.DATA_DIRECTORY / "v3m2D0_penalty.npy",
+    #     config.DATA_DIRECTORY / "v4D0_5k+_penalty.npy",
     #     np.array(list(penalty_layouts)),
     # )
     # np.save(
-    #     config.DATA_DIRECTORY / "v3m2D0_broken.npy",
+    #     config.DATA_DIRECTORY / "v4D0_5k+_broken.npy",
     #     np.array(list(broken_layouts)),
     # )

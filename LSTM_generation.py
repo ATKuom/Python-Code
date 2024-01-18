@@ -46,6 +46,6 @@ def generation(N, model):
 
 
 if __name__ == "__main__":
-    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
+    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v8D0_m1.pt"))
     layout_list = generation(N=10000, model=model)
-    # np.save(config.DATA_DIRECTORY / "v3m2D0_10k.npy", layout_list)
+    np.save(config.DATA_DIRECTORY / "v810k.npy", layout_list)

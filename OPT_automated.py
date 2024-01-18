@@ -1,4 +1,9 @@
-from LSTM_batch_pack_m2 import *
+from LSTM_batch_pack_m2 import (
+    model,
+    criterion,
+    training,
+)
+import torch.optim as optim
 from LSTM_generation import generation
 from thermo_validity import *
 import config
@@ -76,6 +81,7 @@ def objective_function(x, equipment):
     if Pressures.prod() == 0:
         # print("Infeasible Pressure")
         return PENALTY_VALUE
+
     # it can benefit from tur_ppisition and comp_position
     # Turbine and Compressor pressure ratio calculation and checking
     tur_pratio, comp_pratio = tur_comp_pratio(
@@ -122,7 +128,7 @@ def objective_function(x, equipment):
         )
 
         if np.any(w_tur < 0) or np.any(w_comp < 0):
-            # print("Turbine or Compressor pressure ratio is less than 1")
+            # print("Turbine or Compressor output is less than 0")
             return PENALTY_VALUE
 
         if splitter == True:
@@ -141,13 +147,13 @@ def objective_function(x, equipment):
                 Temperatures[hotside_index - 1]
                 < Temperatures[coldside_index - 1] + approach_temp
             ):
-                # print("Infeasible HX")
+                # print("Infeasible HX1")
                 return PENALTY_VALUE
             if (
                 mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
                 < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
             ):
-                # print("Infeasible HX")
+                # print("Infeasible HX2")
                 return PENALTY_VALUE
             try:
                 (
@@ -173,6 +179,7 @@ def objective_function(x, equipment):
             except:
                 # print("HX calculation error")
                 return PENALTY_VALUE
+
         if while_counter == 3:
             # print("Infeasible Temperatures")
             return PENALTY_VALUE
@@ -266,6 +273,7 @@ def objective_function(x, equipment):
         fg_toutlist,
         equipment_length,
     )
+
     # Thermo-economic Analysis
     if hx_position == []:
         hotside_index = 0
@@ -423,6 +431,7 @@ class PSO:
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
             self.result = fitness_global_best_particle_position
+            self.position = global_best_particle_position
         # print("Result:")
         # print("Optimal solutions:", global_best_particle_position)
         # print("Objective function value:", fitness_global_best_particle_position)
@@ -458,15 +467,32 @@ if __name__ == "__main__":
         "D8",
         # "D9",
     ]
-    version = "v3.1"
+    previous_datasets = [
+        "empty",
+        "D0",
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+        "D8",
+    ]
+
+    version = "v4"
     model_phase = "_m2"
 
-    for dataset, next_dataset in zip(datasets, next_datasets):
+    for dataset, next_dataset, prev_dataset in zip(
+        datasets, next_datasets, previous_datasets
+    ):
         datalist_name = version + dataset + model_phase + ".npy"
         model_name = version + dataset + model_phase + ".pt"
+        prev_model_name = version + prev_dataset + model_phase + ".pt"
         generated_name = version + dataset + model_phase + "_generated.npy"
         candidates_name = version + next_dataset + model_phase + "_candidates.npy"
         results_name = version + next_dataset + model_phase + "_results.npy"
+        positions_name = version + next_dataset + model_phase + "_positions.npy"
         valid_name = version + next_dataset + model_phase + "_valid.npy"
         penalty_name = version + next_dataset + model_phase + "_penalty.npy"
         broken_name = version + next_dataset + model_phase + "_broken.npy"
@@ -477,7 +503,15 @@ if __name__ == "__main__":
         datalist = np.load(
             config.DATA_DIRECTORY / datalist_name, allow_pickle=True
         ).tolist()
-        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
+        # if dataset == "D0":
+        #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
+        # else:
+        #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / prev_model_name))
+        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D10_m1.pt"))
+        optimizer = optim.Adam(
+            model.parameters(),
+            lr=0.001,
+        )
         best_model, train_acc, train_loss, val_acc, val_loss = training(
             model, optimizer, criterion, datalist, 30, 100
         )
@@ -511,6 +545,7 @@ if __name__ == "__main__":
         broken_layouts = set()
         one_hot_tensors = np.array(one_hot_tensors, dtype=object)
         results = np.zeros(len(datalist))
+        positions = np.zeros(len(datalist), dtype=object)
         print(len(datalist))
         for i in range(len(datalist)):
             layout = one_hot_tensors[i]
@@ -530,6 +565,7 @@ if __name__ == "__main__":
                 if a.result < 1e6:
                     valid_layouts.add(i)
                     results[i] = a.result
+                    positions[i] = a.position
                 else:
                     penalty_layouts.add(i)
             except:
@@ -542,6 +578,7 @@ if __name__ == "__main__":
                     len(broken_layouts),
                 )
         np.save(config.DATA_DIRECTORY / results_name, results)
+        np.save(config.DATA_DIRECTORY / positions_name, positions)
         np.save(
             config.DATA_DIRECTORY / valid_name,
             np.array(list(valid_layouts)),
@@ -559,7 +596,7 @@ if __name__ == "__main__":
         results = np.load(config.DATA_DIRECTORY / results_name, allow_pickle=True)
         datalist = np.load(config.DATA_DIRECTORY / candidates_name, allow_pickle=True)
         nonzero_results = results[np.where(results > 0)]
-        cutoff = 143.957
+        cutoff = 143.957  # 164.428
         good_layouts = []
         print(
             "Optimization Results:", len(nonzero_results), len(results), len(datalist)

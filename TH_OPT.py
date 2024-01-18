@@ -10,16 +10,15 @@
 # 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
 # Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
 # Splitter/mixer effects on exergy and overall structure must be analysed
-import numpy as np
 import config
+import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
-import time
 from ED_Test_rs import results_analysis
 from econ import economics
-from split_functions import (
-    string_to_layout,
+from TH_split_functions import (
+    one_hot_encoding,
     fg_calculation,
     HX_calculation,
     decision_variable_placement,
@@ -44,196 +43,6 @@ from split_functions import (
     K,
     FGINLETEXERGY,
 )
-
-s = time.time()
-ED1 = torch.tensor(
-    [
-        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-    ]
-)
-
-ED2 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-ED3 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-ED1m = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-bestpaper1 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-bestpaper2 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-bestfirstrun = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-bestsecondrun = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-bestthirdrun = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-bestthirdrun10k = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-layout = bestthirdrun10k
-
-# layouts = np.load(
-#     config.DATA_DIRECTORY / "len20m2_d0.npy",
-#     allow_pickle=True,
-# )
-# layout = layouts[9550]
-# layout = string_to_layout(layout)
-
-# equipment, bounds, x, splitter = bound_creation(layout)
-# print(equipment)
-
-# # PSO Parameters
-# swarmsize_factor = 7
-# particle_size = swarmsize_factor * len(bounds)
-# if 5 in equipment:
-#     particle_size += -1 * swarmsize_factor
-# if 9 in equipment:
-#     particle_size += -2 * swarmsize_factor
-# iterations = 100
-# nv = len(bounds)
 
 
 def objective_function(x, equipment):
@@ -277,7 +86,6 @@ def objective_function(x, equipment):
     if Pressures.prod() == 0:
         # print("Infeasible Pressure")
         return PENALTY_VALUE
-
     # it can benefit from tur_ppisition and comp_position
     # Turbine and Compressor pressure ratio calculation and checking
     tur_pratio, comp_pratio = tur_comp_pratio(
@@ -324,7 +132,7 @@ def objective_function(x, equipment):
         )
 
         if np.any(w_tur < 0) or np.any(w_comp < 0):
-            # print("Turbine or Compressor output is less than 0")
+            # print("Turbine or Compressor pressure ratio is less than 1")
             return PENALTY_VALUE
 
         if splitter == True:
@@ -343,13 +151,13 @@ def objective_function(x, equipment):
                 Temperatures[hotside_index - 1]
                 < Temperatures[coldside_index - 1] + approach_temp
             ):
-                # print("Infeasible HX1")
+                # print("Infeasible HX")
                 return PENALTY_VALUE
             if (
                 mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
                 < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
             ):
-                # print("Infeasible HX2")
+                # print("Infeasible HX")
                 return PENALTY_VALUE
             try:
                 (
@@ -375,7 +183,6 @@ def objective_function(x, equipment):
             except:
                 # print("HX calculation error")
                 return PENALTY_VALUE
-
         if while_counter == 3:
             # print("Infeasible Temperatures")
             return PENALTY_VALUE
@@ -469,7 +276,6 @@ def objective_function(x, equipment):
         fg_toutlist,
         equipment_length,
     )
-
     # Thermo-economic Analysis
     if hx_position == []:
         hotside_index = 0
@@ -626,63 +432,68 @@ class PSO:
                 swarm_particle[j].update_position(bounds)
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
-        print("Result:")
-        print("Optimal solutions:", global_best_particle_position)
-        print("Objective function value:", fitness_global_best_particle_position)
-        self.result = results_analysis(global_best_particle_position, equipment)
-        self.points = global_best_particle_position
-        print(total_number_of_particle_evaluation)
+            self.result = fitness_global_best_particle_position
+        # print("Result:")
+        # print("Optimal solutions:", global_best_particle_position)
+        # print("Objective function value:", fitness_global_best_particle_position)
+        # results_analysis(global_best_particle_position, equipment)
+        # print(total_number_of_particle_evaluation)
         # plt.plot(A)
 
 
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # Main PSO
+if __name__ == "__main__":
+    datalist = np.load(config.DATA_DIRECTORY / "v4D0_candidates.npy", allow_pickle=True)
+    # index = np.load(
+    #     config.DATA_DIRECTORY / "len20_valid_layouts_all.npy", allow_pickle=True
+    # )
+    # datalist = np.array(datalist, dtype=object)[index]
+    one_hot_tensors = one_hot_encoding(datalist)
+    # one_hot_tensors = np.load(
+    #     config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True
+    # )
+    valid_layouts = set()
+    penalty_layouts = set()
+    broken_layouts = set()
+    one_hot_tensors = np.array(one_hot_tensors, dtype=object)
+    results = np.zeros(len(datalist))
+    print(len(datalist))
 
-# PSO(objective_function, bounds, particle_size, iterations)
-# e = time.time()
-# print(e - s)
-layouts = np.load(
-    config.DATA_DIRECTORY / "v3.2DF_sorted_layouts.npy",
-    allow_pickle=True,
-)
-results = []
-points = []
-for layout in layouts[:12]:
-    layout = string_to_layout(layout)
-
-    equipment, bounds, x, splitter = bound_creation(layout)
-
-    # PSO Parameters
-    swarmsize_factor = 7
-    particle_size = swarmsize_factor * len(bounds)
-    if 5 in equipment:
-        particle_size += -1 * swarmsize_factor
-    if 9 in equipment:
-        particle_size += -2 * swarmsize_factor
-    iterations = 30
-    nv = len(bounds)
-    try:
-        a = PSO(objective_function, bounds, particle_size, iterations)
-        results.append(a.result)
-        points.append(a.points)
-    except:
-        results.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        points.append([0])
-results_array = np.asarray(results)
-points = np.asarray(points, dtype=object)
-print(points)
-print(results_array)
-# np.save(
-#     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1_results.npy",
-#     results_array,
-# )
-# x = [
-#     78.5e5,
-#     10.8,
-#     32.3,
-#     241.3e5,
-#     10.8,
-#     411.4,
-#     93.18,
-# ]
+    for i in range(len(datalist)):
+        layout = one_hot_tensors[i]
+        equipment, bounds, x, splitter = bound_creation(layout)
+        # PSO Parameters
+        swarmsize_factor = 7
+        particle_size = swarmsize_factor * len(bounds)
+        if 5 in equipment:
+            particle_size += -1 * swarmsize_factor
+        if 9 in equipment:
+            particle_size += -2 * swarmsize_factor
+        iterations = 30
+        nv = len(bounds)
+        try:
+            a = PSO(objective_function, bounds, particle_size, iterations)
+            if a.result < 1e6:
+                valid_layouts.add(i)
+                results[i] = a.result
+            else:
+                penalty_layouts.add(i)
+        except:
+            broken_layouts.add(i)
+        if i % 100 == 0:
+            print(len(valid_layouts), len(penalty_layouts), len(broken_layouts))
+    np.save(config.DATA_DIRECTORY / "v4D0_TH_10k_results.npy", results)
+    np.save(
+        config.DATA_DIRECTORY / "v4D0_TH_10k_valid.npy",
+        np.array(list(valid_layouts)),
+    )
+    np.save(
+        config.DATA_DIRECTORY / "v4D0_TH_10k_penalty.npy",
+        np.array(list(penalty_layouts)),
+    )
+    np.save(
+        config.DATA_DIRECTORY / "v4D0_TH_10k_broken.npy",
+        np.array(list(broken_layouts)),
+    )

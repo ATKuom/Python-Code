@@ -17,7 +17,7 @@ import random
 import matplotlib.pyplot as plt
 import time
 from empty import string_to_layout
-from TH_ED_rs import results_analysis
+from TH_1to1replication.TH_ED_rs import results_analysis
 from TH_econ import economics
 from TH_split_functions import (
     fg_calculation,

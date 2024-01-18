@@ -15,10 +15,10 @@ np.set_printoptions(threshold=np.inf)
 #     "D5",
 #     "D6",
 #     "D7",
-#     "D8",
-#     "D9",
+#     # "D8",
+#     # "D9",
 # ]
-# b1 = "v3.1"
+# b1 = "v4"
 # b2 = "_results.npy"
 # b3 = "_candidates.npy"
 # model = "_m2"
@@ -39,33 +39,39 @@ np.set_printoptions(threshold=np.inf)
 #     print(len(good_layouts), len(good_results))
 # good_layouts = np.array(good_layouts, dtype=object)
 # good_results = np.array(good_results, dtype=object)
-# np.save(config.DATA_DIRECTORY / "v3.1D10k_m2_layouts.npy", good_layouts)
-# np.save(config.DATA_DIRECTORY / "v3.1D10k_m2_results.npy", good_results)
+# np.save(config.DATA_DIRECTORY / "v4DF_m2_layouts.npy", good_layouts)
+# np.save(config.DATA_DIRECTORY / "v4DF_m2_results.npy", good_results)
 
-##Finding the good layouts
-# datalist = np.load(
-#     config.DATA_DIRECTORY / "v3.1D8_m2_candidates.npy", allow_pickle=True
-# )
-# results = np.load(config.DATA_DIRECTORY / "v3.1D8_m2_results.npy", allow_pickle=True)
-# nonzero_results = results[np.where(results > 0)]
-# cutoff = 143.957  # 164.428
-# good_layouts = []
-# best_result = cutoff
-# print(len(nonzero_results), len(results), len(datalist))
-# for i in range(len(results)):
-#     if results[i] < cutoff and results[i] > 0:
-#         good_layouts.append(datalist[i])
-#         if results[i] < best_result:
-#             best_result = results[i]
-#             best_layout = datalist[i]
-# print(len(good_layouts))
-# print(best_result, best_layout)
-# good_layouts = np.array(good_layouts, dtype=object)
-# np.save(config.DATA_DIRECTORY / "v3.1D0_m2.npy", good_layouts)
+# Finding the good layouts
+datalist = np.load(config.DATA_DIRECTORY / "v81k_QA.npy", allow_pickle=True)
+results = np.load(config.DATA_DIRECTORY / "v81k_QA_results.npy", allow_pickle=True)
+nonzero_results = results[np.where(results > 0)]
+cutoff = 143.957
+# cutoff = 164.428
+good_layouts = []
+good_results = []
+best_result = cutoff
+print(len(nonzero_results), len(results), len(datalist))
+for i in range(len(results)):
+    if results[i] < cutoff and results[i] > 0:
+        good_layouts.append(datalist[i])
+        good_results.append(results[i])
+        if results[i] < best_result:
+            best_result = results[i]
+            best_layout = datalist[i]
+print(len(good_layouts))
+print(best_result, best_layout)
+good_layouts = np.array(good_layouts, dtype=object)
+good_results = np.array(good_results, dtype=object)
+# np.save(config.DATA_DIRECTORY / "v81k_QA.npy", good_layouts)
+
+
+layouts = good_layouts
+results = good_results
 
 ##Final good layouts graphical analysis
-layouts = np.load(config.DATA_DIRECTORY / "v3.1D10k_m2_layouts.npy", allow_pickle=True)
-results = np.load(config.DATA_DIRECTORY / "v3.1D10k_m2_results.npy", allow_pickle=True)
+# layouts = np.load(config.DATA_DIRECTORY / "v81k_QA.npy", allow_pickle=True)
+# results = np.load(config.DATA_DIRECTORY / "v81k_QA_results.npy", allow_pickle=True)
 # std = np.std(results)
 # mean = np.mean(results)
 # print(
@@ -108,8 +114,8 @@ plt.ylabel(ylabel)
 plt.axvline(130.87, color="red", linestyle="dashed", linewidth=1, label="ED2")
 plt.axvline(134.69, color="black", linestyle="dashed", linewidth=1, label="ED1")
 plt.axvline(ed, color="blue", linestyle="dashed", linewidth=1, label="ED3")
-plt.text(0, 65, "              c<130.87: " + str(group1))
-plt.text(0, 35, "130.87<c<134.69: " + str(group2))
+plt.text(0, 85, "              c<130.87: " + str(group1))
+plt.text(0, 45, "130.87<c<134.69: " + str(group2))
 plt.text(0, 5, "134.69<c<149.48: " + str(group3))
 # plt.xlim(120, 150)
 # plt.ylim(0, 25)
@@ -118,15 +124,15 @@ plt.show()
 indices = np.argsort(results)
 sorted_results = results[indices]
 sorted_layouts = layouts[indices]
-print(sorted_layouts[:10], sorted_results[:10])
-np.save(
-    config.DATA_DIRECTORY / "v3.1D10k_sorted_results.npy",
-    sorted_results,
-)
-np.save(
-    config.DATA_DIRECTORY / "v3.1D10k_sorted_layouts.npy",
-    sorted_layouts,
-)
+print(sorted_layouts[:16], sorted_results[:16])
+# np.save(
+#     config.DATA_DIRECTORY / "v4DF_sorted_results.npy",
+#     sorted_results,
+# )
+# np.save(
+#     config.DATA_DIRECTORY / "v4DF_sorted_layouts.npy",
+#     sorted_layouts,
+# )
 
 ##Detailed analysis of ED_Test results
 # analysis = np.load(
@@ -197,3 +203,16 @@ np.save(
 #             i += 1
 # print(len(new_dataset), i, j, k)
 # np.save(config.DATA_DIRECTORY / "v3D0_m1.npy", new_dataset)
+
+# results1 = np.load(
+#     config.DATA_DIRECTORY / "v4D0_5k_results.npy",
+#     allow_pickle=True,
+# )
+# results2 = np.load(
+#     config.DATA_DIRECTORY / "v4D0_5k+_results.npy",
+#     allow_pickle=True,
+# )
+# for i in range(len(results1)):
+#     if results1[i] > results2[i]:
+#         results2[i] = results1[i]
+# np.save(config.DATA_DIRECTORY / "v4D0_10k_results.npy", results2)
