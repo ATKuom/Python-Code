@@ -15,7 +15,7 @@ import torch
 import random
 import matplotlib.pyplot as plt
 from Improvements_rs import results_analysis
-from econ import economics
+from First_year_version.econ import economics
 from Improvements_functions import (
     lmtd,
     h_s_fg,

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 from RS_3 import result_analyses
-from econ import economics
+from First_year_version.econ import economics
 from functions import (
     lmtd,
     turbine,

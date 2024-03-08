@@ -446,8 +446,8 @@ class PSO:
 if __name__ == "__main__":
     N = 3000
     datasets = [
-        "D0",
-        "D1",
+        # "D0",
+        # "D1",
         "D2",
         "D3",
         "D4",
@@ -457,8 +457,8 @@ if __name__ == "__main__":
         # "D8",
     ]
     next_datasets = [
-        "D1",
-        "D2",
+        # "D1",
+        # "D2",
         "D3",
         "D4",
         "D5",
@@ -468,8 +468,8 @@ if __name__ == "__main__":
         # "D9",
     ]
     previous_datasets = [
-        "empty",
-        "D0",
+        # "empty",
+        # "D0",
         "D1",
         "D2",
         "D3",
@@ -477,10 +477,9 @@ if __name__ == "__main__":
         "D5",
         "D6",
         "D7",
-        "D8",
     ]
 
-    version = "v4"
+    version = "v5"
     model_phase = "_m2"
 
     for dataset, next_dataset, prev_dataset in zip(
@@ -507,7 +506,7 @@ if __name__ == "__main__":
         #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
         # else:
         #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / prev_model_name))
-        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D10_m1.pt"))
+        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v5D7_m1.pt"))
         optimizer = optim.Adam(
             model.parameters(),
             lr=0.001,
@@ -596,7 +595,7 @@ if __name__ == "__main__":
         results = np.load(config.DATA_DIRECTORY / results_name, allow_pickle=True)
         datalist = np.load(config.DATA_DIRECTORY / candidates_name, allow_pickle=True)
         nonzero_results = results[np.where(results > 0)]
-        cutoff = 143.957  # 164.428
+        cutoff = 141  # 164.428
         good_layouts = []
         print(
             "Optimization Results:", len(nonzero_results), len(results), len(datalist)

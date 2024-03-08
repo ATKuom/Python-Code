@@ -299,8 +299,8 @@ def results_analysis(x, equipment):
     Total Zk  = {sum(zk):.2f} $/h
     Cdiss = {Cdiss:.2f} Cl = {Closs:.2f} Cp ={costs[-1]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
     Cp/Ep = {Cproduct/(Ep/1e6):.2f}
-    Thermal efficiency = {thermal_efficiency:.2f}%
-    Heat recuperation ratio = {sum(q_hx)/(sum(q_heater)):.2f}
+    Thermal efficiency = {thermal_efficiency*100:.2f}%
+    Heat recuperation ratio = {sum(q_hx)/(sum(q_heater))*100:.2f}
     j = {j:.2f}
         """
     )

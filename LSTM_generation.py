@@ -1,15 +1,52 @@
 import torch
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import config
 import torch.utils.data as data
 from LSTM_batch_pack import LSTMtry, model, classes
 
 
+def sampling(softmax_output):
+    ## Sampling
+    sampling_index = torch.multinomial(softmax_output, 1).item()
+    return sampling_index
+
+
+def greedy_search(softmax_output):
+    ##Greedy search
+    greedy_search_index = softmax_output.topk(1)[1].item()
+    return greedy_search_index
+
+
+def topp_sampling(softmax_output):
+    ## top p sampling
+    k = 1
+    topp = softmax_output.topk(k)
+    total_prob = topp[0].sum()
+    while total_prob < 0.9:
+        k += 1
+        topp = softmax_output.topk(k)
+        total_prob = topp[0].sum()
+    topp_sampling_index = topp[1][0][
+        torch.multinomial(topp[0] / total_prob, 1).item()
+    ].item()
+    return topp_sampling_index
+
+
+def topk_sampling(softmax_output):
+    ## top k sampling
+    k = 5
+    topkk = softmax_output.topk(k)
+    topk_sampling_index = topkk[1][0][torch.multinomial(topkk[0], 1).item()].item()
+    return topk_sampling_index
+
+
 def generation(N, model):
     generated_layouts = np.zeros(N, dtype=object)
     i = 0
+
     while i in range(N):
         prediction = torch.tensor(
             [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -22,16 +59,13 @@ def generation(N, model):
                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
                 ),
             ):
-                new_character = model(prediction)
-                index = torch.multinomial(
-                    nn.functional.softmax(new_character, dim=1), 1
-                ).item()
+                softmax_output = F.softmax(model(prediction), dim=1)
                 new_tensor = torch.tensor([0.0] * len(classes))
-                new_tensor[index] = 1.0
+                new_tensor[sampling(softmax_output)] = 1.0
                 prediction = torch.cat(
                     (prediction[0], new_tensor.reshape(1, 12))
                 ).reshape(1, -1, 12)
-        # maxlength enforcement
+        # maxlength enforcement is not implemented. Do we need it? I am not sure.
         generated_layouts[i] = prediction
         i += 1
     layout_list = []
@@ -46,6 +80,7 @@ def generation(N, model):
 
 
 if __name__ == "__main__":
-    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v8D0_m1.pt"))
-    layout_list = generation(N=10000, model=model)
-    np.save(config.DATA_DIRECTORY / "v810k.npy", layout_list)
+    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D0_m1.pt"))
+    layout_list = generation(N=10, model=model)
+    print(layout_list)
+    # np.save(config.DATA_DIRECTORY / "v510k.npy", layout_list)

@@ -27,6 +27,7 @@ from split_functions import (
     K,
     FGINLETEXERGY,
 )
+from designs import ED1, ED2, ED3, bestfourthrun
 
 np.set_printoptions(precision=2, suppress=True)
 
@@ -299,8 +300,8 @@ def results_analysis(x, equipment):
     Total Zk  = {sum(zk):.2f} $/h
     Cdiss = {Cdiss:.2f} Cl = {Closs:.2f} Cp ={costs[-1]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
     Cp/Ep = {Cproduct/(Ep/1e6):.2f}
-    Thermal efficiency = {thermal_efficiency:.2f}%
-    Heat recuperation ratio = {sum(q_hx)/(sum(q_heater)):.2f}
+    Thermal efficiency = {thermal_efficiency*100:.2f}%
+    Heat recuperation ratio = {sum(q_hx)/(sum(q_heater))*100:.2f}
     j = {j:.2f}
         """
     )
@@ -320,111 +321,46 @@ def results_analysis(x, equipment):
 
 
 if __name__ == "__main__":
-    ED1 = torch.tensor(
-        [
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+    layout = bestfourthrun
+    equipment, bounds, x, splitter = bound_creation(layout)
+    if torch.equal(layout, ED1):
+        x = [
+            78.5e5,
+            10.8,
+            32.3,
+            241.3e5,
+            10.8,
+            411.4,
+            93.18,
         ]
-    )
-
-    ED2 = torch.tensor(
-        [
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    if torch.equal(layout, bestfourthrun):
+        x = [
+            0.38689869436572294,
+            258.2316574319786,
+            0.0,
+            11.0,
+            274.1450967589571,
+            0.0,
+            420.6860563418102,
+            7896946.537168221,
+            11.0,
+            32.0,
+            30000000.0,
+            29998432.0682453,
+            95.39715459612655,
         ]
-    )
-
-    ED3 = torch.tensor(
-        [
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        ]
-    )
-    layout = ED3
-    units = layout[1:-1]
-    x = []
-    splitter = False
-    equipment = np.zeros(len(units)).tolist()
-    bounds = list(range(len(units)))
-    hx_token = 1
-    for i in range(len(units)):
-        unit_type = np.where(units[i] == 1)[0][0]
-        if unit_type == 1:
-            equipment[i] = 1
-            bounds[i] = (74e5, 300e5)
-        elif unit_type == 2:
-            equipment[i] = 2
-            bounds[i] = (32, 38)
-        elif unit_type == 3:
-            equipment[i] = 3
-            bounds[i] = (74e5, 300e5)
-        elif unit_type == 4:
-            equipment[i] = 4
-            bounds[i] = (180, 530)
-        elif unit_type == 5:
-            equipment[i] = 5
-            if hx_token == 1:
-                bounds[i] = (4, 11)
-        elif unit_type == 7:
-            equipment[i] = 7
-            bounds[i] = (0, 0)
-        elif unit_type == 9:
-            equipment[i] = 9
-            bounds[i] = (0.01, 0.99)
-            splitter = True
-            branch_start = i
-    if splitter == True:
-        equipment = np.roll(equipment, -branch_start, axis=0).tolist()
-        bounds = np.roll(bounds, -branch_start, axis=0).tolist()
-    bounds.append((50, 160))
     # x = [
-    #     78.5e5,
-    #     10.8,
-    #     32.3,
-    #     241.3e5,
-    #     10.8,
-    #     411.4,
-    #     93.18,
+    #     0.01,
+    #     530.0,
+    #     0.0,
+    #     11.0,
+    #     0.0,
+    #     473.7059427076416,
+    #     8506178.458468681,
+    #     11.0,
+    #     32.0,
+    #     17011390.549356423,
+    #     416.88559492368364,
+    #     50,
     # ]
-    x = [
-        0.01,
-        530.0,
-        0.0,
-        11.0,
-        0.0,
-        473.7059427076416,
-        8506178.458468681,
-        11.0,
-        32.0,
-        17011390.549356423,
-        416.88559492368364,
-        50,
-    ]
     results_analysis(x, equipment)

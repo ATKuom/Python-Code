@@ -16,7 +16,7 @@ import torch
 import random
 import matplotlib.pyplot as plt
 from split_rs_stl import results_analysis
-from econ import economics
+from First_year_version.econ import economics
 from split_functions import (
     lmtd,
     h_s_fg,

@@ -6,6 +6,7 @@ import torch.optim as optim
 import config
 import time
 import matplotlib.pyplot as plt
+import copy
 
 classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
 s = time.time()
@@ -58,7 +59,8 @@ def count_parameters(model):
 
 def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32):
     validation_set = []
-    while len(validation_set) < 0.15 * len(datalist):
+    datalist_length = len(datalist)
+    while len(validation_set) < 0.15 * datalist_length:
         i = np.random.randint(0, len(datalist))
         validation_set.append(datalist.pop(i))
     validation_set = np.asanyarray(validation_set, dtype=object)
@@ -111,10 +113,10 @@ def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32
         epoch_loss = epoch_loss / steps
         train_loss.append(epoch_loss)
         train_acc.append(100 * train_correct / train_total)
-        np.random.shuffle(indices)
-        padded_train_input = padded_train_input[indices]
-        train_output = train_output[indices]
-        sequence_lengths = sequence_lengths[indices]
+        # np.random.shuffle(indices)
+        # padded_train_input = padded_train_input[indices]
+        # train_output = train_output[indices]
+        # sequence_lengths = sequence_lengths[indices]
 
         model.eval()
         loss = 0
@@ -148,7 +150,7 @@ def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32
             val_acc.append(100 * correct / total)
             if loss < best_loss:
                 best_loss = loss
-                best_model = model.state_dict()
+                best_model = copy.deepcopy(model.state_dict())
             if epoch % 10 == 0 or epoch == num_epochs - 1:
                 print(
                     "Epoch %d: TrainingLoss: %.3f ValidationLoss: %.3f"
@@ -195,7 +197,7 @@ class LSTMtry(nn.Module):
 
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss(ignore_index=0)
 
 # Define the optimizer
 learning_rate = 0.001
@@ -207,19 +209,19 @@ optimizer = optim.Adam(
 # 15% of the data is used for validation
 if __name__ == "__main__":
     datalist = np.load(
-        config.DATA_DIRECTORY / "v8D0_m1.npy", allow_pickle=True
+        config.DATA_DIRECTORY / "v4D0_m1.npy", allow_pickle=True
     ).tolist()
     best_model, train_acc, train_loss, val_acc, val_loss = training(
-        model, optimizer, criterion, datalist, 30, 100
+        model, optimizer, criterion, datalist, 100, 100
     )
     e = time.time()
     print(e - s)
     plt.plot(train_acc, label="Training Accuracy")
     plt.plot(val_acc, label="Validation Accuracy")
     plt.legend()
-    # plt.show()
+    plt.show()
     plt.plot(train_loss, label="Training Loss")
     plt.plot(val_loss, label="Validation Loss")
     plt.legend()
-    # plt.show()
-    torch.save(best_model, config.MODEL_DIRECTORY / "v8D0_m1.pt")
+    plt.show()
+    # torch.save(best_model, config.MODEL_DIRECTORY / "v8D0_m1.pt")

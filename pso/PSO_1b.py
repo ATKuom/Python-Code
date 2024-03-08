@@ -2,7 +2,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 from RS_1b import result_analyses
-from econ import economics
+from First_year_version.econ import economics
 from functions import (
     lmtd,
     turbine,

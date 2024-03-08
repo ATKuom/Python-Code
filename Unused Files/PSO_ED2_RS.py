@@ -4,7 +4,7 @@ from pyfluids import Fluid, FluidsList, Input, Mixture
 
 np.set_printoptions(precision=3, suppress=True)
 from scipy import optimize
-from econ import economics
+from First_year_version.econ import economics
 from functions import (
     lmtd,
     turbine,

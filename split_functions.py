@@ -19,7 +19,7 @@ def layout_to_string(layouts):
     return sequences
 
 
-def string_to_equipment(sequences):
+def string_to_equipment(sequences, classes=classes):
     char_to_int = dict((c, i) for i, c in enumerate(classes))
     equipments = []
     for sequence in sequences:
@@ -32,10 +32,21 @@ def string_to_equipment(sequences):
                 equipment.append(char_to_int["-1"])
                 splitter = True
         if splitter == True:
-            equipment.pop(equipment.index(9) + 1)
+            equipment.pop(equipment.index(char_to_int["-1"]) + 1)
             splitter = False
         equipments.append(equipment)
     return equipments
+
+
+def token_to_string(list, classes=classes):
+    int_to_char = dict((i, c) for i, c in enumerate(classes))
+    sequence = []
+    x = ""
+    for tokens in list:
+        for token in tokens:
+            x += int_to_char[token]
+        sequence.append(x)
+    return sequence
 
 
 def string_to_layout(sequence):
@@ -295,10 +306,10 @@ def NG_exergy():
     Fuel exergy calculation with 100% methane assumption
     """
     methane = Fluid(FluidsList.Methane).with_state(
-        Input.temperature(25), Input.pressure(18.2e5)
+        Input.temperature(15), Input.pressure(18.2e5)
     )
     m0 = Fluid(FluidsList.Methane).with_state(
-        Input.temperature(25), Input.pressure(101325)
+        Input.temperature(15), Input.pressure(101325)
     )
     Pexergy = methane.enthalpy - m0.enthalpy - (T0 + K) * (methane.entropy - m0.entropy)
     Cexergy = 824.348 * 1.26 / 16.043 * 1e6
@@ -612,16 +623,22 @@ def bound_creation(layout):
         elif unit_type == 2:
             equipment[i] = 2
             bounds[i] = (32, 38)
+            # TH
+            # bounds[i] = (32.25, 530)
         elif unit_type == 3:
             equipment[i] = 3
             bounds[i] = (74e5, 300e5)
         elif unit_type == 4:
             equipment[i] = 4
             bounds[i] = (180, 530)
+            # TH
+            # bounds[i] = (32.25, 530)
         elif unit_type == 5:
             equipment[i] = 5
             if hx_token == 1:
                 bounds[i] = (4, 11)
+                # TH
+                # bounds[i] = (3, 20)
                 # hx_token = 0
             else:
                 bounds[i] = (0, 0)
@@ -631,6 +648,8 @@ def bound_creation(layout):
         elif unit_type == 9:
             equipment[i] = 9
             bounds[i] = (0.01, 0.99)
+            # TH
+            # bounds[i] = (0.1, 0.9)
             splitter = True
             branch_start = i
     if splitter == True:

@@ -1,4 +1,3 @@
-#
 from collections import Counter
 from designs import goeos_expert
 import numpy as np
@@ -31,16 +30,20 @@ def basic_structure(sequence, char_occur_dict):
     Input: String representation of a layout
     Return: True or False
     """
-    if "G" in char_occur_dict.keys():
-        if char_occur_dict["G"] != 1:
-            return False
-    if "E" in char_occur_dict.keys():
-        if char_occur_dict["E"] != 1:
-            return False
-    starting_index = 0
+    if not ("G" in char_occur_dict.keys() and "E" in char_occur_dict.keys()):
+        return False
+    if char_occur_dict["G"] != 1:
+        return False
+    if char_occur_dict["E"] != 1:
+        return False
+    if sequence[1] == sequence[-2]:
+        return False
     for elements in BASIC_LIST:
-        starting_index = sequence.find(elements, starting_index)
-        if starting_index == -1:
+        index = sequence.find(elements)
+        consecutive = sequence[index + 1]
+        if consecutive == elements:
+            return False
+        if index == -1:
             return False
 
     return True
@@ -64,10 +67,6 @@ def HX_restrictions(sequence, char_occur_dict):
     if sequence.count("aa") or sequence.count("bb"):
         return False
 
-    if sequence[-2] == "a" or sequence[-2] == "b":
-        if sequence[1] == "a" or sequence[1] == "b":
-            return False
-
     if (
         sequence.find("-1a") != -1
         and sequence.find("1a", sequence.find("-1a") + 2) != -1
@@ -75,7 +74,7 @@ def HX_restrictions(sequence, char_occur_dict):
         return False
     if (
         sequence.find("-1b") != -1
-        and sequence.find("1a", sequence.find("-1b") + 2) != -1
+        and sequence.find("1b", sequence.find("-1b") + 2) != -1
     ):
         return False
     if (
@@ -166,20 +165,23 @@ if __name__ == "__main__":
     # layouts = np.load(config.DATA_DIRECTORY / "broken_layouts.npy", allow_pickle=True)
     # datalist = layout_to_string(layouts)
     # print(len(datalist))
-    datalist = np.load(config.DATA_DIRECTORY / "v810k.npy", allow_pickle=True)
+    datalist = np.load(
+        config.DATA_DIRECTORY / "generated_layouts.npy", allow_pickle=True
+    )
     # datalist = ["GTACHE", "GTCAHE", "GTTCAHE", "GHTCAHE", "GaTCAHaE"]
     # datalist = goeos_expert
     print(len(datalist), len(validity(datalist)))
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
-    print(len(valid_strings), valid_strings)
-    # np.save(config.DATA_DIRECTORY / "v5m2D0_candidates.npy", valid_strings)
-    p_datalist = np.load(config.DATA_DIRECTORY / "v8D0_m1.npy", allow_pickle=True)
+    print(len(valid_strings))
+
+    # np.save(config.DATA_DIRECTORY / "v510k_valid.npy", valid_strings)
+    p_datalist = np.load(config.DATA_DIRECTORY / "v4D3_m1.npy", allow_pickle=True)
     # print(len(p_datalist))
     n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
     n_valid_strings = np.unique(n_datalist)
-    print(len(n_valid_strings))
-    # # np.save(config.DATA_DIRECTORY / "v3DF_m1.npy", n_valid_strings)
-    index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
-    new_ones = n_valid_strings[index]
-    print(len(new_ones))
+    print(len(n_valid_strings) - len(p_datalist))
+    # np.save(config.DATA_DIRECTORY / "TT_DF.npy", n_valid_strings)
+    # index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
+    # new_ones = n_valid_strings[index]
+    # print(len(new_ones))
     # np.save(config.DATA_DIRECTORY / "v81k_QA.npy", new_ones)

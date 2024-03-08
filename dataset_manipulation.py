@@ -43,35 +43,46 @@ np.set_printoptions(threshold=np.inf)
 # np.save(config.DATA_DIRECTORY / "v4DF_m2_results.npy", good_results)
 
 # Finding the good layouts
-datalist = np.load(config.DATA_DIRECTORY / "v81k_QA.npy", allow_pickle=True)
-results = np.load(config.DATA_DIRECTORY / "v81k_QA_results.npy", allow_pickle=True)
-nonzero_results = results[np.where(results > 0)]
-cutoff = 143.957
-# cutoff = 164.428
-good_layouts = []
-good_results = []
-best_result = cutoff
-print(len(nonzero_results), len(results), len(datalist))
-for i in range(len(results)):
-    if results[i] < cutoff and results[i] > 0:
-        good_layouts.append(datalist[i])
-        good_results.append(results[i])
-        if results[i] < best_result:
-            best_result = results[i]
-            best_layout = datalist[i]
-print(len(good_layouts))
-print(best_result, best_layout)
-good_layouts = np.array(good_layouts, dtype=object)
-good_results = np.array(good_results, dtype=object)
-# np.save(config.DATA_DIRECTORY / "v81k_QA.npy", good_layouts)
+# datalist = np.load(config.DATA_DIRECTORY / "v510k_valid.npy", allow_pickle=True)
+# results = np.load(config.DATA_DIRECTORY / "v510k_results.npy", allow_pickle=True)
+# nonzero_results = results[np.where(results > 0)]
+# cutoff = 141
+# # cutoff = 30000
+# good_layouts = []
+# good_results = []
+# best_result = cutoff
+# print(len(nonzero_results), len(results), len(datalist))
+# for i in range(len(results)):
+#     if results[i] < cutoff and results[i] > 0:
+#         good_layouts.append(datalist[i])
+#         good_results.append(results[i])
+#         if results[i] < best_result:
+#             best_result = results[i]
+#             best_layout = datalist[i]
+# print(len(good_layouts))
+# print(best_result, best_layout)
+# good_layouts = np.array(good_layouts, dtype=object)
+# good_results = np.array(good_results, dtype=object)
+# # np.save(config.DATA_DIRECTORY / "v5D0_m2.npy", good_layouts)
+# # np.save(config.DATA_DIRECTORY / "v5D0_m2_results.npy", good_results)
 
-
-layouts = good_layouts
-results = good_results
+# layouts = good_layouts
+# results = good_results
 
 ##Final good layouts graphical analysis
-# layouts = np.load(config.DATA_DIRECTORY / "v81k_QA.npy", allow_pickle=True)
-# results = np.load(config.DATA_DIRECTORY / "v81k_QA_results.npy", allow_pickle=True)
+layouts = np.load(config.DATA_DIRECTORY / "v4D8_m2_candidates.npy", allow_pickle=True)
+results = np.load(config.DATA_DIRECTORY / "v4D8_results.npy", allow_pickle=True)
+print(len(layouts), len(results))
+layouts2 = []
+results2 = []
+for i in range(len(results)):
+    if results[i] > 0:
+        results2.append(results[i])
+        layouts2.append(layouts[i])
+layouts = np.asanyarray(layouts2)
+results = np.asanyarray(results2)
+
+print(len(layouts), len(results))
 # std = np.std(results)
 # mean = np.mean(results)
 # print(
@@ -97,26 +108,28 @@ results = good_results
 #     ],
 # )
 # print(n)
-ed = 149.48
-bins = [ed * x / 100 for x in range(0, 111)]
-lessthan_ed2 = np.where(results < 130.87)[0]
-lessthan_ed1 = np.where(results < 134.69)[0]
-lessthan_ed3 = np.where(results < ed)[0]
+ed1 = 134.69
+ed2 = 130.87
+ed3 = 134.52
+bins = [ed2 * x / 100 for x in range(80, 111)]
+lessthan_ed2 = np.where(results < ed2)[0]
+lessthan_ed1 = np.where(results < ed1)[0]
+lessthan_ed3 = np.where(results < ed3)[0]
 group1 = len(lessthan_ed2)
-group2 = len(lessthan_ed1) - group1
-group3 = len(lessthan_ed3) - group2 - group1
+group2 = len(lessthan_ed3) - group1
+group3 = len(lessthan_ed1) - group2 - group1
 n, bins, patches = plt.hist(results, bins=bins, color="green")
 print(sum(n))
-xlabel = "Exergo-economic cost"
+xlabel = "Exergo-economic cost ($/MWh)"
 ylabel = "Frequency"
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
-plt.axvline(130.87, color="red", linestyle="dashed", linewidth=1, label="ED2")
-plt.axvline(134.69, color="black", linestyle="dashed", linewidth=1, label="ED1")
-plt.axvline(ed, color="blue", linestyle="dashed", linewidth=1, label="ED3")
-plt.text(0, 85, "              c<130.87: " + str(group1))
-plt.text(0, 45, "130.87<c<134.69: " + str(group2))
-plt.text(0, 5, "134.69<c<149.48: " + str(group3))
+plt.axvline(ed2, color="red", linestyle="dashed", linewidth=1, label="ED2")
+plt.axvline(ed1, color="black", linestyle="dashed", linewidth=1, label="ED1")
+plt.axvline(ed3, color="blue", linestyle="dashed", linewidth=1, label="ED3")
+plt.text(110, 85, "              c<130.87: " + str(group1))
+plt.text(110, 45, "130.87<c<134.52: " + str(group2))
+plt.text(110, 5, "134.52<c<134.69: " + str(group3))
 # plt.xlim(120, 150)
 # plt.ylim(0, 25)
 plt.legend()
@@ -124,7 +137,7 @@ plt.show()
 indices = np.argsort(results)
 sorted_results = results[indices]
 sorted_layouts = layouts[indices]
-print(sorted_layouts[:16], sorted_results[:16])
+print(sorted_layouts[:15], sorted_results[:15])
 # np.save(
 #     config.DATA_DIRECTORY / "v4DF_sorted_results.npy",
 #     sorted_results,

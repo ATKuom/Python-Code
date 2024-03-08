@@ -16,6 +16,7 @@ import torch
 import random
 import matplotlib.pyplot as plt
 import time
+from designs import ED1, ED2, ED3, bestfourthrun
 from ED_Test_rs import results_analysis
 from econ import economics
 from split_functions import (
@@ -46,174 +47,9 @@ from split_functions import (
 )
 
 s = time.time()
-ED1 = torch.tensor(
-    [
-        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-    ]
-)
 
-ED2 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
 
-ED3 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-ED1m = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-bestpaper1 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-bestpaper2 = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-bestfirstrun = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-bestsecondrun = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-bestthirdrun = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-
-bestthirdrun10k = torch.tensor(
-    [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    ]
-)
-layout = bestthirdrun10k
+layout = ED2
 
 # layouts = np.load(
 #     config.DATA_DIRECTORY / "len20m2_d0.npy",
@@ -222,18 +58,18 @@ layout = bestthirdrun10k
 # layout = layouts[9550]
 # layout = string_to_layout(layout)
 
-# equipment, bounds, x, splitter = bound_creation(layout)
-# print(equipment)
+equipment, bounds, x, splitter = bound_creation(layout)
+print(equipment)
 
-# # PSO Parameters
-# swarmsize_factor = 7
-# particle_size = swarmsize_factor * len(bounds)
-# if 5 in equipment:
-#     particle_size += -1 * swarmsize_factor
-# if 9 in equipment:
-#     particle_size += -2 * swarmsize_factor
-# iterations = 100
-# nv = len(bounds)
+# PSO Parameters
+swarmsize_factor = 7
+particle_size = swarmsize_factor * len(bounds)
+if 5 in equipment:
+    particle_size += -1 * swarmsize_factor
+if 9 in equipment:
+    particle_size += -2 * swarmsize_factor
+iterations = 30
+nv = len(bounds)
 
 
 def objective_function(x, equipment):
@@ -491,7 +327,7 @@ def objective_function(x, equipment):
     try:
         costs = np.linalg.solve(m1, m2)
     except:
-        print("Matrix solution problem")
+        # print("Matrix solution problem")
         return PENALTY_VALUE
     Closs = costs[equipment_length + 1] * min(x for x in e_fgout if x != 0)
     Cfuel = costs[equipment_length] * FGINLETEXERGY
@@ -639,40 +475,41 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 
-# PSO(objective_function, bounds, particle_size, iterations)
-# e = time.time()
-# print(e - s)
-layouts = np.load(
-    config.DATA_DIRECTORY / "v3.2DF_sorted_layouts.npy",
-    allow_pickle=True,
-)
-results = []
-points = []
-for layout in layouts[:12]:
-    layout = string_to_layout(layout)
+PSO(objective_function, bounds, particle_size, iterations)
+e = time.time()
+print(e - s)
+# layouts = np.load(
+#     config.DATA_DIRECTORY / "v3.2DF_sorted_layouts.npy",
+#     allow_pickle=True,
+# )
+# results = []
+# points = []
+# for layout in layouts[:12]:
+#     layout = string_to_layout(layout)
 
-    equipment, bounds, x, splitter = bound_creation(layout)
+#     equipment, bounds, x, splitter = bound_creation(layout)
 
-    # PSO Parameters
-    swarmsize_factor = 7
-    particle_size = swarmsize_factor * len(bounds)
-    if 5 in equipment:
-        particle_size += -1 * swarmsize_factor
-    if 9 in equipment:
-        particle_size += -2 * swarmsize_factor
-    iterations = 30
-    nv = len(bounds)
-    try:
-        a = PSO(objective_function, bounds, particle_size, iterations)
-        results.append(a.result)
-        points.append(a.points)
-    except:
-        results.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        points.append([0])
-results_array = np.asarray(results)
-points = np.asarray(points, dtype=object)
-print(points)
-print(results_array)
+#     # PSO Parameters
+#     swarmsize_factor = 7
+#     particle_size = swarmsize_factor * len(bounds)
+#     if 5 in equipment:
+#         particle_size += -1 * swarmsize_factor
+#     if 9 in equipment:
+#         particle_size += -2 * swarmsize_factor
+#     iterations = 30
+#     nv = len(bounds)
+#     try:
+#         a = PSO(objective_function, bounds, particle_size, iterations)
+#         results.append(a.result)
+#         points.append(a.points)
+#     except:
+#         results.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+#         points.append([0])
+# results_array = np.asarray(results)
+# points = np.asarray(points, dtype=object)
+# print(points)
+# print(results_array)
+
 # np.save(
 #     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1_results.npy",
 #     results_array,

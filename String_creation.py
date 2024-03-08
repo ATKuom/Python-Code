@@ -89,7 +89,7 @@ if __name__ == "__main__":
     #     "G" + string + "E" for string in randomly_generated_strings
     # ]
     # print(len(validity(randomly_generated_strings)))
-    N = 50000
+    N = 1000
     randomly_generated_strings = []
     i = 0
     while len(randomly_generated_strings) < N:

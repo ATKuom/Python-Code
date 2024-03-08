@@ -67,10 +67,6 @@ def HX_restrictions(sequence, char_occur_dict):
     if sequence.count("aa") or sequence.count("bb"):
         return False
 
-    # if sequence[-2] == "a" or sequence[-2] == "b":
-    #     if sequence[1] == "a" or sequence[1] == "b":
-    #         return False
-
     if (
         sequence.find("-1a") != -1
         and sequence.find("1a", sequence.find("-1a") + 2) != -1
@@ -78,7 +74,7 @@ def HX_restrictions(sequence, char_occur_dict):
         return False
     if (
         sequence.find("-1b") != -1
-        and sequence.find("1a", sequence.find("-1b") + 2) != -1
+        and sequence.find("1b", sequence.find("-1b") + 2) != -1
     ):
         return False
     if (
@@ -177,16 +173,16 @@ if __name__ == "__main__":
         "GHTCAHE",
         "GaTCAHaE",
     ]
-    datalist = goeos_expert
+    # datalist = goeos_expert
     print(len(datalist), len(validity(datalist)))
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
     print(len(valid_strings), valid_strings)
-    np.save(config.DATA_DIRECTORY / "v4D0_candidates.npy", valid_strings)
+    # np.save(config.DATA_DIRECTORY / "v4D0_candidates.npy", valid_strings)
     # p_datalist = np.load(config.DATA_DIRECTORY / "v4D10_m1.npy", allow_pickle=True)
     # print(len(p_datalist))
     # n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
     # n_valid_strings = np.unique(n_datalist)
-    # print(len(n_valid_strings))
+    # print(len(n_valid_strings) - len(p_datalist))
     # np.save(config.DATA_DIRECTORY / "v4D10_m1.npy", n_valid_strings)
     # index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
     # new_ones = n_valid_strings[index]

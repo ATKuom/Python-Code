@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from econ import economics
+from First_year_version.econ import economics
 from Improvements_functions import (
     lmtd,
     h_s_fg,

@@ -54,16 +54,18 @@ def padding(one_hot_tensors):
 
 
 def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32):
+    datalist_length = len(datalist)
     print(
         "datalist_length:",
-        len(datalist),
+        datalist_length,
         "Total_epoch:",
         num_epochs,
         "Batch_size:",
         batch_size,
     )
     validation_set = []
-    while len(validation_set) < 0.15 * len(datalist):
+
+    while len(validation_set) < 0.15 * datalist_length:
         i = np.random.randint(0, len(datalist))
         validation_set.append(datalist.pop(i))
     validation_set = np.asanyarray(validation_set, dtype=object)
@@ -197,7 +199,7 @@ class LSTMtry(nn.Module):
 
 
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
-model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
+model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D10_m1.pt"))
 criterion = nn.CrossEntropyLoss()
 
 # Define the optimizer
@@ -210,7 +212,7 @@ optimizer = optim.Adam(
 # 15% of the data is used for validation
 if __name__ == "__main__":
     datalist = np.load(
-        config.DATA_DIRECTORY / "v3D0_m2.npy", allow_pickle=True
+        config.DATA_DIRECTORY / "v4D8_m2_candidates.npy", allow_pickle=True
     ).tolist()
     best_model, train_acc, train_loss, val_acc, val_loss = training(
         model, optimizer, criterion, datalist, 30, 32

@@ -295,10 +295,10 @@ def NG_exergy():
     Fuel exergy calculation with 100% methane assumption
     """
     methane = Fluid(FluidsList.Methane).with_state(
-        Input.temperature(25), Input.pressure(18.2e5)
+        Input.temperature(15), Input.pressure(18.2e5)
     )
     m0 = Fluid(FluidsList.Methane).with_state(
-        Input.temperature(25), Input.pressure(101325)
+        Input.temperature(15), Input.pressure(101325)
     )
     Pexergy = methane.enthalpy - m0.enthalpy - (T0 + K) * (methane.entropy - m0.entropy)
     Cexergy = 824.348 * 1.26 / 16.043 * 1e6

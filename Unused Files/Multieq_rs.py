@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from econ import economics
+from First_year_version.econ import economics
 from split_functions import (
     lmtd,
     turbine,

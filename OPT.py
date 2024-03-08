@@ -446,7 +446,9 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 if __name__ == "__main__":
-    datalist = np.load(config.DATA_DIRECTORY / "v51k_QA.npy", allow_pickle=True)
+    datalist = np.load(
+        config.DATA_DIRECTORY / "v4D8_m2_candidates.npy", allow_pickle=True
+    )
     # index = np.load(
     #     config.DATA_DIRECTORY / "len20_valid_layouts_all.npy", allow_pickle=True
     # )
@@ -487,8 +489,8 @@ if __name__ == "__main__":
             broken_layouts.add(i)
         if i % 100 == 0:
             print(len(valid_layouts), len(penalty_layouts), len(broken_layouts))
-    np.save(config.DATA_DIRECTORY / "v51k_QA_positions.npy", positions)
-    np.save(config.DATA_DIRECTORY / "v51k_QA.npy_results", results)
+    np.save(config.DATA_DIRECTORY / "v4D8_positions.npy", positions)
+    np.save(config.DATA_DIRECTORY / "v4D8_results.npy", results)
     # np.save(
     #     config.DATA_DIRECTORY / "v4D0_5k+_valid.npy",
     #     np.array(list(valid_layouts)),

@@ -16,7 +16,7 @@ import torch
 import random
 import matplotlib.pyplot as plt
 from ED_Test_rs import results_analysis
-from econ import economics
+from First_year_version.econ import economics
 from TH_split_functions import (
     one_hot_encoding,
     fg_calculation,
