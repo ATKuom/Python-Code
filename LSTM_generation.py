@@ -25,7 +25,7 @@ def topp_sampling(softmax_output):
     k = 1
     topp = softmax_output.topk(k)
     total_prob = topp[0].sum()
-    while total_prob < 0.9:
+    while total_prob < 0.5:
         k += 1
         topp = softmax_output.topk(k)
         total_prob = topp[0].sum()
@@ -61,7 +61,7 @@ def generation(N, model):
             ):
                 softmax_output = F.softmax(model(prediction), dim=1)
                 new_tensor = torch.tensor([0.0] * len(classes))
-                new_tensor[sampling(softmax_output)] = 1.0
+                new_tensor[greedy_search(softmax_output)] = 1.0
                 prediction = torch.cat(
                     (prediction[0], new_tensor.reshape(1, 12))
                 ).reshape(1, -1, 12)
@@ -80,7 +80,7 @@ def generation(N, model):
 
 
 if __name__ == "__main__":
-    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D0_m1.pt"))
-    layout_list = generation(N=10, model=model)
+    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D10_m1.pt"))
+    layout_list = generation(N=1000, model=model)
     print(layout_list)
-    # np.save(config.DATA_DIRECTORY / "v510k.npy", layout_list)
+    np.save(config.DATA_DIRECTORY / "generated_layouts.npy", layout_list)

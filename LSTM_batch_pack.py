@@ -60,7 +60,7 @@ def count_parameters(model):
 def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32):
     validation_set = []
     datalist_length = len(datalist)
-    while len(validation_set) < 0.15 * datalist_length:
+    while len(validation_set) < 0.1 * datalist_length:
         i = np.random.randint(0, len(datalist))
         validation_set.append(datalist.pop(i))
     validation_set = np.asanyarray(validation_set, dtype=object)
@@ -164,7 +164,8 @@ def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32
                     "Accuracy of the network on the validation set: %d %%"
                     % (100 * correct / total)
                 )
-    return best_model, train_acc, train_loss, val_acc, val_loss
+            last_model = copy.deepcopy(model.state_dict())
+    return last_model, best_model, train_acc, train_loss, val_acc, val_loss
 
 
 class LSTMtry(nn.Module):
@@ -175,7 +176,7 @@ class LSTMtry(nn.Module):
             hidden_size,
             num_layers=2,
             batch_first=True,
-            # dropout=0.2,
+            dropout=0.1,
         )
         self.dlayer = nn.Linear(hidden_size, num_classes)
         # self.dropout = nn.Dropout(0.2)
@@ -211,8 +212,8 @@ if __name__ == "__main__":
     datalist = np.load(
         config.DATA_DIRECTORY / "v4D0_m1.npy", allow_pickle=True
     ).tolist()
-    best_model, train_acc, train_loss, val_acc, val_loss = training(
-        model, optimizer, criterion, datalist, 100, 100
+    last_model, best_model, train_acc, train_loss, val_acc, val_loss = training(
+        model, optimizer, criterion, datalist, num_epochs=160, batch_size=16
     )
     e = time.time()
     print(e - s)
@@ -224,4 +225,4 @@ if __name__ == "__main__":
     plt.plot(val_loss, label="Validation Loss")
     plt.legend()
     plt.show()
-    # torch.save(best_model, config.MODEL_DIRECTORY / "v8D0_m1.pt")
+    torch.save(best_model, config.MODEL_DIRECTORY / "v4D0_m1x.pt")

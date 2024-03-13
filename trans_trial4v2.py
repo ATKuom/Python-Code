@@ -11,13 +11,7 @@ batch_size = 16  # how many independent sequences will we process in parallel?
 block_size = 22  # what is the maximum context length for predictions?
 max_iters = 10000
 eval_interval = 200
-mode = "pretraining"
-mode = "finetuning"
-if mode == "pretraining":
-    learning_rate = 5e-4
-else:
-    learning_rate = 1e-6  # 5e-4
-print("mode:", mode, "learning_rate:", learning_rate)
+learning_rate = 5e-4
 device = "cuda" if torch.cuda.is_available() else "cpu"
 eval_iters = max_iters // eval_interval
 n_embd = 32
@@ -30,6 +24,17 @@ vocab_size = len(chars)
 
 
 def get_batch(split):
+    # generate a small batch of data of inputs x and targets y
+    data = train_data if split == "train" else val_data
+    ix = torch.randint(len(data) - block_size, (batch_size,))
+    x = torch.stack([data[i : i + block_size] for i in ix])
+    y = torch.stack([data[i + 1 : i + block_size + 1] for i in ix])
+    x, y = x.to(device), y.to(device)
+    breakpoint()
+    return x, y
+
+
+def get_batch2(split):
     # generate a small batch of data of inputs x and targets y
     data = train_data if split == "train" else val_data
     ix = torch.randint(len(data) - block_size, (batch_size,))
@@ -195,19 +200,19 @@ class GPTLanguageModel(nn.Module):
             ##greedy search
             # idx_next = probs.topk(1)[1]
             ##sampling
-            # idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
+            idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
             ##topk 5
             # topkk = probs.topk(5)
             # idx_next = topkk[1][0][torch.multinomial(topkk[0], num_samples=1)]
             ##topp 0.9
-            k = 1
-            topp = probs.topk(k)
-            total_prob = topp[0].sum()
-            while total_prob < 0.9:
-                k += 1
-                topp = probs.topk(k)
-                total_prob = topp[0].sum()
-            idx_next = topp[1][0][torch.multinomial(topp[0] / total_prob, 1)]
+            # k = 1
+            # topp = probs.topk(k)
+            # total_prob = topp[0].sum()
+            # while total_prob < 0.9:
+            #     k += 1
+            #     topp = probs.topk(k)
+            #     total_prob = topp[0].sum()
+            # idx_next = topp[1][0][torch.multinomial(topp[0] / total_prob, 1)]
             # append sampled index to the running sequence
             idx = torch.cat((idx, idx_next), dim=1)  # (B, T+1)
 
@@ -220,22 +225,22 @@ model = GPTLanguageModel()
 
 
 if __name__ == "__main__":
-    text = np.load(
-        config.DATA_DIRECTORY / "TT10kitertopp90_m2_D0.npy", allow_pickle=True
-    )
+    text = np.load(config.DATA_DIRECTORY / "v4D0_m1.npy", allow_pickle=True)
     equipment_datalist = string_to_equipment(text, classes)
     flat_list = [item for sublist in equipment_datalist for item in sublist]
+    max_len = max(len(layout) for layout in equipment_datalist)
+    for layout in equipment_datalist:
+        layout.extend([11] * (max_len - len(layout)))
+
     data = torch.tensor(flat_list, dtype=torch.long)
-    print(len(equipment_datalist), data.shape[0])
+    print(data.shape[0])
     # Train and test splits
     n = int(0.9 * len(data))  # first 90% will be train, rest val
     train_data = data[:n]
     val_data = data[n:]
-    if mode == "finetuning":
-        model.load_state_dict((torch.load(config.MODEL_DIRECTORY / "T_m1_d10.pt")))
-    model.to(device)
+    m = model.to(device)
     # print the number of parameters in the model
-    print(sum(p.numel() for p in model.parameters()) / 1e6, "M parameters")
+    print(sum(p.numel() for p in m.parameters()) / 1e6, "M parameters")
 
     # create a PyTorch optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)

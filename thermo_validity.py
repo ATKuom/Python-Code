@@ -174,14 +174,16 @@ if __name__ == "__main__":
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
     print(len(valid_strings))
 
-    # np.save(config.DATA_DIRECTORY / "v510k_valid.npy", valid_strings)
-    p_datalist = np.load(config.DATA_DIRECTORY / "v4D3_m1.npy", allow_pickle=True)
+    # np.save(config.DATA_DIRECTORY / "TT10kitertopp90_m2_candidates.npy", valid_strings)
+    p_datalist = np.load(
+        config.DATA_DIRECTORY / "TT10kitertopp90_m2_D0.npy", allow_pickle=True
+    )
     # print(len(p_datalist))
     n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
     n_valid_strings = np.unique(n_datalist)
-    print(len(n_valid_strings) - len(p_datalist))
-    # np.save(config.DATA_DIRECTORY / "TT_DF.npy", n_valid_strings)
-    # index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
-    # new_ones = n_valid_strings[index]
-    # print(len(new_ones))
-    # np.save(config.DATA_DIRECTORY / "v81k_QA.npy", new_ones)
+    print(len(n_valid_strings))
+    # np.save(config.DATA_DIRECTORY / "TT10kitertopp90_m2_D1.npy", n_valid_strings)
+    index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
+    new_ones = n_valid_strings[index]
+    print(len(new_ones))
+    np.save(config.DATA_DIRECTORY / "TT10kitertopp90_m2_D1_candidates.npy", new_ones)

@@ -70,15 +70,25 @@ np.set_printoptions(threshold=np.inf)
 # results = good_results
 
 ##Final good layouts graphical analysis
-layouts = np.load(config.DATA_DIRECTORY / "v4D8_m2_candidates.npy", allow_pickle=True)
-results = np.load(config.DATA_DIRECTORY / "v4D8_results.npy", allow_pickle=True)
+layouts = np.load(
+    config.DATA_DIRECTORY / "TT10kitertopp90_m2_candidates.npy", allow_pickle=True
+)
+results = np.load(
+    config.DATA_DIRECTORY / "TT10kitertopp90_m2_results.npy", allow_pickle=True
+)
 print(len(layouts), len(results))
 layouts2 = []
 results2 = []
+good_results = []
+good_layouts = []
+cutoff = 130.87 * 1.1
 for i in range(len(results)):
     if results[i] > 0:
         results2.append(results[i])
         layouts2.append(layouts[i])
+        if results[i] < cutoff:
+            good_results.append(results[i])
+            good_layouts.append(layouts[i])
 layouts = np.asanyarray(layouts2)
 results = np.asanyarray(results2)
 
@@ -137,15 +147,16 @@ plt.show()
 indices = np.argsort(results)
 sorted_results = results[indices]
 sorted_layouts = layouts[indices]
+print("mean of good layouts", np.mean(good_results))
 print(sorted_layouts[:15], sorted_results[:15])
 # np.save(
 #     config.DATA_DIRECTORY / "v4DF_sorted_results.npy",
 #     sorted_results,
 # )
-# np.save(
-#     config.DATA_DIRECTORY / "v4DF_sorted_layouts.npy",
-#     sorted_layouts,
-# )
+np.save(
+    config.DATA_DIRECTORY / "TT10kitertopp90_m2_D0.npy",
+    good_layouts,
+)
 
 ##Detailed analysis of ED_Test results
 # analysis = np.load(
