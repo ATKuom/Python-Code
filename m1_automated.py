@@ -21,10 +21,10 @@ if __name__ == "__main__":
         "D4",
         "D5",
         "D6",
-        # "D7",
-        # "D8",
-        # "D9",
-        # "D10",
+        "D7",
+        "D8",
+        "D9",
+        "D10",
         # "D11",
         # "D12",
         # "D13",
@@ -38,16 +38,16 @@ if __name__ == "__main__":
         "D5",
         "D6",
         "D7",
-        # "D8",
-        # "D9",
-        # "D10",
-        # "D11",
+        "D8",
+        "D9",
+        "D10",
+        "D11",
         # "D12",
         # "D13",
         # "D14",
         # "D15",
     ]
-    version = "v7"
+    version = "v21"
     model_phase = "_m1"
 
     for dataset, next_dataset in zip(datasets, next_datasets):
@@ -65,7 +65,7 @@ if __name__ == "__main__":
             model.parameters(),
             lr=0.001,
         )
-        best_model, train_acc, train_loss, val_acc, val_loss = training(
+        last_model, best_model, train_acc, train_loss, val_acc, val_loss = training(
             model, optimizer, criterion, datalist, 30, 100
         )
         torch.save(best_model, config.MODEL_DIRECTORY / model_name)

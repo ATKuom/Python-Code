@@ -108,6 +108,10 @@ if __name__ == "__main__":
         len(max(randomly_generated_strings, key=len)),
         max(randomly_generated_strings, key=len),
     )
+    print(
+        "Mean string character length:",
+        np.mean([len(string) for string in randomly_generated_strings]),
+    )
     j, k, l = 0, 0, 0
     for string in randomly_generated_strings:
         if "a" in string:
@@ -117,4 +121,4 @@ if __name__ == "__main__":
         if "-1" in string:
             k += 1
     print(j, k, l)
-    np.save(config.DATA_DIRECTORY / "v8D0_m1.npy", randomly_generated_strings)
+    # np.save(config.DATA_DIRECTORY / "v22_D0.npy", randomly_generated_strings)

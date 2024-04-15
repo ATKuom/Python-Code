@@ -60,7 +60,7 @@ def count_parameters(model):
 def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32):
     validation_set = []
     datalist_length = len(datalist)
-    while len(validation_set) < 0.1 * datalist_length:
+    while len(validation_set) < 0.15 * datalist_length:
         i = np.random.randint(0, len(datalist))
         validation_set.append(datalist.pop(i))
     validation_set = np.asanyarray(validation_set, dtype=object)
@@ -113,10 +113,10 @@ def training(model, optimizer, criterion, datalist, num_epochs=30, batch_size=32
         epoch_loss = epoch_loss / steps
         train_loss.append(epoch_loss)
         train_acc.append(100 * train_correct / train_total)
-        # np.random.shuffle(indices)
-        # padded_train_input = padded_train_input[indices]
-        # train_output = train_output[indices]
-        # sequence_lengths = sequence_lengths[indices]
+        np.random.shuffle(indices)
+        padded_train_input = padded_train_input[indices]
+        train_output = train_output[indices]
+        sequence_lengths = sequence_lengths[indices]
 
         model.eval()
         loss = 0
@@ -176,7 +176,7 @@ class LSTMtry(nn.Module):
             hidden_size,
             num_layers=2,
             batch_first=True,
-            dropout=0.1,
+            # dropout=0.1,
         )
         self.dlayer = nn.Linear(hidden_size, num_classes)
         # self.dropout = nn.Dropout(0.2)
@@ -198,7 +198,7 @@ class LSTMtry(nn.Module):
 
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
 
-criterion = nn.CrossEntropyLoss(ignore_index=0)
+criterion = nn.CrossEntropyLoss()
 
 # Define the optimizer
 learning_rate = 0.001
@@ -210,10 +210,10 @@ optimizer = optim.Adam(
 # 15% of the data is used for validation
 if __name__ == "__main__":
     datalist = np.load(
-        config.DATA_DIRECTORY / "v4D0_m1.npy", allow_pickle=True
+        config.DATA_DIRECTORY / "v21D8x_m1.npy", allow_pickle=True
     ).tolist()
     last_model, best_model, train_acc, train_loss, val_acc, val_loss = training(
-        model, optimizer, criterion, datalist, num_epochs=160, batch_size=16
+        model, optimizer, criterion, datalist, num_epochs=30, batch_size=100
     )
     e = time.time()
     print(e - s)
@@ -225,4 +225,4 @@ if __name__ == "__main__":
     plt.plot(val_loss, label="Validation Loss")
     plt.legend()
     plt.show()
-    torch.save(best_model, config.MODEL_DIRECTORY / "v4D0_m1x.pt")
+    torch.save(best_model, config.MODEL_DIRECTORY / "v21D8x_m1.pt")

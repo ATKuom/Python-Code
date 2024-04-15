@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 import numpy as np
 import config, copy
+import matplotlib.pyplot as plt
 from split_functions import string_to_equipment, token_to_string
 
 classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
@@ -12,7 +13,7 @@ block_size = 22  # what is the maximum context length for predictions?
 max_iters = 10000
 eval_interval = 200
 mode = "pretraining"
-mode = "finetuning"
+# mode = "finetuning"
 if mode == "pretraining":
     learning_rate = 5e-4
 else:
@@ -220,9 +221,7 @@ model = GPTLanguageModel()
 
 
 if __name__ == "__main__":
-    text = np.load(
-        config.DATA_DIRECTORY / "TT10kitertopp90_m2_D0.npy", allow_pickle=True
-    )
+    text = np.load(config.DATA_DIRECTORY / "v4D0_m1.npy", allow_pickle=True)
     equipment_datalist = string_to_equipment(text, classes)
     flat_list = [item for sublist in equipment_datalist for item in sublist]
     data = torch.tensor(flat_list, dtype=torch.long)
@@ -241,11 +240,15 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     best_loss = float("inf")
     best_model = None
+    train_losses = []
+    val_losses = []
     for iter in range(max_iters):
 
         # every once in a while evaluate the loss on train and val sets
         if iter % eval_interval == 0 or iter == max_iters - 1:
             losses = estimate_loss()
+            train_losses.append(losses["train"])
+            val_losses.append(losses["val"])
             print(
                 f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
             )
@@ -264,7 +267,18 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
 
-    torch.save(best_model, config.MODEL_DIRECTORY / "transformer_trial_bestmodel.pt")
+    iteration = np.arange(0, max_iters + 1, eval_interval)
+    plt.plot(iteration, train_losses, label="train")
+    plt.plot(iteration, val_losses, label="val")
+    plt.xlabel("iteration")
+    plt.ylabel("loss")
+    plt.legend()
+    plt.show()
+
     torch.save(
-        model.state_dict(), config.MODEL_DIRECTORY / "transformer_trial_lastmodel.pt"
+        best_model, config.MODEL_DIRECTORY / "transformer_trial_bestmodel_rand.pt"
+    )
+    torch.save(
+        model.state_dict(),
+        config.MODEL_DIRECTORY / "transformer_trial_lastmodel_rand.pt",
     )

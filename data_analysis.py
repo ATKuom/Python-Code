@@ -33,6 +33,8 @@ def splthxnmbrcheck(datalist):
 
 if __name__ == "__main__":
     # datalist = arr_expert
-    datalist = np.load(config.DATA_DIRECTORY / "v8D0_m1.npy", allow_pickle=True)
+    datalist = np.load(config.DATA_DIRECTORY / "v21D1_m1.npy", allow_pickle=True)
     total, splitter, hx, both, ed, edlist = splthxnmbrcheck(datalist)
-    print(total, splitter, hx, both, ed, edlist)
+    print(
+        total, splitter / total * 100, hx / total * 100, both / total * 100, ed, edlist
+    )

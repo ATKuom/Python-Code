@@ -70,11 +70,10 @@ np.set_printoptions(threshold=np.inf)
 # results = good_results
 
 ##Final good layouts graphical analysis
-layouts = np.load(
-    config.DATA_DIRECTORY / "TT10kitertopp90_m2_candidates.npy", allow_pickle=True
-)
+layouts = np.load(config.DATA_DIRECTORY / "v21D0_candidates.npy", allow_pickle=True)
 results = np.load(
-    config.DATA_DIRECTORY / "TT10kitertopp90_m2_results.npy", allow_pickle=True
+    config.DATA_DIRECTORY / "v21D0_candidates_results.npy",
+    allow_pickle=True,
 )
 print(len(layouts), len(results))
 layouts2 = []
@@ -148,13 +147,13 @@ indices = np.argsort(results)
 sorted_results = results[indices]
 sorted_layouts = layouts[indices]
 print("mean of good layouts", np.mean(good_results))
-print(sorted_layouts[:15], sorted_results[:15])
+print(sorted_layouts[: int(sum(n))], sorted_results[: int(sum(n))])
 # np.save(
 #     config.DATA_DIRECTORY / "v4DF_sorted_results.npy",
 #     sorted_results,
 # )
 np.save(
-    config.DATA_DIRECTORY / "TT10kitertopp90_m2_D0.npy",
+    config.DATA_DIRECTORY / "v21D0_m2.npy",
     good_layouts,
 )
 
