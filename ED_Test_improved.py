@@ -50,6 +50,7 @@ s = time.time()
 
 
 layout = ED2
+layout = string_to_layout("GTaCA-1C1HC1aHE")
 
 # layouts = np.load(
 #     config.DATA_DIRECTORY / "len20m2_d0.npy",

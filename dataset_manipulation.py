@@ -70,9 +70,9 @@ np.set_printoptions(threshold=np.inf)
 # results = good_results
 
 ##Final good layouts graphical analysis
-layouts = np.load(config.DATA_DIRECTORY / "v21D0_candidates.npy", allow_pickle=True)
+layouts = np.load(config.DATA_DIRECTORY / "v21D8_m2_candidates.npy", allow_pickle=True)
 results = np.load(
-    config.DATA_DIRECTORY / "v21D0_candidates_results.npy",
+    config.DATA_DIRECTORY / "v21D8_m2_results.npy",
     allow_pickle=True,
 )
 print(len(layouts), len(results))
@@ -142,7 +142,7 @@ plt.text(110, 5, "134.52<c<134.69: " + str(group3))
 # plt.xlim(120, 150)
 # plt.ylim(0, 25)
 plt.legend()
-plt.show()
+# plt.show()
 indices = np.argsort(results)
 sorted_results = results[indices]
 sorted_layouts = layouts[indices]
@@ -152,11 +152,16 @@ print(sorted_layouts[: int(sum(n))], sorted_results[: int(sum(n))])
 #     config.DATA_DIRECTORY / "v4DF_sorted_results.npy",
 #     sorted_results,
 # )
-np.save(
-    config.DATA_DIRECTORY / "v21D0_m2.npy",
-    good_layouts,
-)
-
+# np.save(
+#     config.DATA_DIRECTORY / "v21D0_m2.npy",
+#     good_layouts,
+# )
+##Positional information gathering
+positions = np.load(config.DATA_DIRECTORY / "v21D8_m2_positions.npy", allow_pickle=True)
+for layout in sorted_layouts:
+    i = np.where(layouts == layout)[0][0]
+    print(layout, results[i], positions[i])
+    break
 ##Detailed analysis of ED_Test results
 # analysis = np.load(
 #     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1_results.npy",

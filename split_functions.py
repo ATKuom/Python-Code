@@ -20,6 +20,9 @@ def layout_to_string(layouts):
 
 
 def string_to_equipment(sequences, classes=classes):
+    """
+    Converts a list of sequences to a list of lists of equipments
+    """
     char_to_int = dict((c, i) for i, c in enumerate(classes))
     equipments = []
     for sequence in sequences:
@@ -50,6 +53,9 @@ def token_to_string(list, classes=classes):
 
 
 def string_to_layout(sequence):
+    """
+    Converts a sequence to a layout tensor information to process in the optimization
+    """
     one_hot_encoded = []
     i = 0
     while i < len(sequence):
@@ -551,6 +557,7 @@ def hx_side_selection(hx_position, Temperatures):
 def splitter_mixer_calc(
     Temperatures, Pressures, enthalpies, entropies, mass_flow, equipment
 ):
+
     equipment = np.asarray(equipment)
     splitter = np.where(equipment == 9)[0]
     mixer1, mixer2 = np.where(equipment == 7)[0]
@@ -558,7 +565,11 @@ def splitter_mixer_calc(
         Temperatures[mixer1] = Temperatures[splitter]
         enthalpies[mixer1] = enthalpies[splitter]
         entropies[mixer1] = entropies[splitter]
-    if Pressures[mixer1 - 1] == Pressures[mixer2 - 1] and Temperatures[mixer2] == 0:
+    if (
+        Pressures[mixer1 - 1] == Pressures[mixer2 - 1]
+        and Temperatures[mixer2] == 0
+        and Temperatures[mixer1 - 1] != 0
+    ):
         inlet1 = Fluid(FluidsList.CarbonDioxide).with_state(
             Input.temperature(Temperatures[mixer1 - 1]),
             Input.pressure(Pressures[mixer1 - 1]),

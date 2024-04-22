@@ -22,6 +22,8 @@ from split_functions import (
     heater_econ,
     comp_econ,
     exergy_calculation,
+    string_to_layout,
+    string_to_equipment,
     T0,
     P0,
     K,
@@ -321,8 +323,25 @@ def results_analysis(x, equipment):
 
 
 if __name__ == "__main__":
-    layout = bestfourthrun
+    layout = string_to_layout("GT1AT1CaHTaA-1E")
+    # layout = ED1
     equipment, bounds, x, splitter = bound_creation(layout)
+
+    x = [
+        0.8331321476642084,
+        7400000.0,
+        0.0,
+        32.0,
+        7400000.0,
+        0.0,
+        24870364.745278634,
+        11.0,
+        381.54252009222853,
+        7973375.533590103,
+        11.0,
+        33.108183738287146,
+        119.94762691370104,
+    ]
     if torch.equal(layout, ED1):
         x = [
             78.5e5,
