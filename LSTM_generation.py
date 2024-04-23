@@ -25,7 +25,7 @@ def topp_sampling(softmax_output):
     k = 1
     topp = softmax_output.topk(k)
     total_prob = topp[0].sum()
-    while total_prob < 0.5:
+    while total_prob < 0.9:
         k += 1
         topp = softmax_output.topk(k)
         total_prob = topp[0].sum()
@@ -61,7 +61,7 @@ def generation(N, model):
             ):
                 softmax_output = F.softmax(model(prediction), dim=1)
                 new_tensor = torch.tensor([0.0] * len(classes))
-                new_tensor[sampling(softmax_output)] = 1.0
+                new_tensor[topp_sampling(softmax_output)] = 1.0
                 prediction = torch.cat(
                     (prediction[0], new_tensor.reshape(1, 12))
                 ).reshape(1, -1, 12)
