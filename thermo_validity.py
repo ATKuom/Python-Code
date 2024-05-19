@@ -175,13 +175,13 @@ if __name__ == "__main__":
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
     print(len(valid_strings))
 
-    np.save(config.DATA_DIRECTORY / "v21D0_topp90_candidates.npy", valid_strings)
-    # # p_datalist = np.load(config.DATA_DIRECTORY / "v21D_m1.npy", allow_pickle=True)
-    # # print(len(p_datalist))
-    # n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
-    # n_valid_strings = np.unique(n_datalist)
-    # print(len(n_valid_strings))
-    # # np.save(config.DATA_DIRECTORY / "v21D8x_m1.npy", n_valid_strings)
+    # np.save(config.DATA_DIRECTORY / "v21D0_topp90_candidates.npy", valid_strings)
+    p_datalist = np.load(config.DATA_DIRECTORY / "v24D10_m1.npy", allow_pickle=True)
+    print(len(p_datalist))
+    n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
+    n_valid_strings = np.unique(n_datalist)
+    print(len(n_valid_strings))
+    # np.save(config.DATA_DIRECTORY / "v21TD3_m1.npy", n_valid_strings)
     # index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
     # new_ones = n_valid_strings[index]
     # print(len(new_ones))

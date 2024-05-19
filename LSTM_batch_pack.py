@@ -210,10 +210,10 @@ optimizer = optim.Adam(
 # 15% of the data is used for validation
 if __name__ == "__main__":
     datalist = np.load(
-        config.DATA_DIRECTORY / "v21D8x_m1.npy", allow_pickle=True
+        config.DATA_DIRECTORY / "v22D0_m1.npy", allow_pickle=True
     ).tolist()
     last_model, best_model, train_acc, train_loss, val_acc, val_loss = training(
-        model, optimizer, criterion, datalist, num_epochs=30, batch_size=100
+        model, optimizer, criterion, datalist, num_epochs=100, batch_size=100
     )
     e = time.time()
     print(e - s)
@@ -225,4 +225,5 @@ if __name__ == "__main__":
     plt.plot(val_loss, label="Validation Loss")
     plt.legend()
     plt.show()
-    torch.save(best_model, config.MODEL_DIRECTORY / "v21D8x_m1.pt")
+    # torch.save(best_model, config.MODEL_DIRECTORY / "v21D8x_m1.pt")
+    torch.save(last_model, config.MODEL_DIRECTORY / "v22D0L_m1.pt")
