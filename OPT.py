@@ -447,7 +447,7 @@ class PSO:
 # Main PSO
 if __name__ == "__main__":
     datalist = np.load(
-        config.DATA_DIRECTORY / "v21D0_topp90_candidates.npy",
+        config.DATA_DIRECTORY / "TD0_m2_candidates.npy",
         allow_pickle=True,
     )
     # index = np.load(
@@ -488,13 +488,15 @@ if __name__ == "__main__":
                 penalty_layouts.add(i)
         except:
             broken_layouts.add(i)
-        if i % 100 == 0:
+        if i % 500 == 0 or i == len(datalist) - 1:
             print(len(valid_layouts), len(penalty_layouts), len(broken_layouts))
-    np.save(
-        config.DATA_DIRECTORY / "v21D0_topp90_candidates_positions.npy",
-        positions,
-    )
-    np.save(config.DATA_DIRECTORY / "v21D0_topp90_candidates_results.npy", results)
+            positions_name = "TD0_m2_positions" + str(i) + ".npy"
+            results_name = "TD0_m2_results" + str(i) + ".npy"
+            np.save(
+                config.DATA_DIRECTORY / positions_name,
+                positions,
+            )
+            np.save(config.DATA_DIRECTORY / results_name, results)
     # np.save(
     #     config.DATA_DIRECTORY / "v4D0_5k+_valid.npy",
     #     np.array(list(valid_layouts)),

@@ -8,12 +8,12 @@ from split_functions import string_to_equipment, token_to_string
 
 classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
 # hyperparameters
-batch_size = 16  # how many independent sequences will we process in parallel?
+batch_size = 32  # how many independent sequences will we process in parallel?
 block_size = 22  # what is the maximum context length for predictions?
 max_iters = 10000
 eval_interval = 200
 mode = "pretraining"
-# mode = "finetuning"
+mode = "finetuning"
 if mode == "pretraining":
     learning_rate = 5e-4
 else:
@@ -44,16 +44,23 @@ def get_batch(split):
 @torch.no_grad()
 def estimate_loss():
     out = {}
+    accuracies = {}
     model.eval()
     for split in ["train", "val"]:
         losses = torch.zeros(eval_iters)
+        accs = torch.zeros(eval_iters)
         for k in range(eval_iters):
             X, Y = get_batch(split)
             logits, loss = model(X, Y)
+            correct = torch.eq(logits.argmax(-1).reshape(Y.shape), Y)
+            total = Y.numel()
+            acc = correct.sum().item() / total
+            accs[k] = acc
             losses[k] = loss.item()
+        accuracies[split] = accs.mean()
         out[split] = losses.mean()
     model.train()
-    return out
+    return out, accuracies
 
 
 class Head(nn.Module):
@@ -166,6 +173,7 @@ class GPTLanguageModel(nn.Module):
         # idx and targets are both (B,T) tensor of integers
         tok_emb = self.token_embedding_table(idx)  # (B,T,C)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))  # (T,C)
+
         x = tok_emb + pos_emb  # (B,T,C)
         x = self.blocks(x)  # (B,T,C)
         x = self.ln_f(x)  # (B,T,C)
@@ -221,17 +229,19 @@ model = GPTLanguageModel()
 
 
 if __name__ == "__main__":
-    text = np.load(config.DATA_DIRECTORY / "v4D0_m1.npy", allow_pickle=True)
+    text = np.load(config.DATA_DIRECTORY / "TD0_m2.npy", allow_pickle=True)
     equipment_datalist = string_to_equipment(text, classes)
     flat_list = [item for sublist in equipment_datalist for item in sublist]
     data = torch.tensor(flat_list, dtype=torch.long)
     print(len(equipment_datalist), data.shape[0])
     # Train and test splits
-    n = int(0.9 * len(data))  # first 90% will be train, rest val
+    n = int(0.85 * len(data))  # first 90% will be train, rest val
     train_data = data[:n]
     val_data = data[n:]
     if mode == "finetuning":
-        model.load_state_dict((torch.load(config.MODEL_DIRECTORY / "T_m1_d10.pt")))
+        model.load_state_dict(
+            (torch.load(config.MODEL_DIRECTORY / "TD10_best_rand.pt"))
+        )
     model.to(device)
     # print the number of parameters in the model
     print(sum(p.numel() for p in model.parameters()) / 1e6, "M parameters")
@@ -242,15 +252,20 @@ if __name__ == "__main__":
     best_model = None
     train_losses = []
     val_losses = []
+    train_accuracies = []
+    val_accuracies = []
     for iter in range(max_iters):
 
         # every once in a while evaluate the loss on train and val sets
         if iter % eval_interval == 0 or iter == max_iters - 1:
-            losses = estimate_loss()
+            losses, accuracies = estimate_loss()
+            train_accuracies.append(accuracies["train"])
+            val_accuracies.append(accuracies["val"])
             train_losses.append(losses["train"])
             val_losses.append(losses["val"])
             print(
                 f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
+                f", train accuracy {accuracies['train']:.2f}, val accuracy {accuracies['val']:.2f}"
             )
             if losses["val"] < best_loss:
                 best_loss = losses["val"]
@@ -267,7 +282,9 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
 
-    iteration = np.arange(0, max_iters + 1, eval_interval)
+    iteration = np.arange(0, max_iters, eval_interval)
+    iteration = np.append(iteration, max_iters - 1)
+
     plt.plot(iteration, train_losses, label="train")
     plt.plot(iteration, val_losses, label="val")
     plt.xlabel("iteration")
@@ -275,10 +292,8 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    torch.save(
-        best_model, config.MODEL_DIRECTORY / "transformer_trial_bestmodel_rand.pt"
-    )
-    torch.save(
-        model.state_dict(),
-        config.MODEL_DIRECTORY / "transformer_trial_lastmodel_rand.pt",
-    )
+    torch.save(best_model, config.MODEL_DIRECTORY / "TD0_m2.pt")
+    # torch.save(
+    #     model.state_dict(),
+    #     config.MODEL_DIRECTORY / "transformer_trial_lastmodel_rand.pt",
+    # )

@@ -6,76 +6,94 @@ import matplotlib.pyplot as plt
 
 ##Combining all good layouts into one file
 np.set_printoptions(threshold=np.inf)
-# a = [
-#     "D0",
-#     "D1",
-#     "D2",
-#     "D3",
-#     "D4",
-#     "D5",
-#     "D6",
-#     "D7",
-#     # "D8",
-#     # "D9",
-# ]
-# b1 = "v4"
-# b2 = "_results.npy"
-# b3 = "_candidates.npy"
-# model = "_m2"
-# good_layouts = []
-# good_results = []
-# for a in a:
-#     result = b1 + a + model + b2
-#     candidate = b1 + a + model + b3
-#     results = np.load(config.DATA_DIRECTORY / result, allow_pickle=True)
-#     datalist = np.load(config.DATA_DIRECTORY / candidate, allow_pickle=True)
-#     nonzero_results = results[np.where(results > 0)]
-#     cutoff = 143.957  # 164.428
-#     print(len(nonzero_results), len(results), len(datalist))
-#     for i in range(len(results)):
-#         if results[i] < cutoff and results[i] > 0:
-#             good_layouts.append(datalist[i])
-#             good_results.append(results[i])
-#     print(len(good_layouts), len(good_results))
-# good_layouts = np.array(good_layouts, dtype=object)
-# good_results = np.array(good_results, dtype=object)
-# np.save(config.DATA_DIRECTORY / "v4DF_m2_layouts.npy", good_layouts)
-# np.save(config.DATA_DIRECTORY / "v4DF_m2_results.npy", good_results)
+
+
+def dataset_combination(version):
+    a = [
+        "D0",
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+        "D8",
+        # "D9",
+    ]
+    b1 = version
+    b2 = "_results.npy"
+    b3 = "_candidates.npy"
+    model = "_m2"
+    good_layouts = []
+    good_results = []
+    for a in a:
+        result = b1 + a + model + b2
+        candidate = b1 + a + model + b3
+        results = np.load(config.DATA_DIRECTORY / result, allow_pickle=True)
+        datalist = np.load(config.DATA_DIRECTORY / candidate, allow_pickle=True)
+        nonzero_results = results[np.where(results > 0)]
+        cutoff = 143.957  # 164.428
+        print(len(nonzero_results), len(results), len(datalist))
+        for i in range(len(results)):
+            if results[i] < cutoff and results[i] > 0:
+                good_layouts.append(datalist[i])
+                good_results.append(results[i])
+        print(len(good_layouts), len(good_results))
+    good_layouts = np.array(good_layouts, dtype=object)
+    good_results = np.array(good_results, dtype=object)
+    final_dataset_name = b1 + model + "_layouts.npy"
+    final_results_name = b1 + model + b2
+    np.save(config.DATA_DIRECTORY / final_dataset_name, good_layouts)
+    np.save(config.DATA_DIRECTORY / final_results_name, good_results)
+    return
+
 
 # Finding the good layouts
-# datalist = np.load(config.DATA_DIRECTORY / "v510k_valid.npy", allow_pickle=True)
-# results = np.load(config.DATA_DIRECTORY / "v510k_results.npy", allow_pickle=True)
-# nonzero_results = results[np.where(results > 0)]
-# cutoff = 141
-# # cutoff = 30000
-# good_layouts = []
-# good_results = []
-# best_result = cutoff
-# print(len(nonzero_results), len(results), len(datalist))
-# for i in range(len(results)):
-#     if results[i] < cutoff and results[i] > 0:
-#         good_layouts.append(datalist[i])
-#         good_results.append(results[i])
-#         if results[i] < best_result:
-#             best_result = results[i]
-#             best_layout = datalist[i]
-# print(len(good_layouts))
-# print(best_result, best_layout)
-# good_layouts = np.array(good_layouts, dtype=object)
-# good_results = np.array(good_results, dtype=object)
-# # np.save(config.DATA_DIRECTORY / "v5D0_m2.npy", good_layouts)
-# # np.save(config.DATA_DIRECTORY / "v5D0_m2_results.npy", good_results)
+datalist = np.load(config.DATA_DIRECTORY / "TD0_m2_candidates.npy", allow_pickle=True)
+results = np.load(config.DATA_DIRECTORY / "TD0_m2_results8211.npy", allow_pickle=True)
+positions = np.load(
+    config.DATA_DIRECTORY / "TD0_m2_positions8211.npy", allow_pickle=True
+)
+nonzero_results = results[np.where(results > 0)]
+cutoff = 143.957
+# cutoff = 30000
+good_layouts = []
+good_results = []
+good_positions = []
+best_result = cutoff
+print(len(nonzero_results), len(results), len(datalist))
+for i in range(len(results)):
+    if results[i] < cutoff and results[i] > 0:
+        good_layouts.append(datalist[i])
+        good_results.append(results[i])
+        good_positions.append(positions[i])
+        if results[i] < best_result:
+            best_result = results[i]
+            best_layout = datalist[i]
+print(len(good_layouts), len(good_results), len(good_positions))
+print(best_result, best_layout)
+print(np.mean(good_results))
+good_layouts = np.array(good_layouts, dtype=object)
+good_results = np.array(good_results, dtype=object)
+good_positions = np.array(good_positions, dtype=object)
+# np.save(config.DATA_DIRECTORY / "TD0_m2.npy", good_layouts)
+# np.save(config.DATA_DIRECTORY / "TD0_m2_results.npy", good_results)
+# np.save(config.DATA_DIRECTORY / "TD0_m2_positions.npy", good_positions)
 
+quit()
 # layouts = good_layouts
 # results = good_results
 
 ##Final good layouts graphical analysis
-layouts = np.load(config.DATA_DIRECTORY / "v21D8_m2_candidates.npy", allow_pickle=True)
+layouts = np.load(config.DATA_DIRECTORY / "v26D8_m2_candidates.npy", allow_pickle=True)
 results = np.load(
-    config.DATA_DIRECTORY / "v21D8_m2_results.npy",
+    config.DATA_DIRECTORY / "v26D8_m2_results.npy",
     allow_pickle=True,
 )
 print(len(layouts), len(results))
+
+
 layouts2 = []
 results2 = []
 good_results = []
@@ -117,6 +135,8 @@ print(len(layouts), len(results))
 #     ],
 # )
 # print(n)
+
+
 ed1 = 134.69
 ed2 = 130.87
 ed3 = 134.52
@@ -133,11 +153,12 @@ xlabel = "Exergo-economic cost ($/MWh)"
 ylabel = "Frequency"
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
+plt.title(" Top-p(0.75) Sampling")
 plt.axvline(ed2, color="red", linestyle="dashed", linewidth=1, label="ED2")
 plt.axvline(ed1, color="black", linestyle="dashed", linewidth=1, label="ED1")
 plt.axvline(ed3, color="blue", linestyle="dashed", linewidth=1, label="ED3")
-plt.text(110, 85, "              c<130.87: " + str(group1))
-plt.text(110, 45, "130.87<c<134.52: " + str(group2))
+plt.text(110, 45, "              c<130.87: " + str(group1))
+plt.text(110, 25, "130.87<c<134.52: " + str(group2))
 plt.text(110, 5, "134.52<c<134.69: " + str(group3))
 # plt.xlim(120, 150)
 # plt.ylim(0, 25)
@@ -146,22 +167,31 @@ plt.legend()
 indices = np.argsort(results)
 sorted_results = results[indices]
 sorted_layouts = layouts[indices]
-print("mean of good layouts", np.mean(good_results))
-print(sorted_layouts[: int(sum(n))], sorted_results[: int(sum(n))])
+print(
+    "mean of good layouts",
+    np.mean(good_results),
+    "mean of all layouts",
+    np.mean(sorted_results),
+)
+# print(sorted_layouts[: int(sum(n))], sorted_results[: int(sum(n))])
+print(sorted_layouts[:10], sorted_results[:10])
+
 # np.save(
 #     config.DATA_DIRECTORY / "v4DF_sorted_results.npy",
 #     sorted_results,
 # )
 # np.save(
-#     config.DATA_DIRECTORY / "v21D0_m2.npy",
+#     config.DATA_DIRECTORY / "v23D0_m2.npy",
 #     good_layouts,
 # )
+
 ##Positional information gathering
-positions = np.load(config.DATA_DIRECTORY / "v21D8_m2_positions.npy", allow_pickle=True)
-for layout in sorted_layouts:
-    i = np.where(layouts == layout)[0][0]
-    print(layout, results[i], positions[i])
-    break
+# positions = np.load(config.DATA_DIRECTORY / "v21D8_m2_positions.npy", allow_pickle=True)
+# for layout in sorted_layouts:
+#     i = np.where(layouts == layout)[0][0]
+#     print(layout, results[i], positions[i])
+#     break
+
 ##Detailed analysis of ED_Test results
 # analysis = np.load(
 #     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1_results.npy",

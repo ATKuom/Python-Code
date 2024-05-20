@@ -49,8 +49,7 @@ from split_functions import (
 s = time.time()
 
 
-layout = ED2
-layout = string_to_layout("GTaCA-1C1HC1aHE")
+layout = ED1
 
 # layouts = np.load(
 #     config.DATA_DIRECTORY / "len20m2_d0.npy",

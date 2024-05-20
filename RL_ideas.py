@@ -1,19 +1,16 @@
-from LSTM_batch_pack_m2 import (
-    model,
-    criterion,
-    training,
-)
-import torch.optim as optim
-from LSTM_generation import generation
-from thermo_validity import *
-import config
 import numpy as np
+import config
 import torch
 import random
 import matplotlib.pyplot as plt
+from LSTM_batch_pack import LSTMtry, model, classes
+from LSTM_generation import generation
+import torch
+import config
+import thermo_validity
 from econ import economics
 from split_functions import (
-    one_hot_encoding,
+    string_to_layout,
     fg_calculation,
     HX_calculation,
     decision_variable_placement,
@@ -295,7 +292,7 @@ def objective_function(x, equipment):
     try:
         costs = np.linalg.solve(m1, m2)
     except:
-        print("Matrix solution problem")
+        # print("Matrix solution problem")
         return PENALTY_VALUE
     Closs = costs[equipment_length + 1] * min(x for x in e_fgout if x != 0)
     Cfuel = costs[equipment_length] * FGINLETEXERGY
@@ -430,189 +427,37 @@ class PSO:
                 swarm_particle[j].update_position(bounds)
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
-            self.result = fitness_global_best_particle_position
-            self.position = global_best_particle_position
         # print("Result:")
         # print("Optimal solutions:", global_best_particle_position)
         # print("Objective function value:", fitness_global_best_particle_position)
-        # results_analysis(global_best_particle_position, equipment)
-        # print(total_number_of_particle_evaluation)
+        self.result = objective_function(global_best_particle_position, equipment)
+        self.points = global_best_particle_position
+
         # plt.plot(A)
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# Main PSO
-if __name__ == "__main__":
-    N = 3000
-    datasets = [
-        "D0",
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
-        "D7",
-        # "D8",
-    ]
-    next_datasets = [
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
-        "D7",
-        "D8",
-        # "D9",
-    ]
-    previous_datasets = [
-        "empty",
-        "D0",
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
-        # "D7",
-    ]
-
-    version = "v25"
-    model_phase = "_m2"
-
-    for dataset, next_dataset, prev_dataset in zip(
-        datasets, next_datasets, previous_datasets
-    ):
-        datalist_name = version + dataset + model_phase + ".npy"
-        model_name = version + dataset + model_phase + ".pt"
-        prev_model_name = version + prev_dataset + model_phase + ".pt"
-        generated_name = version + dataset + model_phase + "_generated.npy"
-        candidates_name = version + next_dataset + model_phase + "_candidates.npy"
-        results_name = version + next_dataset + model_phase + "_results.npy"
-        positions_name = version + next_dataset + model_phase + "_positions.npy"
-        valid_name = version + next_dataset + model_phase + "_valid.npy"
-        penalty_name = version + next_dataset + model_phase + "_penalty.npy"
-        broken_name = version + next_dataset + model_phase + "_broken.npy"
-        good_layouts_name = version + next_dataset + model_phase + "_goodlayouts.npy"
-        next_datalist_name = version + next_dataset + model_phase + ".npy"
-
-        # ML Training
-        datalist = np.load(
-            config.DATA_DIRECTORY / datalist_name, allow_pickle=True
-        ).tolist()
-        # if dataset == "D0":
-        #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
-        # else:
-        #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / prev_model_name))
-        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v21D10_m1.pt"))
-        optimizer = optim.Adam(
-            model.parameters(),
-            lr=0.001,
-        )
-        best_model, train_acc, train_loss, val_acc, val_loss = training(
-            model, optimizer, criterion, datalist, 30, 100
-        )
-        torch.save(best_model, config.MODEL_DIRECTORY / model_name)
-
-        # ML Generation
-        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / model_name))
-        layout_list = generation(N, model)
-        np.save(config.DATA_DIRECTORY / generated_name, layout_list)
-
-        # Validity Filter
-        datalist = np.load(config.DATA_DIRECTORY / generated_name, allow_pickle=True)
-        print(len(datalist), "V", len(validity(datalist)))
-        valid_strings = np.unique(np.array(validity(datalist), dtype=object))
-        print("V/U", len(valid_strings))
-        p_datalist = np.load(config.DATA_DIRECTORY / datalist_name, allow_pickle=True)
-        print(len(p_datalist))
-        n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
-        n_valid_strings = np.unique(n_datalist)
-        print(len(n_valid_strings))
-        index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
-        new_ones = n_valid_strings[index]
-        print("V/U/N", new_ones, len(new_ones))
-        np.save(config.DATA_DIRECTORY / candidates_name, new_ones)
-
-        # Optimization Filter
-        datalist = np.load(config.DATA_DIRECTORY / candidates_name, allow_pickle=True)
-        one_hot_tensors = one_hot_encoding(datalist)
-        valid_layouts = set()
-        penalty_layouts = set()
-        broken_layouts = set()
-        one_hot_tensors = np.array(one_hot_tensors, dtype=object)
-        results = np.zeros(len(datalist))
-        positions = np.zeros(len(datalist), dtype=object)
-        print(len(datalist))
-        for i in range(len(datalist)):
-            layout = one_hot_tensors[i]
-            equipment, bounds, x, splitter = bound_creation(layout)
-
-            # PSO Parameters
-            swarmsize_factor = 7
-            particle_size = swarmsize_factor * len(bounds)
-            if 5 in equipment:
-                particle_size += -1 * swarmsize_factor
-            if 9 in equipment:
-                particle_size += -2 * swarmsize_factor
-            iterations = 30
-            nv = len(bounds)
-            try:
-                a = PSO(objective_function, bounds, particle_size, iterations)
-                if a.result < 1e6:
-                    valid_layouts.add(i)
-                    results[i] = a.result
-                    positions[i] = a.position
-                else:
-                    penalty_layouts.add(i)
-            except:
-                broken_layouts.add(i)
-            if i % 100 == 0:
-                print(
-                    "Valid/Penalty/Broken",
-                    len(valid_layouts),
-                    len(penalty_layouts),
-                    len(broken_layouts),
-                )
-        np.save(config.DATA_DIRECTORY / results_name, results)
-        np.save(config.DATA_DIRECTORY / positions_name, positions)
-        # np.save(
-        #     config.DATA_DIRECTORY / valid_name,
-        #     np.array(list(valid_layouts)),
-        # )
-        # np.save(
-        #     config.DATA_DIRECTORY / penalty_name,
-        #     np.array(list(penalty_layouts)),
-        # )
-        # np.save(
-        #     config.DATA_DIRECTORY / broken_name,
-        #     np.array(list(broken_layouts)),
-        # )
-
-        # Optimization Result Check
-        results = np.load(config.DATA_DIRECTORY / results_name, allow_pickle=True)
-        datalist = np.load(config.DATA_DIRECTORY / candidates_name, allow_pickle=True)
-        nonzero_results = results[np.where(results > 0)]
-        cutoff = 143.957  # 164.428
-        good_layouts = []
-        print(
-            "Optimization Results:", len(nonzero_results), len(results), len(datalist)
-        )
-        for i in range(len(results)):
-            if results[i] < cutoff and results[i] > 0:
-                good_layouts.append(datalist[i])
-        print("Good layouts", len(good_layouts))
-        good_layouts = np.array(good_layouts, dtype=object)
-        np.save(config.DATA_DIRECTORY / good_layouts_name, good_layouts)
-
-        # New Dataset Formation
-        datalist = np.load(config.DATA_DIRECTORY / good_layouts_name, allow_pickle=True)
-        valid_strings = np.unique(np.array(validity(datalist), dtype=object))
-        p_datalist = np.load(config.DATA_DIRECTORY / datalist_name, allow_pickle=True)
-        print(datalist_name, len(p_datalist))
-        n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
-        n_valid_strings = np.unique(n_datalist)
-        print(next_datalist_name, len(n_valid_strings))
-        np.save(config.DATA_DIRECTORY / next_datalist_name, n_valid_strings)
+model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v21D10_m1.pt"))
+for i in range(1):
+    generated_layout = generation(1, model)
+    generated_layout = ["GTACHE"]
+    validity_check = thermo_validity.validity(generated_layout)
+    if validity_check == []:
+        print("invalid")
+        i = i + 1
+    else:
+        layout = string_to_layout(generated_layout[0])
+        equipment, bounds, x, splitter = bound_creation(layout)
+        swarmsize_factor = 7
+        particle_size = swarmsize_factor * len(bounds)
+        if 5 in equipment:
+            particle_size += -1 * swarmsize_factor
+        if 9 in equipment:
+            particle_size += -2 * swarmsize_factor
+        iterations = 30
+        nv = len(bounds)
+        try:
+            reward = PSO(objective_function, bounds, particle_size, iterations).result
+            print(reward)
+        except:
+            print("PSO error")
+            reward = 1e6
