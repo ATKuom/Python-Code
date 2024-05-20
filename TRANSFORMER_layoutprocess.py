@@ -24,15 +24,15 @@ vocab_size = len(chars)
 # breakpoint()
 
 
-def get_batch(split):
-    # generate a small batch of data of inputs x and targets y
-    data = train_data if split == "train" else val_data
-    ix = torch.randint(len(data) - block_size, (batch_size,))
-    x = torch.stack([data[i : i + block_size] for i in ix])
-    y = torch.stack([data[i + 1 : i + block_size + 1] for i in ix])
-    x, y = x.to(device), y.to(device)
-    # breakpoint()
-    return x, y
+# def get_batch(split):
+#     # generate a small batch of data of inputs x and targets y
+#     data = train_data if split == "train" else val_data
+#     ix = torch.randint(len(data) - block_size, (batch_size,))
+#     x = torch.stack([data[i : i + block_size] for i in ix])
+#     y = torch.stack([data[i + 1 : i + block_size + 1] for i in ix])
+#     x, y = x.to(device), y.to(device)
+#     # breakpoint()
+#     return x, y
 
 
 def get_batch2(split, batch_size, batch_start):
@@ -220,10 +220,19 @@ class GPTLanguageModel(nn.Module):
             # idx_next = probs.topk(1)[1]
             ##sampling
             # idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
+            # idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
             ##topk 5
             # topkk = probs.topk(5)
             # idx_next = topkk[1][0][torch.multinomial(topkk[0], num_samples=1)]
             ##topp 0.9
+            k = 1
+            topp = probs.topk(k)
+            total_prob = topp[0].sum()
+            while total_prob < 0.9:
+                k += 1
+                topp = probs.topk(k)
+                total_prob = topp[0].sum()
+            idx_next = topp[1][0][torch.multinomial(topp[0] / total_prob, 1)]
             k = 1
             topp = probs.topk(k)
             total_prob = topp[0].sum()
@@ -280,7 +289,7 @@ if __name__ == "__main__":
             val_accuracies.append(accuracies["val"])
             train_losses.append(losses["train"])
             val_losses.append(losses["val"])
-            # breakpoint()
+            # # breakpoint()
             print(
                 f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
                 f", train accuracy {accuracies['train']:.2f}, val accuracy {accuracies['val']:.2f}"
@@ -329,6 +338,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
     torch.save(best_model, config.MODEL_DIRECTORY / "transformer_trial_bestmodel.pt")
-    torch.save(
-        model.state_dict(), config.MODEL_DIRECTORY / "transformer_trial_lastmodel.pt"
-    )
+    # torch.save(
+    #     model.state_dict(), config.MODEL_DIRECTORY / "transformer_trial_lastmodel.pt"
+    # )

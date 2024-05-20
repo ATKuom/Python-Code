@@ -14,13 +14,13 @@ from LSTM_batch_pack import (
 if __name__ == "__main__":
     N = 10000
     datasets = [
-        "D0",
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
+        # "D0",
+        # "D1",
+        # "D2",
+        # "D3",
+        # "D4",
+        # "D5",
+        # "D6",
         "D7",
         "D8",
         "D9",
@@ -31,13 +31,13 @@ if __name__ == "__main__":
         # "D14",
     ]
     next_datasets = [
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
-        "D7",
+        # "D1",
+        # "D2",
+        # "D3",
+        # "D4",
+        # "D5",
+        # "D6",
+        # "D7",
         "D8",
         "D9",
         "D10",
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         # "D14",
         # "D15",
     ]
-    version = "v21"
+    version = "v26"
     model_phase = "_m1"
 
     for dataset, next_dataset in zip(datasets, next_datasets):
