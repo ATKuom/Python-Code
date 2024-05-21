@@ -176,13 +176,13 @@ if __name__ == "__main__":
     print(len(valid_strings))
 
     # np.save(config.DATA_DIRECTORY / "TD0_m2_candidates.npy", valid_strings)
-    p_datalist = np.load(config.DATA_DIRECTORY / "TD0_m2.npy", allow_pickle=True)
+    p_datalist = np.load(config.DATA_DIRECTORY / "TD1_m2.npy", allow_pickle=True)
     print(len(p_datalist))
     n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
     n_valid_strings = np.unique(n_datalist)
     print(len(n_valid_strings))
-    # np.save(config.DATA_DIRECTORY / "v2TD2_m1.npy", n_valid_strings)
+    # np.save(config.DATA_DIRECTORY / "TD1_m2.npy", n_valid_strings)
     index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
     new_ones = n_valid_strings[index]
     print(len(new_ones))
-    np.save(config.DATA_DIRECTORY / "TD1_m2_candidates.npy", new_ones)
+    np.save(config.DATA_DIRECTORY / "TD2_m2_candidates.npy", new_ones)

@@ -50,10 +50,10 @@ def dataset_combination(version):
 
 
 # Finding the good layouts
-datalist = np.load(config.DATA_DIRECTORY / "TD0_m2_candidates.npy", allow_pickle=True)
-results = np.load(config.DATA_DIRECTORY / "TD0_m2_results8211.npy", allow_pickle=True)
+datalist = np.load(config.DATA_DIRECTORY / "TD1_m2_candidates.npy", allow_pickle=True)
+results = np.load(config.DATA_DIRECTORY / "TD1_m2_results2310.npy", allow_pickle=True)
 positions = np.load(
-    config.DATA_DIRECTORY / "TD0_m2_positions8211.npy", allow_pickle=True
+    config.DATA_DIRECTORY / "TD1_m2_positions2310.npy", allow_pickle=True
 )
 nonzero_results = results[np.where(results > 0)]
 cutoff = 143.957
@@ -77,9 +77,9 @@ print(np.mean(good_results))
 good_layouts = np.array(good_layouts, dtype=object)
 good_results = np.array(good_results, dtype=object)
 good_positions = np.array(good_positions, dtype=object)
-# np.save(config.DATA_DIRECTORY / "TD0_m2.npy", good_layouts)
-# np.save(config.DATA_DIRECTORY / "TD0_m2_results.npy", good_results)
-# np.save(config.DATA_DIRECTORY / "TD0_m2_positions.npy", good_positions)
+np.save(config.DATA_DIRECTORY / "TD1g_m2.npy", good_layouts)
+np.save(config.DATA_DIRECTORY / "TD1g_m2_results.npy", good_results)
+np.save(config.DATA_DIRECTORY / "TD1g_m2_positions.npy", good_positions)
 
 quit()
 # layouts = good_layouts

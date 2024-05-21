@@ -4,7 +4,7 @@ import config
 from TRANSFORMER_randomstrings import classes, device, model
 
 
-model.load_state_dict((torch.load(config.MODEL_DIRECTORY / "TD0_m2.pt")))
+model.load_state_dict((torch.load(config.MODEL_DIRECTORY / "TD1_m2.pt")))
 
 
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
