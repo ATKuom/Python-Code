@@ -121,4 +121,4 @@ if __name__ == "__main__":
         if "-1" in string:
             k += 1
     print(j, k, l)
-    # np.save(config.DATA_DIRECTORY / "v22_D0.npy", randomly_generated_strings)
+    np.save(config.DATA_DIRECTORY / "v27_D0.npy", randomly_generated_strings)

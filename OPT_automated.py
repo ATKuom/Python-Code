@@ -446,40 +446,40 @@ class PSO:
 if __name__ == "__main__":
     N = 3000
     datasets = [
-        "D0",
-        "D1",
-        "D2",
-        "D3",
-        "D4",
+        # "D0",
+        # "D1",
+        # "D2",
+        # "D3",
+        # "D4",
         "D5",
         "D6",
         "D7",
         # "D8",
     ]
     next_datasets = [
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
+        # "D1",
+        # "D2",
+        # "D3",
+        # "D4",
+        # "D5",
         "D6",
         "D7",
         "D8",
         # "D9",
     ]
     previous_datasets = [
-        "empty",
-        "D0",
-        "D1",
-        "D2",
-        "D3",
+        # "empty",
+        # "D0",
+        # "D1",
+        # "D2",
+        # "D3",
         "D4",
         "D5",
         "D6",
         # "D7",
     ]
 
-    version = "v25"
+    version = "v24L"
     model_phase = "_m2"
 
     for dataset, next_dataset, prev_dataset in zip(
@@ -506,7 +506,7 @@ if __name__ == "__main__":
         #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v3D10_m1.pt"))
         # else:
         #     model.load_state_dict(torch.load(config.MODEL_DIRECTORY / prev_model_name))
-        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v21D10_m1.pt"))
+        model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v24LD10_m1.pt"))
         optimizer = optim.Adam(
             model.parameters(),
             lr=0.001,

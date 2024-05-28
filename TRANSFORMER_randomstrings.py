@@ -229,7 +229,7 @@ model = GPTLanguageModel()
 
 
 if __name__ == "__main__":
-    text = np.load(config.DATA_DIRECTORY / "TD1_m2.npy", allow_pickle=True)
+    text = np.load(config.DATA_DIRECTORY / "TD2_m2.npy", allow_pickle=True)
     equipment_datalist = string_to_equipment(text, classes)
     flat_list = [item for sublist in equipment_datalist for item in sublist]
     data = torch.tensor(flat_list, dtype=torch.long)
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    torch.save(best_model, config.MODEL_DIRECTORY / "TD1_m2.pt")
+    torch.save(best_model, config.MODEL_DIRECTORY / "TD2_m2.pt")
     # torch.save(
     #     model.state_dict(),
     #     config.MODEL_DIRECTORY / "transformer_trial_lastmodel_rand.pt",

@@ -25,7 +25,7 @@ def topp_sampling(softmax_output):
     k = 1
     topp = softmax_output.topk(k)
     total_prob = topp[0].sum()
-    while total_prob < 0.5:
+    while total_prob < 0.9:
         k += 1
         topp = softmax_output.topk(k)
         total_prob = topp[0].sum()
@@ -80,7 +80,7 @@ def generation(N, model):
 
 
 if __name__ == "__main__":
-    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v22D0_m1.pt"))
+    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v24LD10_m1.pt"))
     layout_list = generation(N=10000, model=model)
     print(layout_list)
-    np.save(config.DATA_DIRECTORY / "v26D0_m2_candidates.npy", layout_list)
+    np.save(config.DATA_DIRECTORY / "v24LD0_m2_candidates.npy", layout_list)
