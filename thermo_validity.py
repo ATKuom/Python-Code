@@ -166,7 +166,7 @@ if __name__ == "__main__":
     # datalist = layout_to_string(layouts)
     # print(len(datalist))
     datalist = np.load(
-        config.DATA_DIRECTORY / "v24LD6_m2_generated.npy",
+        config.DATA_DIRECTORY / "v26D10_m1_generated.npy",
         allow_pickle=True,
     )
 
@@ -176,7 +176,7 @@ if __name__ == "__main__":
 
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
     print(len(valid_strings))
-
+    quit()
     # np.save(config.DATA_DIRECTORY / "v24LLD0_m2_candidates.npy", valid_strings)
     p_datalist = np.load(config.DATA_DIRECTORY / "v24LD6_m2.npy", allow_pickle=True)
     print(len(p_datalist))
