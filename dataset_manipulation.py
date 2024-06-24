@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 np.set_printoptions(threshold=np.inf)
 
 
-def dataset_combination(version):
+def dataset_combination(version, style):
     a = [
         "D0",
         "D1",
@@ -24,17 +24,90 @@ def dataset_combination(version):
     b1 = version
     b2 = "_results.npy"
     b3 = "_candidates.npy"
+    b4 = "_positions.npy"
+    model = "_m2"
+    good_layouts = []
+    good_results = []
+    good_positions = []
+    for a in a:
+        result = b1 + a + model + b2
+        candidate = b1 + a + model + b3
+        position = b1 + a + model + b4
+        results = np.load(config.DATA_DIRECTORY / result, allow_pickle=True)
+        datalist = np.load(config.DATA_DIRECTORY / candidate, allow_pickle=True)
+        position = np.load(config.DATA_DIRECTORY / position, allow_pickle=True)
+        nonzero_results = results[np.where(results > 0)]
+        cutoff = 143.957  # 164.428
+        print(
+            len(nonzero_results),
+            len(results),
+            len(datalist),
+            len(position),
+        )
+        if style == "goodlayouts":
+            for i in range(len(results)):
+                if results[i] < cutoff and results[i] > 0:
+                    good_layouts.append(datalist[i])
+                    good_results.append(results[i])
+                    good_positions.append(position[i])
+        else:
+            for i in range(len(results)):
+                if results[i] > 0:
+                    good_layouts.append(datalist[i])
+                    good_results.append(results[i])
+                    good_positions.append(position[i])
+        print(len(good_layouts), len(good_results))
+    good_layouts = np.array(good_layouts, dtype=object)
+    good_results = np.array(good_results, dtype=object)
+    good_positions = np.array(good_positions, dtype=object)
+    final_dataset_name = b1 + "DF" + model + "_layouts.npy"
+    final_results_name = b1 + "DF" + model + b2
+    final_positions_name = b1 + "DF" + model + b4
+    print(
+        "Final dataset size: ",
+        len(good_layouts),
+        len(good_results),
+        len(good_positions),
+    )
+    np.save(config.DATA_DIRECTORY / final_dataset_name, good_layouts)
+    np.save(config.DATA_DIRECTORY / final_results_name, good_results)
+    np.save(config.DATA_DIRECTORY / final_positions_name, good_positions)
+    return
+
+
+def SQP_dataset_combination(version):
+    a = [
+        "D0",
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+        "D8",
+        # "D9",
+    ]
+    b1 = version
+    b2 = "_best_results.npy"
+    b3 = "_PSO_layouts.npy"
+
     model = "_m2"
     good_layouts = []
     good_results = []
     for a in a:
         result = b1 + a + model + b2
-        candidate = b1 + a + model + b3
+        candidate = b1 + a + "SQP" + model + b3
+
         results = np.load(config.DATA_DIRECTORY / result, allow_pickle=True)
         datalist = np.load(config.DATA_DIRECTORY / candidate, allow_pickle=True)
-        nonzero_results = results[np.where(results > 0)]
+
         cutoff = 143.957  # 164.428
-        print(len(nonzero_results), len(results), len(datalist))
+        print(
+            len(results),
+            len(datalist),
+        )
+        pause = input("Press Enter to continue")
         for i in range(len(results)):
             if results[i] < cutoff and results[i] > 0:
                 good_layouts.append(datalist[i])
@@ -42,22 +115,33 @@ def dataset_combination(version):
         print(len(good_layouts), len(good_results))
     good_layouts = np.array(good_layouts, dtype=object)
     good_results = np.array(good_results, dtype=object)
-    final_dataset_name = b1 + model + "_layouts.npy"
-    final_results_name = b1 + model + b2
-    np.save(config.DATA_DIRECTORY / final_dataset_name, good_layouts)
+    final_dataset_name = b1 + "DFSQP" + model + "_layouts.npy"
+    final_results_name = b1 + "DFSQP" + model + b2
+
+    print(
+        "Final dataset size: ",
+        len(good_layouts),
+        len(good_results),
+    )
     np.save(config.DATA_DIRECTORY / final_results_name, good_results)
+    np.save(config.DATA_DIRECTORY / final_dataset_name, good_layouts)
     return
+
+
+# SQP_dataset_combination("v22")
+
+# dataset_combination("v27mstp9", "goodlayouts")
 
 
 # # Finding the good layouts
 # datalist = np.load(
-#     config.DATA_DIRECTORY / "v24LD0_m2_candidates.npy", allow_pickle=True
+#     config.DATA_DIRECTORY / "v27mstp9D8_m2_candidates.npy", allow_pickle=True
 # )
 # results = np.load(
-#     config.DATA_DIRECTORY / "v24LD0_m2_results9759.npy", allow_pickle=True
+#     config.DATA_DIRECTORY / "v27mstp9D8_m2_results.npy", allow_pickle=True
 # )
 # positions = np.load(
-#     config.DATA_DIRECTORY / "v24LD0_m2_positions9759.npy", allow_pickle=True
+#     config.DATA_DIRECTORY / "v27mstp9D8_m2_positions.npy", allow_pickle=True
 # )
 # nonzero_results = results[np.where(results > 0)]
 # cutoff = 143.957
@@ -81,22 +165,21 @@ def dataset_combination(version):
 # good_layouts = np.array(good_layouts, dtype=object)
 # good_results = np.array(good_results, dtype=object)
 # good_positions = np.array(good_positions, dtype=object)
-# np.save(config.DATA_DIRECTORY / "v24LD0g_m2.npy", good_layouts)
-# np.save(config.DATA_DIRECTORY / "v24LD0g_m2_results.npy", good_results)
-# np.save(config.DATA_DIRECTORY / "v24LD0g_m2_positions.npy", good_positions)
+# # np.save(config.DATA_DIRECTORY / "v27msD0_m2.npy", good_layouts)
+# # np.save(config.DATA_DIRECTORY / "v27msD0_m2_results.npy", good_results)
+# # np.save(config.DATA_DIRECTORY / "v27msD0_m2_positions.npy", good_positions)
 # quit()
 
 # layouts = good_layouts
 # results = good_results
 
 ##Final good layouts graphical analysis
-layouts = np.load(config.DATA_DIRECTORY / "v24LD8_m2_candidates.npy", allow_pickle=True)
+layouts = np.load(config.DATA_DIRECTORY / "v24LDF_m2_layouts.npy", allow_pickle=True)
 results = np.load(
-    config.DATA_DIRECTORY / "v24LD8_m2_results.npy",
+    config.DATA_DIRECTORY / "v24LDF_m2_results.npy",
     allow_pickle=True,
 )
 print(len(layouts), len(results))
-
 
 layouts2 = []
 results2 = []
@@ -144,7 +227,10 @@ print(len(layouts), len(results))
 ed1 = 134.69
 ed2 = 130.87
 ed3 = 134.52
-bins = [ed2 * x / 100 for x in range(80, 111)]
+results = results / ed2
+ed1, ed2, ed3 = ed1 / ed2, ed2 / ed2, ed3 / ed2
+# bins = [ed2 * x / 100 for x in range(80, 111)]
+bins = [x / 100 for x in range(80, 111)]
 lessthan_ed2 = np.where(results < ed2)[0]
 lessthan_ed1 = np.where(results < ed1)[0]
 lessthan_ed3 = np.where(results < ed3)[0]
@@ -153,21 +239,22 @@ group2 = len(lessthan_ed3) - group1
 group3 = len(lessthan_ed1) - group2 - group1
 n, bins, patches = plt.hist(results, bins=bins, color="green")
 print(sum(n))
-xlabel = "Exergo-economic cost ($/MWh)"
+# xlabel = "Exergo-economic cost ($/MWh)"
+xlabel = "Normalized Exergo-economic cost"
 ylabel = "Frequency"
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
-plt.title(" Top-p(0.75) Sampling")
+plt.title("Top-k (3) Sampling")
 plt.axvline(ed2, color="red", linestyle="dashed", linewidth=1, label="ED2")
 plt.axvline(ed1, color="black", linestyle="dashed", linewidth=1, label="ED1")
 plt.axvline(ed3, color="blue", linestyle="dashed", linewidth=1, label="ED3")
-plt.text(110, 45, "              c<130.87: " + str(group1))
-plt.text(110, 25, "130.87<c<134.52: " + str(group2))
-plt.text(110, 5, "134.52<c<134.69: " + str(group3))
+plt.text(0.8, 35, "              c<1.00(ED2): " + str(group1))
+plt.text(0.8, 20, "  1.00<c<1.028(ED1): " + str(group2))
+plt.text(0.8, 5, "1.028<c<1.029(ED3): " + str(group3))
 # plt.xlim(120, 150)
 # plt.ylim(0, 25)
 plt.legend()
-# plt.show()
+plt.show()
 indices = np.argsort(results)
 sorted_results = results[indices]
 sorted_layouts = layouts[indices]
@@ -181,12 +268,12 @@ print(
 print(sorted_layouts[:10], sorted_results[:10])
 
 # np.save(
-#     config.DATA_DIRECTORY / "v4DF_sorted_results.npy",
+#     config.DATA_DIRECTORY / "v22DFSQP_m2_sorted_results.npy",
 #     sorted_results,
 # )
 # np.save(
-#     config.DATA_DIRECTORY / "v23D0_m2.npy",
-#     good_layouts,
+#     config.DATA_DIRECTORY / "v22DFSQP_m2_sorted_layouts.npy",
+#     sorted_layouts,
 # )
 
 ##Positional information gathering

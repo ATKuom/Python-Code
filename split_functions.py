@@ -44,8 +44,8 @@ def string_to_equipment(sequences, classes=classes):
 def token_to_string(list, classes=classes):
     int_to_char = dict((i, c) for i, c in enumerate(classes))
     sequence = []
-    x = ""
     for tokens in list:
+        x = ""
         for token in tokens:
             x += int_to_char[token]
         sequence.append(x)

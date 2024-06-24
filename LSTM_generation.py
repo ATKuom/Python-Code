@@ -80,7 +80,7 @@ def generation(N, model):
 
 
 if __name__ == "__main__":
-    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v24LD10_m1.pt"))
+    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v27msD10_m1.pt"))
     layout_list = generation(N=10000, model=model)
-    print(layout_list)
-    np.save(config.DATA_DIRECTORY / "v24LD0_m2_candidates.npy", layout_list)
+    # print(layout_list)
+    np.save(config.DATA_DIRECTORY / "v27msD10_tp9_m1_generated.npy", layout_list)

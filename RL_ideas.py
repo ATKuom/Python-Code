@@ -436,28 +436,86 @@ class PSO:
         # plt.plot(A)
 
 
-model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v21D10_m1.pt"))
-for i in range(1):
-    generated_layout = generation(1, model)
-    generated_layout = ["GTACHE"]
-    validity_check = thermo_validity.validity(generated_layout)
-    if validity_check == []:
-        print("invalid")
-        i = i + 1
-    else:
-        layout = string_to_layout(generated_layout[0])
-        equipment, bounds, x, splitter = bound_creation(layout)
-        swarmsize_factor = 7
-        particle_size = swarmsize_factor * len(bounds)
-        if 5 in equipment:
-            particle_size += -1 * swarmsize_factor
-        if 9 in equipment:
-            particle_size += -2 * swarmsize_factor
-        iterations = 30
-        nv = len(bounds)
-        try:
-            reward = PSO(objective_function, bounds, particle_size, iterations).result
-            print(reward)
-        except:
-            print("PSO error")
-            reward = 1e6
+"""
+sampling actions from state
+sampling tokens from previous tokens
+
+evaluating is using the probably of picking that token information
+
+neural network 
+optimizer is the same
+
+max_steps = 50_000
+step = 0
+lr = 0.005
+γ = 0.9999
+
+env = gym.make('CartPole-v0')
+
+nn = torch.nn.Sequential(
+)
+optim = torch.optim.Adam(nn.parameters(), lr=lr)
+
+while step <= max_steps:
+    obs = torch.tensor(env.reset(), dtype=torch.float)    
+    done = False
+    Actions, States, Rewards = [], [], []
+
+    while not done:
+        probs = nn(obs)
+        dist = torch.distributions.Categorical(probs=probs)        
+        action = dist.sample().item()
+        obs_, rew, done, _ = env.step(action)
+        
+        Actions.append(torch.tensor(action, dtype=torch.int))
+        States.append(obs)
+        Rewards.append(rew)
+
+        obs = torch.tensor(obs_, dtype=torch.float)
+
+        step += 1
+        
+    DiscountedReturns = []
+    for t in range(len(Rewards)):
+        G = 0.0
+        for k, r in enumerate(Rewards[t:]):
+            G += (γ**k)*r
+        DiscountedReturns.append(G)
+    
+    for State, Action, G in zip(States, Actions, DiscountedReturns):
+        probs = nn(State)
+        dist = torch.distributions.Categorical(probs=probs)    
+        log_prob = dist.log_prob(Action)
+        
+        loss = - log_prob*G
+        
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+
+
+# %% Play
+
+for _ in range(5):
+    Rewards = []
+    
+    obs = torch.tensor(env.reset(), dtype=torch.float)    
+    done = False
+    env.render()
+    
+    while not done:
+        probs = nn(obs)
+        c = torch.distributions.Categorical(probs=probs)        
+        action = c.sample().item()
+        
+        obs_, rew, done, _info = env.step(action)
+        env.render()
+
+        obs = torch.tensor(obs_, dtype=torch.float)
+
+        Rewards.append(rew)
+    
+
+    print(f'Reward: {sum(Rewards)}')
+
+"""
