@@ -3,6 +3,7 @@ import config
 import torch
 import random
 import matplotlib.pyplot as plt
+import torch.nn.functional as F
 from LSTM_batch_pack import LSTMtry, model, classes
 from LSTM_generation import generation
 import torch
@@ -30,6 +31,7 @@ from split_functions import (
     heater_econ,
     comp_econ,
     exergy_calculation,
+    layout_to_string,
     T0,
     P0,
     K,
@@ -436,86 +438,110 @@ class PSO:
         # plt.plot(A)
 
 
-"""
-sampling actions from state
-sampling tokens from previous tokens
-
-evaluating is using the probably of picking that token information
-
-neural network 
-optimizer is the same
-
-max_steps = 50_000
+max_steps = 50
 step = 0
-lr = 0.005
-γ = 0.9999
-
-env = gym.make('CartPole-v0')
-
-nn = torch.nn.Sequential(
-)
-optim = torch.optim.Adam(nn.parameters(), lr=lr)
-
+lr = 0.0005
+y = 0.99
+swarmsize_factor = 7
+iterations = 30
+model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v26D10_m1.pt"))
+optim = torch.optim.Adam(model.parameters(), lr=lr)
+empty_tensor = torch.zeros(1, 1, 12)
+episode = 0
 while step <= max_steps:
-    obs = torch.tensor(env.reset(), dtype=torch.float)    
+    obs = torch.tensor(
+        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    ).reshape(1, -1, 12)
+    episode += 1
     done = False
     Actions, States, Rewards = [], [], []
-
     while not done:
-        probs = nn(obs)
-        dist = torch.distributions.Categorical(probs=probs)        
+        # print(obs)
+        # pause = input("Press Enter to continue")
+        probs = F.softmax(model(obs), dim=1)
+        dist = torch.distributions.Categorical(probs=probs)
         action = dist.sample().item()
-        obs_, rew, done, _ = env.step(action)
-        
+        action_tensor = empty_tensor.clone()
+        action_tensor[0, 0, action] = 1.0
+        obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
+        if action == 11 or obs_.shape[1] == 30:
+            done = True
+            generated_layout = layout_to_string(obs_)
+            print(generated_layout, len(generated_layout[0]))
+            validity_check = thermo_validity.validity(generated_layout)
+            if validity_check == []:
+                # print("invalid")
+                rew = 0
+            else:
+                layout = string_to_layout(generated_layout[0])
+                equipment, bounds, x, splitter = bound_creation(layout)
+                particle_size = swarmsize_factor * len(bounds)
+                if 5 in equipment:
+                    particle_size += -1 * swarmsize_factor
+                if 9 in equipment:
+                    particle_size += -2 * swarmsize_factor
+                nv = len(bounds)
+                try:
+                    rew = PSO(
+                        objective_function, bounds, particle_size, iterations
+                    ).result
+                    if rew > 250:
+                        rew = 0
+                    print(rew)
+                except:
+                    # print("PSO error")
+                    rew = 0
+        else:
+            rew = 0
         Actions.append(torch.tensor(action, dtype=torch.int))
         States.append(obs)
         Rewards.append(rew)
 
-        obs = torch.tensor(obs_, dtype=torch.float)
-
+        obs = obs_.clone().detach()
         step += 1
-        
+
     DiscountedReturns = []
     for t in range(len(Rewards)):
         G = 0.0
         for k, r in enumerate(Rewards[t:]):
-            G += (γ**k)*r
+            G += (y**k) * r
         DiscountedReturns.append(G)
-    
+
     for State, Action, G in zip(States, Actions, DiscountedReturns):
-        probs = nn(State)
-        dist = torch.distributions.Categorical(probs=probs)    
+        probs = F.softmax(model(State), dim=1)
+        dist = torch.distributions.Categorical(probs=probs)
         log_prob = dist.log_prob(Action)
-        
-        loss = - log_prob*G
-        
+        loss = -log_prob * G
         optim.zero_grad()
         loss.backward()
         optim.step()
-
-
+breakpoint()
 # %% Play
-
+quit()
 for _ in range(5):
     Rewards = []
-    
-    obs = torch.tensor(env.reset(), dtype=torch.float)    
+    obs = torch.tensor(
+        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    ).reshape(1, -1, 12)
     done = False
-    env.render()
-    
-    while not done:
-        probs = nn(obs)
-        c = torch.distributions.Categorical(probs=probs)        
-        action = c.sample().item()
-        
-        obs_, rew, done, _info = env.step(action)
-        env.render()
 
-        obs = torch.tensor(obs_, dtype=torch.float)
+    while not done:
+        probs = F.softmax(model(obs), dim=1)
+        c = torch.distributions.Categorical(probs=probs)
+        action = c.sample().item()
+        action_tensor = empty_tensor.clone()
+        action_tensor[0, 0, action] = 1.0
+        obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
+        if action == 11:
+            done = True
+        else:
+            rew = 0
+
+        obs = obs_.clone().detach()
 
         Rewards.append(rew)
-    
 
-    print(f'Reward: {sum(Rewards)}')
+    print(f"Reward: {sum(Rewards)}")
 
-"""
+for i in range(1):
+    generated_layout = ["GTACHE"]
