@@ -1,23 +1,14 @@
-# Splitter/mixer sitatuion will create different m values which necessitates unit_type more complex approach to the hx.
-# ------------Completed Tasks------------
-# More than one heater fg_out and exergy analysis maybe necessary?
-# At least unit_type partioning between the heaters based on their share on the total heat duty is unit_type reasonable appraoch?
-# The partioning is done but the extra e_fgin and e_fgout may be necessary to include per each heater to satisfy the square matrix requirement of the exergy analysis
-# Mixing with different pressures is unit_type problem.
-# Assumption of flashing the higher pressure stream to the lower pressure stream can be made to mix them.
-# After determining the pressures of the system without the mixer, then the mixer must adjust the pressure of the output using the lowest pressure input
-# All the m inputs in the functions must be changed accordingly after the implementation of splitter/mixer
-# 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
-# Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
-# Splitter/mixer effects on exergy and overall structure must be analysed
 import numpy as np
 import config
 import torch
 import random
 import matplotlib.pyplot as plt
-import time
-from designs import ED1, ED2, ED3, bestfourthrun
-from ED_Test_rs import results_analysis
+import torch.nn.functional as F
+from LSTM_batch_pack import LSTMtry, model, classes
+from LSTM_generation import generation
+import torch
+import config
+import thermo_validity
 from econ import economics
 from split_functions import (
     string_to_layout,
@@ -40,37 +31,12 @@ from split_functions import (
     heater_econ,
     comp_econ,
     exergy_calculation,
+    layout_to_string,
     T0,
     P0,
     K,
     FGINLETEXERGY,
 )
-
-s = time.time()
-
-
-# layout = ED1
-
-# layouts = np.load(
-#     config.DATA_DIRECTORY / "len20m2_d0.npy",
-#     allow_pickle=True,
-# )
-# layout = layouts[9550]
-layout = "GTaAC-1H1a1HE"
-layout = string_to_layout(layout)
-print(layout)
-equipment, bounds, x, splitter = bound_creation(layout)
-print(equipment)
-
-# PSO Parameters
-swarmsize_factor = 7
-particle_size = swarmsize_factor * len(bounds)
-if 5 in equipment:
-    particle_size += -1 * swarmsize_factor
-if 9 in equipment:
-    particle_size += -2 * swarmsize_factor
-iterations = 30
-nv = len(bounds)
 
 
 def objective_function(x, equipment):
@@ -463,64 +429,213 @@ class PSO:
                 swarm_particle[j].update_position(bounds)
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
-        print("Result:")
-        print("Optimal solutions:", global_best_particle_position)
-        print("Objective function value:", fitness_global_best_particle_position)
-        self.result = results_analysis(global_best_particle_position, equipment)
+        # print("Result:")
+        # print("Optimal solutions:", global_best_particle_position)
+        # print("Objective function value:", fitness_global_best_particle_position)
+        self.result = objective_function(global_best_particle_position, equipment)
         self.points = global_best_particle_position
-        print(total_number_of_particle_evaluation)
+
         # plt.plot(A)
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# Main PSO
+# Hyperparameters
+max_steps = 5000
+max_episodes = 10
+batch_size = 10
+steps = 0
+lr = 0.0005
+y = 0.99
+savename = "RL_batch_" + str(lr) + "_" + str(max_steps) + ".pt"
+swarmsize_factor = 7
+iterations = 30
+model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v21D10_m1.pt"))
+optim = torch.optim.Adam(model.parameters(), lr=lr)
+empty_tensor = torch.zeros(1, 1, 12)
 
-PSO(objective_function, bounds, particle_size, iterations)
-e = time.time()
-print(e - s)
-# layouts = np.load(
-#     config.DATA_DIRECTORY / "v3.2DF_sorted_layouts.npy",
-#     allow_pickle=True,
-# )
-# results = []
-# points = []
-# for layout in layouts[:12]:
-#     layout = string_to_layout(layout)
+# %%Prior Play
+# Designs = []
+# Rewards = []
+# for _ in range(5):
+#     obs = torch.tensor(
+#         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+#     ).reshape(1, -1, 12)
+#     done = False
+#     while not done:
+#         probs = F.softmax(model(obs), dim=1)
+#         c = torch.distributions.Categorical(probs=probs)
+#         action = c.sample().item()
+#         action_tensor = empty_tensor.clone()
+#         action_tensor[0, 0, action] = 1.0
+#         obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
+#         if action == 11:
+#             done = True
+#             equipment, bounds, x, splitter = bound_creation(obs_[0])
+#             particle_size = swarmsize_factor * len(bounds)
+#             if 5 in equipment:
+#                 particle_size += -1 * swarmsize_factor
+#             if 9 in equipment:
+#                 particle_size += -2 * swarmsize_factor
+#             nv = len(bounds)
+#             try:
+#                 print("PSO is running")
+#                 rew = PSO(objective_function, bounds, particle_size, iterations).result
+#             except:
+#                 print("PSO error")
+#                 rew = 0
+#         obs = obs_.clone().detach()
+#     Rewards.append(rew)
+#     Designs.append(layout_to_string(obs_)[0])
+#     print(f"Design: {Designs[-1]} {Rewards[-1]}")
 
-#     equipment, bounds, x, splitter = bound_creation(layout)
+# %% Training
+episodes = 0
+while episodes <= max_episodes:
+    batch_Actions, batch_States, batch_Rewards, batch_DR, batch_designs = (
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
+    for _ in range(batch_size):
+        obs = torch.tensor(
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        ).reshape(1, -1, 12)
+        episodes += 1
+        print(episodes)
+        done = False
+        Actions, States, Rewards = [], [], []
+        while not done:
+            # print(obs)
+            # pause = input("Press Enter to continue")
+            probs = F.softmax(model(obs), dim=1)
+            dist = torch.distributions.Categorical(probs=probs)
+            action = dist.sample().item()
+            action_tensor = empty_tensor.clone()
+            action_tensor[0, 0, action] = 1.0
+            obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
+            if action == 11:
+                done = True
+                generated_layout = layout_to_string(obs_)
+                validity_check = thermo_validity.validity(generated_layout)
+                if validity_check == []:
+                    # print("invalid")
+                    rew = 0
+                else:
+                    layout = string_to_layout(generated_layout[0])
+                    equipment, bounds, x, splitter = bound_creation(layout)
+                    particle_size = swarmsize_factor * len(bounds)
+                    if 5 in equipment:
+                        particle_size += -1 * swarmsize_factor
+                    if 9 in equipment:
+                        particle_size += -2 * swarmsize_factor
+                    nv = len(bounds)
+                    try:
+                        rew = (
+                            1000
+                            / PSO(
+                                objective_function, bounds, particle_size, iterations
+                            ).result
+                        )
 
-#     # PSO Parameters
-#     swarmsize_factor = 7
-#     particle_size = swarmsize_factor * len(bounds)
-#     if 5 in equipment:
-#         particle_size += -1 * swarmsize_factor
-#     if 9 in equipment:
-#         particle_size += -2 * swarmsize_factor
-#     iterations = 30
-#     nv = len(bounds)
-#     try:
-#         a = PSO(objective_function, bounds, particle_size, iterations)
-#         results.append(a.result)
-#         points.append(a.points)
-#     except:
-#         results.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-#         points.append([0])
-# results_array = np.asarray(results)
-# points = np.asarray(points, dtype=object)
-# print(points)
-# print(results_array)
+                    except:
+                        # print("PSO error")
+                        rew = 0
+                batch_designs.append(generated_layout[0])
+            else:
+                rew = 0
+            Actions.append(torch.tensor(action, dtype=torch.int))
+            States.append(obs)
+            Rewards.append(rew)
 
-# np.save(
-#     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1_results.npy",
-#     results_array,
-# )
-# x = [
-#     78.5e5,
-#     10.8,
-#     32.3,
-#     241.3e5,
-#     10.8,
-#     411.4,
-#     93.18,
-# ]
+            obs = obs_.clone().detach()
+            steps += 1
+
+        DiscountedReturns = []
+        for t in range(len(Rewards)):
+            G = 0.0
+            for k, r in enumerate(Rewards[t:]):
+                G += (y**k) * r
+            DiscountedReturns.append(G)
+        batch_Actions.extend(Actions)
+        batch_States.extend(States)
+        batch_Rewards.extend(Rewards)
+        batch_DR.extend(DiscountedReturns)
+    print(batch_designs)
+    log_probs = []
+    for State, Action in zip(batch_States, batch_Actions):
+        probs = F.softmax(model(State), dim=1)
+        dist = torch.distributions.Categorical(probs=probs)
+        log_prob = dist.log_prob(Action)
+        log_probs.append(log_prob)
+    breakpoint()
+    log_probs = torch.stack(log_probs)
+    mean = torch.tensor(batch_DR).mean()
+    std = torch.tensor(batch_DR).std()
+    normalized_future_returns = (torch.tensor(batch_DR) - mean) / std.clamp_min(1e-12)
+    loss = -(log_probs * normalized_future_returns).mean()
+    optim.zero_grad()
+    loss.backward()
+    optim.step()
+    # for State, Action, G in zip(States, Actions, DiscountedReturns):
+    #     # neural_net
+    #     # logits = neural_net(observations)
+    #     # policy_distributions = torch.distributions.Categorical(logits=logits)
+    #     # # first way
+    #     # log_probs = policy_distributions.log_prob(actions)
+    #     # loss = -(log_probs * future_returns).sum() / num_episodes
+    #     # loss.backward()
+    #     # # second way
+    #     # mean = future_returns.mean()
+    #     # std = future_returns.std()
+    #     # normalized_future_returns = (future_returns - mean) / std.clamp_min(1e-12)
+    #     # loss = -(log_probs * normalized_future_returns).sum() / num_episodes
+    #     # loss.backward()
+    #     # # third way
+    #     # loss = -(log_probs * normalized_future_returns).mean()
+    #     probs = F.softmax(model(State), dim=1)
+    #     dist = torch.distributions.Categorical(probs=probs)
+    #     log_prob = dist.log_prob(Action)
+    #     loss = -log_prob * G
+    #     optim.zero_grad()
+    #     loss.backward()
+    #     optim.steps()
+print(f"Total Episodes: {episodes}")
+print("Training Done")
+
+# %% Saving
+torch.save(model.state_dict(), config.MODEL_DIRECTORY / savename)
+# %% Play
+Designs = []
+Rewards = []
+for _ in range(5):
+    obs = torch.tensor(
+        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    ).reshape(1, -1, 12)
+    done = False
+    while not done:
+        probs = F.softmax(model(obs), dim=1)
+        c = torch.distributions.Categorical(probs=probs)
+        action = c.sample().item()
+        action_tensor = empty_tensor.clone()
+        action_tensor[0, 0, action] = 1.0
+        obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
+        if action == 11:
+            done = True
+            equipment, bounds, x, splitter = bound_creation(obs_[0])
+            particle_size = swarmsize_factor * len(bounds)
+            if 5 in equipment:
+                particle_size += -1 * swarmsize_factor
+            if 9 in equipment:
+                particle_size += -2 * swarmsize_factor
+            nv = len(bounds)
+            try:
+                print("PSO is running")
+                rew = PSO(objective_function, bounds, particle_size, iterations).result
+            except:
+                print("PSO error")
+                rew = 0
+        obs = obs_.clone().detach()
+    Rewards.append(rew)
+    Designs.append(layout_to_string(obs_)[0])
+    print(f"Design: {Designs[-1]} {Rewards[-1]}")

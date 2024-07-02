@@ -7,9 +7,24 @@ import torch
 classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
 
 
+def layout_to_string_single_1d(layout):
+    int_to_char = dict((i, c) for i, c in enumerate(classes))
+    x = ""
+    for i in range(len(layout)):
+        x += int_to_char[layout[i]]
+    return x
+
+
+def layout_to_string_single(layout):
+    int_to_char = dict((i, c) for i, c in enumerate(classes))
+    x = ""
+    for i in range(len(layout)):
+        x += int_to_char[layout[i].argmax().item()]
+    return x
+
+
 def layout_to_string(layouts):
     int_to_char = dict((i, c) for i, c in enumerate(classes))
-
     sequences = []
     for layout in layouts:
         x = ""

@@ -61,7 +61,7 @@ def generation(N, model):
             ):
                 softmax_output = F.softmax(model(prediction), dim=1)
                 new_tensor = torch.tensor([0.0] * len(classes))
-                new_tensor[sampling(softmax_output)] = 1.0
+                new_tensor[greedy_search(softmax_output)] = 1.0
                 prediction = torch.cat(
                     (prediction[0], new_tensor.reshape(1, 12))
                 ).reshape(1, -1, 12)
@@ -80,7 +80,7 @@ def generation(N, model):
 
 
 if __name__ == "__main__":
-    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v27msD10_m1.pt"))
-    layout_list = generation(N=10000, model=model)
-    # print(layout_list)
-    np.save(config.DATA_DIRECTORY / "v27msD10_tp9_m1_generated.npy", layout_list)
+    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D7_m2.pt"))
+    layout_list = generation(N=1, model=model)
+    print(layout_list)
+    # np.save(config.DATA_DIRECTORY / "v27msD10_tp9_m1_generated.npy", layout_list)

@@ -316,6 +316,16 @@ def objective_function(x, equipment):
     return c
 
 
+def select_action(model, obs):
+    probs = F.softmax(model(obs), dim=1)
+    dist = torch.distributions.Categorical(probs=probs)
+    action = dist.sample().item()
+    action_tensor = empty_tensor.clone()
+    action_tensor[0, 0, action] = 1.0
+    obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
+    return action, obs_
+
+
 # ------------------------------------------------------------------------------
 class Particle:
     def __init__(self, bounds):
@@ -438,15 +448,58 @@ class PSO:
         # plt.plot(A)
 
 
-max_steps = 50
+# Hyperparameters
+max_steps = 20000
 step = 0
 lr = 0.0005
 y = 0.99
+big_N = 1000
+threshold = big_N / 143.96
+savename = "RL_-5forinvaliderror" + str(y) + str(lr) + "_" + str(max_steps) + ".pt"
 swarmsize_factor = 7
 iterations = 30
-model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v26D10_m1.pt"))
+model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v21D10_m1.pt"))
+# model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "RL_0.950.0005_10000.pt"))
 optim = torch.optim.Adam(model.parameters(), lr=lr)
 empty_tensor = torch.zeros(1, 1, 12)
+good_designs = []
+good_objs = []
+# %%Prior Play
+# Designs = []
+# Rewards = []
+# for _ in range(5):
+#     obs = torch.tensor(
+#         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+#     ).reshape(1, -1, 12)
+#     done = False
+#     while not done:
+#         probs = F.softmax(model(obs), dim=1)
+#         c = torch.distributions.Categorical(probs=probs)
+#         action = c.sample().item()
+#         action_tensor = empty_tensor.clone()
+#         action_tensor[0, 0, action] = 1.0
+#         obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
+#         if action == 11:
+#             done = True
+#             equipment, bounds, x, splitter = bound_creation(obs_[0])
+#             particle_size = swarmsize_factor * len(bounds)
+#             if 5 in equipment:
+#                 particle_size += -1 * swarmsize_factor
+#             if 9 in equipment:
+#                 particle_size += -2 * swarmsize_factor
+#             nv = len(bounds)
+#             try:
+#                 print("PSO is running")
+#                 rew = PSO(objective_function, bounds, particle_size, iterations).result
+#             except:
+#                 print("PSO error")
+#                 rew = 0
+#         obs = obs_.clone().detach()
+#     Rewards.append(rew)
+#     Designs.append(layout_to_string(obs_)[0])
+#     print(f"Design: {Designs[-1]} {Rewards[-1]}")
+# quit()
+# %% Training
 episode = 0
 while step <= max_steps:
     obs = torch.tensor(
@@ -458,23 +511,23 @@ while step <= max_steps:
     while not done:
         # print(obs)
         # pause = input("Press Enter to continue")
-        probs = F.softmax(model(obs), dim=1)
-        dist = torch.distributions.Categorical(probs=probs)
-        action = dist.sample().item()
-        action_tensor = empty_tensor.clone()
-        action_tensor[0, 0, action] = 1.0
-        obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
-        if action == 11 or obs_.shape[1] == 30:
+        action, obs_ = select_action(model, obs)
+        rew = 0
+        # if action == 5:
+        #     rew += 1
+        if action == 11:
             done = True
             generated_layout = layout_to_string(obs_)
             print(generated_layout, len(generated_layout[0]))
             validity_check = thermo_validity.validity(generated_layout)
             if validity_check == []:
                 # print("invalid")
-                rew = 0
+                rew += -10
             else:
                 layout = string_to_layout(generated_layout[0])
                 equipment, bounds, x, splitter = bound_creation(layout)
+                # if 5 in equipment:
+                #     rew += 1
                 particle_size = swarmsize_factor * len(bounds)
                 if 5 in equipment:
                     particle_size += -1 * swarmsize_factor
@@ -482,21 +535,23 @@ while step <= max_steps:
                     particle_size += -2 * swarmsize_factor
                 nv = len(bounds)
                 try:
-                    rew = PSO(
-                        objective_function, bounds, particle_size, iterations
-                    ).result
-                    if rew > 250:
-                        rew = 0
-                    print(rew)
+                    obj = (
+                        big_N
+                        / PSO(
+                            objective_function, bounds, particle_size, iterations
+                        ).result
+                    )
+                    rew += obj
+                    if obj > threshold:
+                        good_designs.append(generated_layout[0])
+                        good_objs.append(obj)
                 except:
                     # print("PSO error")
-                    rew = 0
-        else:
-            rew = 0
+                    rew += -1
+            print(rew)
         Actions.append(torch.tensor(action, dtype=torch.int))
         States.append(obs)
         Rewards.append(rew)
-
         obs = obs_.clone().detach()
         step += 1
 
@@ -515,16 +570,19 @@ while step <= max_steps:
         optim.zero_grad()
         loss.backward()
         optim.step()
-breakpoint()
+print(f"Total Episodes: {episode}")
+print("Training Done")
+
+# %% Saving
+torch.save(model.state_dict(), config.MODEL_DIRECTORY / savename)
 # %% Play
-quit()
+Designs = []
+Rewards = []
 for _ in range(5):
-    Rewards = []
     obs = torch.tensor(
         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     ).reshape(1, -1, 12)
     done = False
-
     while not done:
         probs = F.softmax(model(obs), dim=1)
         c = torch.distributions.Categorical(probs=probs)
@@ -534,14 +592,22 @@ for _ in range(5):
         obs_ = torch.cat((obs[0], action_tensor[0]), 0).reshape(1, -1, 12)
         if action == 11:
             done = True
-        else:
-            rew = 0
-
+            equipment, bounds, x, splitter = bound_creation(obs_[0])
+            particle_size = swarmsize_factor * len(bounds)
+            if 5 in equipment:
+                particle_size += -1 * swarmsize_factor
+            if 9 in equipment:
+                particle_size += -2 * swarmsize_factor
+            nv = len(bounds)
+            try:
+                print("PSO is running")
+                rew = PSO(objective_function, bounds, particle_size, iterations).result
+            except:
+                print("PSO error")
+                rew = 0
         obs = obs_.clone().detach()
-
-        Rewards.append(rew)
-
-    print(f"Reward: {sum(Rewards)}")
-
-for i in range(1):
-    generated_layout = ["GTACHE"]
+    Rewards.append(rew)
+    Designs.append(layout_to_string(obs_)[0])
+    print(f"Design: {Designs[-1]} {Rewards[-1]}")
+for d, obj in zip(good_designs, good_objs):
+    print(d, obj)

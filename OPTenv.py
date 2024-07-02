@@ -1,23 +1,11 @@
-# Splitter/mixer sitatuion will create different m values which necessitates unit_type more complex approach to the hx.
-# ------------Completed Tasks------------
-# More than one heater fg_out and exergy analysis maybe necessary?
-# At least unit_type partioning between the heaters based on their share on the total heat duty is unit_type reasonable appraoch?
-# The partioning is done but the extra e_fgin and e_fgout may be necessary to include per each heater to satisfy the square matrix requirement of the exergy analysis
-# Mixing with different pressures is unit_type problem.
-# Assumption of flashing the higher pressure stream to the lower pressure stream can be made to mix them.
-# After determining the pressures of the system without the mixer, then the mixer must adjust the pressure of the output using the lowest pressure input
-# All the m inputs in the functions must be changed accordingly after the implementation of splitter/mixer
-# 2 bounds coming from hxer is not affecting anything, so I left it alone. The latter one in the sequence is the one that is used due to decision variable placement. It can be changed or enforced to be the same. The first one goes to lower bound right now without any affect.
-# Similarly after determining the temperatures of the system without the mixer, then the mixer must adjust the temperature of the output using mixing method from pyfluids
-# Splitter/mixer effects on exergy and overall structure must be analysed
 import numpy as np
-import config
+import gymnasium as gym
+from gymnasium import spaces
+import numpy as np
 import torch
-import random
-import matplotlib.pyplot as plt
-import time
-from designs import ED1, ED2, ED3, bestfourthrun
-from ED_Test_rs import results_analysis
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3 import A2C, PPO, DQN
+import thermo_validity
 from econ import economics
 from split_functions import (
     string_to_layout,
@@ -40,37 +28,12 @@ from split_functions import (
     heater_econ,
     comp_econ,
     exergy_calculation,
+    layout_to_string_single,
     T0,
     P0,
     K,
     FGINLETEXERGY,
 )
-
-s = time.time()
-
-
-# layout = ED1
-
-# layouts = np.load(
-#     config.DATA_DIRECTORY / "len20m2_d0.npy",
-#     allow_pickle=True,
-# )
-# layout = layouts[9550]
-layout = "GTaAC-1H1a1HE"
-layout = string_to_layout(layout)
-print(layout)
-equipment, bounds, x, splitter = bound_creation(layout)
-print(equipment)
-
-# PSO Parameters
-swarmsize_factor = 7
-particle_size = swarmsize_factor * len(bounds)
-if 5 in equipment:
-    particle_size += -1 * swarmsize_factor
-if 9 in equipment:
-    particle_size += -2 * swarmsize_factor
-iterations = 30
-nv = len(bounds)
 
 
 def objective_function(x, equipment):
@@ -82,7 +45,9 @@ def objective_function(x, equipment):
     heater_pdrop = 0  # 1e5
     hx_pdrop = 0.5e5  # 1e5
     PENALTY_VALUE = float(1e6)
-
+    splitter = False
+    if 9 in equipment:
+        splitter = True
     enumerated_equipment = list(enumerate(equipment))
     equipment_length = len(equipment)
     enthalpies = np.zeros(equipment_length)
@@ -352,7 +317,7 @@ def objective_function(x, equipment):
 
 # ------------------------------------------------------------------------------
 class Particle:
-    def __init__(self, bounds):
+    def __init__(self, bounds, nv):
         self.particle_position = []
         self.particle_velocity = []
         self.local_best_particle_position = []
@@ -365,13 +330,13 @@ class Particle:
 
         for i in range(nv):
             self.particle_position.append(
-                random.uniform(bounds[i][0], bounds[i][1])
+                np.random.uniform(bounds[i][0], bounds[i][1])
             )  # generate random initial position
             self.particle_velocity.append(
-                random.uniform(-1, 1)
+                np.random.uniform(-1, 1)
             )  # generate random initial velocity
 
-    def evaluate(self, objective_function):
+    def evaluate(self, objective_function, equipment):
         self.fitness_particle_position = objective_function(
             self.particle_position, equipment
         )
@@ -383,10 +348,10 @@ class Particle:
                 self.fitness_particle_position
             )  # update fitness at particle's local best position
 
-    def update_velocity(self, w, c1, c2, global_best_particle_position):
+    def update_velocity(self, w, c1, c2, global_best_particle_position, nv):
         for i in range(nv):
-            r1 = random.uniform(0, 1)
-            r2 = random.uniform(0, 1)
+            r1 = np.random.uniform(0, 1)
+            r2 = np.random.uniform(0, 1)
 
             # local explorative position displacement component
             cognitive_velocity = (
@@ -404,7 +369,7 @@ class Particle:
                 w * self.particle_velocity[i] + cognitive_velocity + social_velocity
             )
 
-    def update_position(self, bounds):
+    def update_position(self, bounds, nv):
         for i in range(nv):
             self.particle_position[i] = (
                 self.particle_position[i] + self.particle_velocity[i]
@@ -419,13 +384,15 @@ class Particle:
 
 
 class PSO:
-    def __init__(self, objective_function, bounds, particle_size, iterations):
+    def __init__(
+        self, objective_function, bounds, particle_size, iterations, nv, equipment
+    ):
         fitness_global_best_particle_position = float("inf")
         global_best_particle_position = []
         swarm_particle = []
         PENALTY_VALUE = float(1e6)
         for i in range(particle_size):
-            swarm_particle.append(Particle(bounds))
+            swarm_particle.append(Particle(bounds, nv))
         A = []
         total_number_of_particle_evaluation = 0
         for i in range(iterations):
@@ -435,15 +402,15 @@ class PSO:
             # print("iteration = ", i)
             # print(w, c1, c2)
             for j in range(particle_size):
-                swarm_particle[j].evaluate(objective_function)
+                swarm_particle[j].evaluate(objective_function, equipment)
                 total_number_of_particle_evaluation += 1
                 while (
                     swarm_particle[j].fitness_particle_position == PENALTY_VALUE
                     and i == 0
                     and total_number_of_particle_evaluation < 5e3
                 ):
-                    swarm_particle[j] = Particle(bounds)
-                    swarm_particle[j].evaluate(objective_function)
+                    swarm_particle[j] = Particle(bounds, nv)
+                    swarm_particle[j].evaluate(objective_function, equipment)
                     total_number_of_particle_evaluation += 1
                 if (
                     swarm_particle[j].fitness_particle_position
@@ -458,69 +425,153 @@ class PSO:
 
             for j in range(particle_size):
                 swarm_particle[j].update_velocity(
-                    w, c1, c2, global_best_particle_position
+                    w, c1, c2, global_best_particle_position, nv
                 )
-                swarm_particle[j].update_position(bounds)
+                swarm_particle[j].update_position(bounds, nv)
 
             A.append(fitness_global_best_particle_position)  # record the best fitness
-        print("Result:")
-        print("Optimal solutions:", global_best_particle_position)
-        print("Objective function value:", fitness_global_best_particle_position)
-        self.result = results_analysis(global_best_particle_position, equipment)
+        # print("Result:")
+        # print("Optimal solutions:", global_best_particle_position)
+        # print("Objective function value:", fitness_global_best_particle_position)
+        self.result = objective_function(global_best_particle_position, equipment)
         self.points = global_best_particle_position
-        print(total_number_of_particle_evaluation)
+
         # plt.plot(A)
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# Main PSO
+class OptEnv(gym.Env):
+    """Custom Environment that follows gym interface."""
 
-PSO(objective_function, bounds, particle_size, iterations)
-e = time.time()
-print(e - s)
-# layouts = np.load(
-#     config.DATA_DIRECTORY / "v3.2DF_sorted_layouts.npy",
-#     allow_pickle=True,
-# )
-# results = []
-# points = []
-# for layout in layouts[:12]:
-#     layout = string_to_layout(layout)
+    metadata = {"render_modes": ["human"], "render_fps": 30}
 
-#     equipment, bounds, x, splitter = bound_creation(layout)
+    def __init__(self):
+        super(OptEnv).__init__()
+        # Define action and observation space
+        # They must be gym.spaces objects
+        # Example when using discrete actions:
+        self.Ttoken = 1
+        self.Atoken = 1
+        self.Ctoken = 1
+        self.Htoken = 1
+        self.atoken = 2
+        self.stoken = 1
+        self.mtoken = 2
+        self.threshold = 143.96
+        self.big_N = 1000
+        self.swarmsize_factor = 7
+        self.iterations = 30
+        self.empty_array = np.zeros((1, 12))
+        self.action_space = spaces.Discrete(12)
+        # Example for using image as input (channel-first; channel-last also works):
+        self.observation_space = spaces.Box(
+            low=0, high=1, shape=(22, 12), dtype=np.float64
+        )
+        self.state = np.array(
+            [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+        )
 
-#     # PSO Parameters
-#     swarmsize_factor = 7
-#     particle_size = swarmsize_factor * len(bounds)
-#     if 5 in equipment:
-#         particle_size += -1 * swarmsize_factor
-#     if 9 in equipment:
-#         particle_size += -2 * swarmsize_factor
-#     iterations = 30
-#     nv = len(bounds)
-#     try:
-#         a = PSO(objective_function, bounds, particle_size, iterations)
-#         results.append(a.result)
-#         points.append(a.points)
-#     except:
-#         results.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-#         points.append([0])
-# results_array = np.asarray(results)
-# points = np.asarray(points, dtype=object)
-# print(points)
-# print(results_array)
+    def step(self, action):
+        truncated = False
+        done = False
+        reward = 0
+        if action == 0:
+            reward += -1000
+        if action == 1 and self.Ttoken == 1:
+            reward += 1
+            self.Ttoken = 0
+        if action == 2 and self.Atoken == 1:
+            reward += 1
+            self.Atoken = 0
+        if action == 3 and self.Ctoken == 1:
+            reward += 1
+            self.Ctoken = 0
+        if action == 4 and self.Htoken == 1:
+            reward += 1
+            self.Htoken = 0
+        if action == 5 and self.atoken != 0:
+            reward += 5
+            self.atoken -= 1
+        if action == 9 and self.stoken == 1:
+            reward += 10
+            self.stoken = 0
+        if action == 7 and self.mtoken != 0:
+            reward += 10
+            self.mtoken -= 1
+        action_array = self.empty_array.copy()
+        action_array[0, action] = 1.0
+        try:
+            action_row = np.where(np.sum(self.state, axis=1) == 0)[0][0]
+        except:
+            truncated = True
+            done = False
+            reward = -100
+            return self.state, reward, done, truncated, {}
+        self.state[action_row] = action_array
+        if action == 11:
+            done = True
+            layout = self.state[~np.all(self.state == 0, axis=1)]
+            generated_layout = layout_to_string_single(layout)
+            validity_check = thermo_validity.validity([generated_layout])
+            if validity_check == []:
+                # print("invalid")
+                reward += -1000
+            else:
+                equipment, bounds, x, splitter = bound_creation(layout)
+                particle_size = self.swarmsize_factor * len(bounds)
+                if 5 in equipment:
+                    particle_size += -1 * self.swarmsize_factor
+                if 9 in equipment:
+                    particle_size += -2 * self.swarmsize_factor
+                nv = len(bounds)
+                try:
+                    # print("PSO is running")
+                    obj = PSO(
+                        objective_function,
+                        bounds,
+                        particle_size,
+                        self.iterations,
+                        nv,
+                        equipment,
+                    ).result
+                    # print(obj)
+                    reward += self.big_N / obj
+                except:
+                    # print("Error in PSO")
+                    reward += -10
+        info = {}
+        return self.state, reward, done, truncated, info
 
-# np.save(
-#     config.DATA_DIRECTORY / "len20m2v2_final_sorted_layouts_lessthanED1_results.npy",
-#     results_array,
-# )
-# x = [
-#     78.5e5,
-#     10.8,
-#     32.3,
-#     241.3e5,
-#     10.8,
-#     411.4,
-#     93.18,
-# ]
+    def reset(self, seed=None, options=None):
+        self.state = np.array(
+            [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+        )
+        empty_array = np.zeros((21, 12))
+        self.state = np.concatenate((self.state, empty_array), axis=0)
+        self.Ttoken = 1
+        self.Atoken = 1
+        self.Ctoken = 1
+        self.Htoken = 1
+        self.atoken = 2
+        self.stoken = 1
+        self.mtoken = 2
+        info = {}
+        return (self.state, info)
+
+
+env = OptEnv()
+# check_env(env, warn=True)
+# max_episodes = 5
+# model = A2C("MlpPolicy", env, verbose=1).learn(total_timesteps=200_000)
+
+# for episode in range(1, max_episodes + 1):
+#     state = env.reset()
+#     done = False
+#     score = 0
+#     while not done:
+#         action = model.predict(state[0])[0].item()
+#         # action = env.action_space.sample()
+#         n_state, reward, done, truncated, info = env.step(action)
+#         score += reward
+#     layout = n_state[~np.all(n_state == 0, axis=1)]
+#     layout = layout_to_string_single(layout)
+#     print(f"Episode:{episode}, Score:{score}, Design:{(layout)}")

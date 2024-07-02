@@ -514,110 +514,110 @@ import numpy as np
 
 
 # # Decoding strategies in M2
-sampling = [
-    26,
-    106,
-    338,
-    816,
-    1484,
-    2247,
-    3025,
-    3810,
-    4594,
-]
+# sampling = [
+#     26,
+#     106,
+#     338,
+#     816,
+#     1484,
+#     2247,
+#     3025,
+#     3810,
+#     4594,
+# ]
 
-topp9 = [
-    28,
-    171,
-    427,
-    784,
-    1076,
-    1355,
-    1616,
-    1824,
-    2041,
-]
+# topp9 = [
+#     28,
+#     171,
+#     427,
+#     784,
+#     1076,
+#     1355,
+#     1616,
+#     1824,
+#     2041,
+# ]
 
-topk5 = [
-    18,
-    91,
-    393,
-    1030,
-    1829,
-    2599,
-    3389,
-    4192,
-    4942,
-]
+# topk5 = [
+#     18,
+#     91,
+#     393,
+#     1030,
+#     1829,
+#     2599,
+#     3389,
+#     4192,
+#     4942,
+# ]
 
-topk3 = [
-    13,
-    123,
-    292,
-    516,
-    835,
-    1166,
-    1545,
-    1913,
-    2233,
-]
-sampling = [
-    0.3,
-    2.7,
-    7.7,
-    15.9,
-    22.3,
-    25.4,
-    25.9,
-    26.2,
-    26.1,
-]
-topp9 = [
-    0.3,
-    4.8,
-    8.5,
-    11.9,
-    9.7,
-    9.3,
-    8.7,
-    6.9,
-    7.2,
-]
-topk5 = [
-    0.2,
-    2.4,
-    10.1,
-    21.2,
-    26.6,
-    25.7,
-    26.3,
-    26.8,
-    25.0,
-]
-topk3 = [
-    0.1,
-    3.7,
-    5.6,
-    7.5,
-    10.6,
-    11.0,
-    12.6,
-    12.3,
-    10.7,
-]
+# topk3 = [
+#     13,
+#     123,
+#     292,
+#     516,
+#     835,
+#     1166,
+#     1545,
+#     1913,
+#     2233,
+# ]
+# sampling = [
+#     0.3,
+#     2.7,
+#     7.7,
+#     15.9,
+#     22.3,
+#     25.4,
+#     25.9,
+#     26.2,
+#     26.1,
+# ]
+# topp9 = [
+#     0.3,
+#     4.8,
+#     8.5,
+#     11.9,
+#     9.7,
+#     9.3,
+#     8.7,
+#     6.9,
+#     7.2,
+# ]
+# topk5 = [
+#     0.2,
+#     2.4,
+#     10.1,
+#     21.2,
+#     26.6,
+#     25.7,
+#     26.3,
+#     26.8,
+#     25.0,
+# ]
+# topk3 = [
+#     0.1,
+#     3.7,
+#     5.6,
+#     7.5,
+#     10.6,
+#     11.0,
+#     12.6,
+#     12.3,
+#     10.7,
+# ]
 
 
-plt.scatter(range(len(sampling)), sampling, label="M.Sampling", marker="s")
-plt.scatter(range(len(topp9)), topp9, label="Top-p(0.9)", marker="v")
-plt.scatter(range(len(topk5)), topk5, label="Top-k(5)", marker="o")
-plt.scatter(range(len(topk3)), topk3, label="Top-k(3)", marker="X")
-plt.xticks(range(len(sampling)))
-# plt.plot(sampling, label="M.Sampling")
-# plt.plot(topp9, label="Top-p(0.9)")
-# plt.plot(topk5, label="Top-k(5)")
-# plt.plot(topk3, label="Top-k(3)")
-plt.xlabel("Iteration Steps")
-plt.tick_params(direction="in")
-plt.ylabel("Novelty of HP design generation(%)")
-plt.legend()
-plt.show()
+# plt.scatter(range(len(sampling)), sampling, label="M.Sampling", marker="s")
+# plt.scatter(range(len(topp9)), topp9, label="Top-p(0.9)", marker="v")
+# plt.scatter(range(len(topk5)), topk5, label="Top-k(5)", marker="o")
+# plt.scatter(range(len(topk3)), topk3, label="Top-k(3)", marker="X")
+# plt.xticks(range(len(sampling)))
+# # plt.plot(sampling, label="M.Sampling")
+# # plt.plot(topp9, label="Top-p(0.9)")
+# # plt.plot(topk5, label="Top-k(5)")
+# # plt.plot(topk3, label="Top-k(3)")
+# plt.xlabel("Iteration Steps")
+# plt.tick_params(direction="in")
+# plt.ylabel("Novelty of HP design generation(%)")
+# plt.legend()
+# plt.show()
