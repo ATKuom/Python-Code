@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 import os
 from time import strftime
-
+import copy
 
 # Standart class
 std_classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
@@ -44,6 +44,10 @@ std_loss = nn.CrossEntropyLoss()
 
 # Training
 def std_training(model, optimizer, loss_function, train_loader, val_loader, max_epochs):
+    best_loss = np.inf
+    best_model = None
+    train_losses = []
+    validation_losses = []
     for epoch in range(max_epochs):
         model.train()
         epoch_loss = 0
@@ -73,6 +77,11 @@ def std_training(model, optimizer, loss_function, train_loader, val_loader, max_
                 total += y.size(0)
                 correct += (predicted == y).sum().item()
             val_loss = val_loss / len(val_loader)
+            if val_loss < best_loss:
+                best_loss = val_loss
+                best_model = copy.deepcopy(model.state_dict())
+            train_losses.append(epoch_loss)
+            validation_losses.append(val_loss)
             print(
                 "Epoch [%d/%d], T.Loss: %.4f, V.Loss: %.4f, T.Acc: %.2f%%, V.Acc: %d%%"
                 % (
@@ -84,7 +93,7 @@ def std_training(model, optimizer, loss_function, train_loader, val_loader, max_
                     100 * correct / total,
                 )
             )
-    return model
+    return best_model, model, train_losses, validation_losses
 
 
 def packed_training(
