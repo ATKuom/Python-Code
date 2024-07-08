@@ -17,7 +17,7 @@ To execute functions, you need to use eng.function_name(args), if it does not re
 I can run the python functions in matlab using py.filename.function_name(args)
 """
 # import matlab.engine
-from pyfluids import Fluid, FluidsList, Input
+# from pyfluids import Fluid, FluidsList, Input
 
 
 # def ptrial(x):
@@ -34,20 +34,20 @@ from pyfluids import Fluid, FluidsList, Input
 # print(x)
 
 
-def turbine(tin, pin, pout):
-    ntur = 85
-    m = 100
-    turb_out = (
-        Fluid(FluidsList.CarbonDioxide)
-        .with_state(Input.temperature(tin), Input.pressure(pin))
-        .expansion_to_pressure(pout, ntur)
-    )
-    turb_inlet = Fluid(FluidsList.CarbonDioxide).with_state(
-        Input.temperature(tin), Input.pressure(pin)
-    )
-    delta_h = turb_inlet.enthalpy - turb_out.enthalpy
-    w_tur = delta_h * m
-    return w_tur
+# def turbine(tin, pin, pout):
+#     ntur = 85
+#     m = 100
+#     turb_out = (
+#         Fluid(FluidsList.CarbonDioxide)
+#         .with_state(Input.temperature(tin), Input.pressure(pin))
+#         .expansion_to_pressure(pout, ntur)
+#     )
+#     turb_inlet = Fluid(FluidsList.CarbonDioxide).with_state(
+#         Input.temperature(tin), Input.pressure(pin)
+#     )
+#     delta_h = turb_inlet.enthalpy - turb_out.enthalpy
+#     w_tur = delta_h * m
+#     return w_tur
 
 
 # a = turbine(300, 10, 5)
