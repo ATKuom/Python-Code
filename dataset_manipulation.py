@@ -134,41 +134,41 @@ def SQP_dataset_combination(version):
 
 
 # # Finding the good layouts
-# datalist = np.load(
-#     config.DATA_DIRECTORY / "v27mstp9D8_m2_candidates.npy", allow_pickle=True
-# )
-# results = np.load(
-#     config.DATA_DIRECTORY / "v27mstp9D8_m2_results.npy", allow_pickle=True
-# )
-# positions = np.load(
-#     config.DATA_DIRECTORY / "v27mstp9D8_m2_positions.npy", allow_pickle=True
-# )
-# nonzero_results = results[np.where(results > 0)]
-# cutoff = 143.957
-# # cutoff = 30000
-# good_layouts = []
-# good_results = []
-# good_positions = []
-# best_result = cutoff
-# print(len(nonzero_results), len(results), len(datalist))
-# for i in range(len(results)):
-#     if results[i] < cutoff and results[i] > 0:
-#         good_layouts.append(datalist[i])
-#         good_results.append(results[i])
-#         good_positions.append(positions[i])
-#         if results[i] < best_result:
-#             best_result = results[i]
-#             best_layout = datalist[i]
-# print(len(good_layouts), len(good_results), len(good_positions))
-# print(best_result, best_layout)
+datalist = np.load(
+    config.DATA_DIRECTORY / "v21_1th_D24_m2_candidates.npy", allow_pickle=True
+)
+results = np.load(
+    config.DATA_DIRECTORY / "v21_1th_D24_m2_results.npy", allow_pickle=True
+)
+positions = np.load(
+    config.DATA_DIRECTORY / "v21_1th_D24_m2_positions.npy", allow_pickle=True
+)
+nonzero_results = results[np.where(results > 0)]
+cutoff = 143.957
+# cutoff = 30000
+good_layouts = []
+good_results = []
+good_positions = []
+best_result = cutoff
+print(len(nonzero_results), len(results), len(datalist))
+for i in range(len(results)):
+    if results[i] < cutoff and results[i] > 0:
+        good_layouts.append(datalist[i])
+        good_results.append(results[i])
+        good_positions.append(positions[i])
+        if results[i] < best_result:
+            best_result = results[i]
+            best_layout = datalist[i]
+print(len(good_layouts), len(good_results), len(good_positions))
+print(best_result, best_layout)
 # print(np.mean(good_results))
-# good_layouts = np.array(good_layouts, dtype=object)
-# good_results = np.array(good_results, dtype=object)
-# good_positions = np.array(good_positions, dtype=object)
+good_layouts = np.array(good_layouts, dtype=object)
+good_results = np.array(good_results, dtype=object)
+good_positions = np.array(good_positions, dtype=object)
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2.npy", good_layouts)
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2_results.npy", good_results)
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2_positions.npy", good_positions)
-# quit()
+quit()
 
 # layouts = good_layouts
 # results = good_results

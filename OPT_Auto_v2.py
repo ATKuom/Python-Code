@@ -444,20 +444,20 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 if __name__ == "__main__":
-    N = 1000
-    version = "v21_1th_"
+    N = 500
+    version = "v21_2th_"
     model_phase = "_m2"
-    number_of_generation = 21_000
+    number_of_generation = 24_000
     dataset_number = number_of_generation // N
     print("Total number of datasets:", dataset_number)
     datasets = []
     next_datasets = []
     previous_datasets = []
-    for i in range(6, dataset_number):
+    for i in range(0, dataset_number):
         datasets.append("D" + str(i))
         next_datasets.append("D" + str(i + 1))
         previous_datasets.append("D" + str(i - 1))
-    # previous_datasets[0] = "empty"
+    previous_datasets[0] = "empty"
     print(datasets, next_datasets, previous_datasets)
     breakpoint()
     for dataset, next_dataset, prev_dataset in zip(

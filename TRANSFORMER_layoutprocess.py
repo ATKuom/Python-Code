@@ -15,7 +15,7 @@ eval_interval = 200
 learning_rate = 5e-4
 device = "cuda" if torch.cuda.is_available() else "cpu"
 eval_iters = max_iters // eval_interval
-n_embd = 256  # 32
+n_embd = 32  # 32
 n_head = 4  # 4
 n_layer = 2  # 2
 dropout = 0.1  # 0.1
@@ -225,14 +225,6 @@ class GPTLanguageModel(nn.Module):
             # topkk = probs.topk(5)
             # idx_next = topkk[1][0][torch.multinomial(topkk[0], num_samples=1)]
             ##topp 0.9
-            k = 1
-            topp = probs.topk(k)
-            total_prob = topp[0].sum()
-            while total_prob < 0.9:
-                k += 1
-                topp = probs.topk(k)
-                total_prob = topp[0].sum()
-            idx_next = topp[1][0][torch.multinomial(topp[0] / total_prob, 1)]
             k = 1
             topp = probs.topk(k)
             total_prob = topp[0].sum()

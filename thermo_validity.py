@@ -166,24 +166,25 @@ if __name__ == "__main__":
     # datalist = layout_to_string(layouts)
     # print(len(datalist))
     datalist = np.load(
-        config.DATA_DIRECTORY / "v27msD10_tp9_m1_generated.npy",
+        config.DATA_DIRECTORY / "v21nonaugD0_m1_generated.npy",
         allow_pickle=True,
     )
-
+    # datalist = np.load(
+    #     f"202407111700_LSTM_batch100_lr1e-03/generated+3_data.npy", allow_pickle=True
+    # )
     # datalist = ["GTACHE", "GTCAHE", "GTTCAHE", "GHTCAHE", "GaTCAHaE"]
     # datalist = goeos_expert
     print(len(datalist), len(validity(datalist)))
-
     valid_strings = np.unique(np.array(validity(datalist), dtype=object))
     print(len(valid_strings))
 
-    np.save(config.DATA_DIRECTORY / "v27msD10_tp9_m1_candidates.npy", valid_strings)
-    p_datalist = np.load(config.DATA_DIRECTORY / "v27tp9D10_m1.npy", allow_pickle=True)
+    # np.save(config.DATA_DIRECTORY / "v27msD10_tp9_m1_candidates.npy", valid_strings)
+    p_datalist = np.load(config.DATA_DIRECTORY / "v21D0_m1.npy", allow_pickle=True)
     print(len(p_datalist))
     n_datalist = np.concatenate((p_datalist, valid_strings), axis=0)
     n_valid_strings = np.unique(n_datalist)
     print(len(n_valid_strings))
-    # np.save(config.DATA_DIRECTORY / "TD3_m2.npy", n_valid_strings)
+    np.save(config.DATA_DIRECTORY / "v21augD1_m1.npy", n_valid_strings)
     index = np.where(np.isin(n_valid_strings, p_datalist, invert=True))[0]
     new_ones = n_valid_strings[index]
     print(len(new_ones))

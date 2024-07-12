@@ -23,7 +23,7 @@ def layout_to_string_single(layout):
     return x
 
 
-def layout_to_string(layouts):
+def layout_to_string(layouts, classes=classes):
     int_to_char = dict((i, c) for i, c in enumerate(classes))
     sequences = []
     for layout in layouts:
