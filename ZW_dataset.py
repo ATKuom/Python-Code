@@ -1,11 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from split_functions import string_to_equipment
-
-# from config import DATA_DIRECTORY
 import numpy as np
-
-# from ZW_utils import std_classes
 
 
 class LSTMDataset(Dataset):
@@ -20,12 +16,15 @@ class LSTMDataset(Dataset):
             self.data = self.augment_data(self.data)
             print("Data augmented:", len(self.data) - len(self.base))
         # input output preparation
+        print("input_output_prep")
         self.data, self.labels, self.lengths = self.input_output_prep(self.data)
         # Padding
+        print("Padding")
         self.data = torch.nn.utils.rnn.pad_sequence(
             self.data, batch_first=True, padding_value=0
         ).float()
         # Output classes
+        print("labels")
         self.labels = torch.argmax(self.labels, dim=1)
         print("Input shape:", self.data.shape)
 
@@ -92,7 +91,7 @@ class GPTDataset(Dataset):
         if training_type == "augmented":
             self.data = self.augment_data(self.data)
             print("Data augmented:", len(self.data) - len(self.base))
-        self.data = [i + [11] * (block_size - len(i)) for i in self.data]
+        self.data = torch.tensor([i + [11] * (block_size - len(i)) for i in self.data])
         # input output preparation
         self.data, self.labels = self.input_output_prep(self.data)
         # Output classes
@@ -105,8 +104,8 @@ class GPTDataset(Dataset):
         return self.data[idx], self.labels[idx]
 
     def input_output_prep(self, data):
-        inputs = torch.tensor(data[:-1], dtype=torch.long)
-        outputs = torch.tensor(data[1:], dtype=torch.long)
+        inputs = data[:, :-1]
+        outputs = data[:, 1:]
         return inputs, outputs
 
     def augment_data(self, data):
@@ -122,6 +121,101 @@ class GPTDataset(Dataset):
         return data + augmented
 
 
-# datapath = DATA_DIRECTORY / "v21D10_m1.npy"
-# data = np.load(datapath, allow_pickle=True)
-# dataset = LSTMDataset(data, std_classes, training_type="augmented")
+class contextGPTDataset(Dataset):
+    def __init__(self, data, classes, block_size, training_type="standard"):
+        self.base = data
+        print("Designs in the dataset:", len(self.base))
+        self.data = data
+        self.classes = classes
+        # Integer encoding
+        self.data = string_to_equipment(self.data, self.classes)
+        if training_type == "augmented":
+            self.data = self.augment_data(self.data)
+            print("Data augmented:", len(self.data) - len(self.base))
+        for i in self.data:
+            l = len(i)
+            i.insert(0, l)
+        self.data = torch.tensor([i + [11] * (block_size - len(i)) for i in self.data])
+        # input output preparation
+        self.data, self.labels = self.input_output_prep(self.data)
+        # Output classes
+        print("Input shape:", self.data.shape)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx], self.labels[idx]
+
+    def input_output_prep(self, data):
+        inputs = data[:, :-1]
+        outputs = data[:, 1:]
+        return inputs, outputs
+
+    def augment_data(self, data):
+        augmented = []
+        for i in data:
+            base = np.array(i)
+            nognoe = base[1:-1]
+            for j in range(1, len(nognoe)):
+                new_rep = np.roll(nognoe, j, axis=0)
+                augmented.append(
+                    np.concatenate((base[0:1], new_rep, base[-1:]), axis=0).tolist()
+                )
+        return data + augmented
+
+
+class RLDataset(Dataset):
+    def __init__(self, data, classes, block_size, training_type="standard"):
+        self.base = data
+        print("Designs in the dataset:", len(self.base))
+        self.data = data
+        self.classes = classes
+        # Integer encoding
+        self.data = string_to_equipment(self.data, self.classes)
+        if training_type == "augmented":
+            self.data = self.augment_data(self.data)
+            print("Data augmented:", len(self.data) - len(self.base))
+        # input output preparation
+        self.data, self.labels = self.input_output_prep(self.data)
+        self.data = np.array(
+            [i + [11] * (block_size - len(i)) for i in self.data], dtype=np.int64
+        )
+        print("Input shape:", self.data.shape)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx], self.labels[idx]
+
+    def input_output_prep(self, data):
+        inputs = []
+        output = []
+        for equipment in data:
+            for i in range(len(equipment) - 1):
+                inputs.append(equipment[0 : i + 1])
+                output.append(equipment[i + 1])
+        outputs = np.array(output, dtype=np.int64)
+        return inputs, outputs
+
+    def augment_data(self, data):
+        augmented = []
+        for i in data:
+            base = np.array(i)
+            nognoe = base[1:-1]
+            for j in range(1, len(nognoe)):
+                new_rep = np.roll(nognoe, j, axis=0)
+                augmented.append(
+                    np.concatenate((base[0:1], new_rep, base[-1:]), axis=0).tolist()
+                )
+        return data + augmented
+
+
+if __name__ == "__main__":
+    from config import DATA_DIRECTORY
+
+    std_classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
+    datapath = DATA_DIRECTORY / "v21D0_m1.npy"
+    data = np.load(datapath, allow_pickle=True)
+    dataset = GPTDataset(data, std_classes, 22, training_type="augmented")

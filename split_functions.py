@@ -89,7 +89,7 @@ def string_to_layout(sequence):
     return torch.tensor(one_hot_encoded)
 
 
-def one_hot_encoding(datalist):
+def one_hot_encoding(datalist, classes=classes):
     one_hot_tensors = []
     for sequence in datalist:
         # Perform one-hot encoding for the sequence

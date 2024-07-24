@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import os
 from time import strftime
 import copy
-from ZW_dataset import LSTMDataset, GPTDataset
+from ZW_dataset import *
 
 # Standart class
 std_classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
@@ -71,6 +71,34 @@ def T_integer_data_loaders(
         )
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False)
+    print("Training set size:", len(training_set))
+    return train_loader, val_loader
+
+
+def T_context_integer_data_loaders(
+    dataset, batch_size, data_split_ratio, classes, block_size, augmentation
+):
+    if augmentation == False:
+        data = contextGPTDataset(dataset, classes, block_size, training_type="standard")
+        training_set, validation_set = torch.utils.data.random_split(
+            data,
+            [
+                int(data_split_ratio * len(data)),
+                len(data) - int(data_split_ratio * len(data)),
+            ],
+        )
+    else:
+        t_data = dataset[: int(data_split_ratio * len(dataset))]
+        v_data = dataset[int(data_split_ratio * len(dataset)) :]
+        training_set = contextGPTDataset(
+            t_data, classes, block_size, training_type="augmented"
+        )
+        validation_set = contextGPTDataset(
+            v_data, classes, block_size, training_type="standard"
+        )
+    train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False)
+    print("Training set size:", len(training_set))
     return train_loader, val_loader
 
 
@@ -268,3 +296,40 @@ def make_dir(model, batch_size, learning_rate):
     if not os.path.exists(directory):
         os.makedirs(directory)
     return directory
+
+
+def transformer_generation(model, classes, N):
+    model.eval()
+    context = torch.zeros((1, 1), dtype=torch.long)
+    int_to_char = dict((i, c) for i, c in enumerate(classes))
+    decode = lambda l: "".join([int_to_char[i] for i in l])
+    layout_list = []
+    for _ in range(N):
+        transformer_output = model.generate(context, 22, 22, classes)[0].tolist()
+        layout_list.append(decode(transformer_output))
+    return layout_list
+
+
+def RL_integer_data_loaders(
+    dataset, batch_size, data_split_ratio, classes, block_size, augmentation
+):
+    if augmentation == False:
+        data = RLDataset(dataset, classes, block_size, training_type="standard")
+        training_set, validation_set = torch.utils.data.random_split(
+            data,
+            [
+                int(data_split_ratio * len(data)),
+                len(data) - int(data_split_ratio * len(data)),
+            ],
+        )
+    else:
+        t_data = dataset[: int(data_split_ratio * len(dataset))]
+        v_data = dataset[int(data_split_ratio * len(dataset)) :]
+        training_set = RLDataset(t_data, classes, block_size, training_type="augmented")
+        validation_set = RLDataset(
+            v_data, classes, block_size, training_type="standard"
+        )
+    train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False)
+    print("Training set size:", len(training_set))
+    return train_loader, val_loader

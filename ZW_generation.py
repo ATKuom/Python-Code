@@ -44,7 +44,7 @@ def topk_sampling(softmax_output):
 def generation(N, model):
     generated_layouts = np.zeros(N, dtype=object)
     i = 0
-
+    model.eval()
     while i in range(N):
         prediction = torch.tensor(
             [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
