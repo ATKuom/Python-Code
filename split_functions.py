@@ -584,6 +584,7 @@ def splitter_mixer_calc(
         Pressures[mixer1 - 1] == Pressures[mixer2 - 1]
         and Temperatures[mixer2] == 0
         and Temperatures[mixer1 - 1] != 0
+        and Temperatures[mixer2 - 1] != 0
     ):
         inlet1 = Fluid(FluidsList.CarbonDioxide).with_state(
             Input.temperature(Temperatures[mixer1 - 1]),
