@@ -5,7 +5,12 @@ from ZW_generation import *
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from ZW_Opt import *
-from split_functions import one_hot_encoding, bound_creation
+from split_functions import (
+    one_hot_encoding,
+    bound_creation,
+    string_to_equipment,
+    enforced_uniqueness,
+)
 
 dataset_id = "v21D0_m1.npy"
 classes = std_classes
@@ -16,6 +21,7 @@ learning_rate = 0.001
 model = LSTM()
 loss_function = std_loss
 augmentation = False
+uniqueness = True
 N = 10_000
 cutoff = 143.957
 
@@ -28,6 +34,9 @@ cutoff = 143.957
 
 save_path = "202407151014_LSTM_NA"
 dataset = np.load(f"{save_path}/generated+7_data.npy", allow_pickle=True).tolist()
+if uniqueness:
+    equipments = string_to_equipment(dataset)
+    dataset, _ = enforced_uniqueness(equipments)
 
 
 def optimization(data_array, classes, save_path, save_name):
@@ -114,6 +123,9 @@ for i in range(8, 11):
     torch.save(best_model, f"{save_path}/{model_name}")
     model.load_state_dict(best_model)
     layout_list = generation(N, model=model)
+    if uniqueness:
+        equipments = string_to_equipment(layout_list)
+        layout_list, _ = enforced_uniqueness(equipments)
     np.save(f"{save_path}/generated+{data_name}", layout_list)
     new_strings = np.array(validity(layout_list), dtype=object)
     prev_strings = np.array(dataset, dtype=object)

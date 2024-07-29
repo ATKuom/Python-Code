@@ -56,15 +56,15 @@ def string_to_equipment(sequences, classes=classes):
     return equipments
 
 
-def token_to_string(list, classes=classes):
+def equipments_to_strings(equipments, classes=classes):
     int_to_char = dict((i, c) for i, c in enumerate(classes))
-    sequence = []
-    for tokens in list:
+    sequences = []
+    for tokens in equipments:
         x = ""
         for token in tokens:
             x += int_to_char[token]
-        sequence.append(x)
-    return sequence
+        sequences.append(x)
+    return sequences
 
 
 def string_to_layout(sequence):
@@ -87,6 +87,28 @@ def string_to_layout(sequence):
         one_hot_encoded.append(vector)
         i += 1
     return torch.tensor(one_hot_encoded)
+
+
+def enforced_uniqueness(equipments):
+    """
+    Takes a list of equipments and enforces uniqueness based on first equipment (T) and second equipment following (Ts).
+    returns a list of designs and a list of equipment lists.
+    """
+    for i, equipment in enumerate(equipments):
+        if equipment[0] == 0:
+            equipment = equipment[1:-1]
+        indexes_of_T = np.where(np.array(equipment) == 1)[0]
+        possible_rotations = np.array([np.roll(equipment, -i) for i in indexes_of_T])
+        second_equipment = possible_rotations[:, 1]
+        rotation = np.argmin(second_equipment)
+        equipments[i] = possible_rotations[rotation].tolist()
+    designs = equipments_to_strings(equipments)
+    for i, design in enumerate(designs):
+        designs[i] = "G" + design + "E"
+    for equipment in equipments:
+        equipment.insert(0, 0)
+        equipment.append(11)
+    return designs, equipments
 
 
 def one_hot_encoding(datalist, classes=classes):

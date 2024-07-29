@@ -5,6 +5,7 @@ import random as random
 from itertools import repeat
 import config
 from thermo_validity import validity
+from split_functions import string_to_equipment, enforced_uniqueness
 
 RESTRICTED_EQUIP = [
     "a",
@@ -89,14 +90,19 @@ if __name__ == "__main__":
     #     "G" + string + "E" for string in randomly_generated_strings
     # ]
     # print(len(validity(randomly_generated_strings)))
-    N = 1000
+    N = 100
     randomly_generated_strings = []
     i = 0
+    uniqueness = False
     while len(randomly_generated_strings) < N:
-        string = "G" + word_creation() + "E"
+        design = word_creation()
+        string = "G" + design + "E"
         i += 1
         if validity([string]):
             randomly_generated_strings.append(string)
+            if uniqueness:
+                equipments = string_to_equipment(randomly_generated_strings)
+                randomly_generated_strings, _ = enforced_uniqueness(equipments)
         randomly_generated_strings = np.unique(
             np.array(randomly_generated_strings, dtype=object)
         )
@@ -121,4 +127,4 @@ if __name__ == "__main__":
         if "-1" in string:
             k += 1
     print(j, k, l)
-    np.save(config.DATA_DIRECTORY / "v27_D0.npy", randomly_generated_strings)
+    # np.save(config.DATA_DIRECTORY / "v27_D0.npy", randomly_generated_strings)
