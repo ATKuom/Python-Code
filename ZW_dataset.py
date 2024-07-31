@@ -110,8 +110,8 @@ class GPTDataset(Dataset):
 
     def augment_data(self, data):
         augmented = []
-        for i in data:
-            base = np.array(i)
+        for design in data:
+            base = np.array(design)
             nognoe = base[1:-1]
             for j in range(1, len(nognoe)):
                 new_rep = np.roll(nognoe, j, axis=0)
@@ -119,6 +119,56 @@ class GPTDataset(Dataset):
                     np.concatenate((base[0:1], new_rep, base[-1:]), axis=0).tolist()
                 )
         return data + augmented
+
+
+class PSI_Dataset(Dataset):
+    """
+    Design dataset(numpy array) and results (numpy array) is taken as input
+    Outputs: torch tensor of design and same shape of result tensor
+    """
+
+    def __init__(self, data, results, classes, block_size, training_type="standard"):
+        self.base = data
+        print("Designs in the dataset:", len(self.base))
+        self.data = data
+        self.results = results
+        self.classes = classes
+        self.data = string_to_equipment(self.data, self.classes)
+        if training_type == "augmented":
+            self.data, self.results = self.augment_data(self.data, self.results)
+            print("Data augmented:", len(self.data) - len(self.base))
+        self.data = torch.tensor([i + [11] * (block_size - len(i)) for i in self.data])
+        self.labels = self.output_prep(self.data, self.results)
+        print("Input shape:", self.data.shape, "Output shape:", self.labels.shape)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx], self.labels[idx]
+
+    def augment_data(self, designs, rs):
+        augmented = []
+        augmented_results = []
+        for i, design in enumerate(designs):
+            original = np.array(design)
+            nognoe = original[1:-1]
+            for j in range(1, len(nognoe)):
+                new_rep = np.roll(nognoe, j, axis=0)
+                augmented.append(
+                    np.concatenate(
+                        (original[0:1], new_rep, original[-1:]), axis=0
+                    ).tolist()
+                )
+                augmented_results.append(rs[i])
+        return designs + augmented, rs.tolist() + augmented_results
+
+    def output_prep(self, data, results):
+        outputs = []
+        for layout, result in zip(data, results):
+            outputs.append(torch.tensor([[result] * i for i in layout.shape]).flatten())
+        outputs = torch.stack(outputs)
+        return outputs
 
 
 class contextGPTDataset(Dataset):

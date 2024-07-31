@@ -183,3 +183,31 @@ class GPT(nn.Module):
             if idx_next.item() == len(classes) - 1:
                 break
         return idx
+
+
+class PSI(GPT):
+    def __init__(self, vocab_size, n_embd, n_head, n_layer, block_size, dropout):
+        super().__init__(vocab_size, n_embd, n_head, n_layer, block_size, dropout)
+        self.dense = nn.Linear(n_embd, 1)
+
+    def forward(self, idx, targets=None):
+        B, T = idx.shape
+
+        # idx and targets are both (B,T) tensor of integers
+        tok_emb = self.token_embedding_table(idx)  # (B,T,C)
+        pos_emb = self.position_embedding_table(torch.arange(T))  # (T,C)
+        x = tok_emb + pos_emb  # (B,T,C)
+        x = self.blocks(x)  # (B,T,C)
+        x = self.ln_f(x)  # (B,T,C)
+        logits = self.dense(x)  # (B,T,1)
+
+        if targets is None:
+            loss = None
+        else:
+            B, T, C = logits.shape
+            logits = logits.view(B * T, C)
+            targets = targets.reshape(-1)
+            # targets = targets.view(B * T)
+            loss = F.cross_entropy(logits, targets)
+
+        return logits
