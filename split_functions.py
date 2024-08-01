@@ -111,6 +111,78 @@ def enforced_uniqueness(equipments):
     return designs, equipments
 
 
+def dataset_combination(N, version, pathway, style, save=False):
+    number_of_generation = 24000
+    dataset_number = number_of_generation // N
+    a = ["D" + str(i) for i in range(dataset_number + 1)]
+    b1 = version
+    b2 = "_results.npy"
+    b3 = "_candidates.npy"
+    b4 = "_positions.npy"
+    model = "_m2"
+    good_layouts = []
+    good_results = []
+    good_positions = []
+    Total_optimization = 0
+    for a in a:
+        result = b1 + a + model + b2
+        candidate = b1 + a + model + b3
+        position = b1 + a + model + b4
+        results = np.load(pathway / result, allow_pickle=True)
+        datalist = np.load(pathway / candidate, allow_pickle=True)
+        position = np.load(pathway / position, allow_pickle=True)
+        nonzero_results = results[np.where(results > 0)]
+        cutoff = 143.957  # 164.428
+        if not a == "D0":
+            Total_optimization += len(results)
+        print(
+            len(nonzero_results),
+            len(results),
+            len(datalist),
+            len(position),
+        )
+        if style == "goodlayouts":
+            for i in range(len(results)):
+                if results[i] < cutoff and results[i] > 0:
+                    good_layouts.append(datalist[i])
+                    good_results.append(results[i])
+                    good_positions.append(position[i])
+        else:
+            for i in range(len(results)):
+                if results[i] > 0:
+                    good_layouts.append(datalist[i])
+                    good_results.append(results[i])
+                    good_positions.append(position[i])
+        print(len(good_layouts), len(good_results))
+    good_layouts = np.array(good_layouts, dtype=object)
+    good_results = np.array(good_results, dtype=object)
+    good_positions = np.array(good_positions, dtype=object)
+    final_dataset_name = b1 + "DF" + model + "_layouts.npy"
+    final_results_name = b1 + "DF" + model + b2
+    final_positions_name = b1 + "DF" + model + b4
+    print(
+        "Final dataset size: ",
+        len(good_layouts),
+        len(good_results),
+        len(good_positions),
+    )
+    print(
+        "Total optimization: ",
+        Total_optimization,
+    )
+
+    index = np.argmin(good_results)
+    print(best_layout := good_layouts[index], best_result := good_results[index])
+    if save == True:
+        print("Saving the dataset")
+        np.save(pathway / final_dataset_name, good_layouts)
+        np.save(pathway / final_results_name, good_results)
+        np.save(pathway / final_positions_name, good_positions)
+    else:
+        print("Dataset not saved")
+    return
+
+
 def one_hot_encoding(datalist, classes=classes):
     one_hot_tensors = []
     for sequence in datalist:

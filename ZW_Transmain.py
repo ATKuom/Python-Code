@@ -34,7 +34,7 @@ cutoff = 143.957
 # )
 # dataset = dataloading(dataset_id)
 
-save_path = "202407151438_GPT_A"
+save_path = "GPT_NA_to_A"
 
 
 # dataset = np.load(f"{save_path}/generated+1_data.npy", allow_pickle=True).tolist()
@@ -201,7 +201,9 @@ if __name__ == "__main__":
     #     results, initial_10k, cutoff, savefile_name
     # )
     # print(np.sort(np.array(initial_good_results), axis=0))
-    initial_good_layouts = np.load(f"{save_path}/M2_data_5.npy", allow_pickle=True)
+    initial_good_layouts = np.load(
+        f"{save_path}/initial_10k_good_layouts.npy", allow_pickle=True
+    )
     M2_model = Transformer_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=5
+        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=0
     )
