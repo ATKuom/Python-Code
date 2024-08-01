@@ -5,7 +5,7 @@ expert_designs = [
     "TaACaH",
     "TaAC-1H1a1H",
     "TaACH-1H1a1H",
-    "Ta1bAC-2H2b2-1aT1H",
+    # "T1HTa1bAC-2H2b2-1a",
     # "Ta1bAC-2H2b2-3H3a-1T13H",
 ]
 arr_expert = np.array(expert_designs, dtype=object)

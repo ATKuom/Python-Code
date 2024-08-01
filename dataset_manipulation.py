@@ -3,76 +3,10 @@ import numpy as np
 import torch.nn as nn
 import torch
 import matplotlib.pyplot as plt
+from split_functions import dataset_combination
 
 ##Combining all good layouts into one file
 np.set_printoptions(threshold=np.inf)
-
-
-def dataset_combination(version, style):
-    a = [
-        "D0",
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
-        "D7",
-        "D8",
-        # "D9",
-    ]
-    b1 = version
-    b2 = "_results.npy"
-    b3 = "_candidates.npy"
-    b4 = "_positions.npy"
-    model = "_m2"
-    good_layouts = []
-    good_results = []
-    good_positions = []
-    for a in a:
-        result = b1 + a + model + b2
-        candidate = b1 + a + model + b3
-        position = b1 + a + model + b4
-        results = np.load(config.DATA_DIRECTORY / result, allow_pickle=True)
-        datalist = np.load(config.DATA_DIRECTORY / candidate, allow_pickle=True)
-        position = np.load(config.DATA_DIRECTORY / position, allow_pickle=True)
-        nonzero_results = results[np.where(results > 0)]
-        cutoff = 143.957  # 164.428
-        print(
-            len(nonzero_results),
-            len(results),
-            len(datalist),
-            len(position),
-        )
-        if style == "goodlayouts":
-            for i in range(len(results)):
-                if results[i] < cutoff and results[i] > 0:
-                    good_layouts.append(datalist[i])
-                    good_results.append(results[i])
-                    good_positions.append(position[i])
-        else:
-            for i in range(len(results)):
-                if results[i] > 0:
-                    good_layouts.append(datalist[i])
-                    good_results.append(results[i])
-                    good_positions.append(position[i])
-        print(len(good_layouts), len(good_results))
-    good_layouts = np.array(good_layouts, dtype=object)
-    good_results = np.array(good_results, dtype=object)
-    good_positions = np.array(good_positions, dtype=object)
-    final_dataset_name = b1 + "DF" + model + "_layouts.npy"
-    final_results_name = b1 + "DF" + model + b2
-    final_positions_name = b1 + "DF" + model + b4
-    print(
-        "Final dataset size: ",
-        len(good_layouts),
-        len(good_results),
-        len(good_positions),
-    )
-    np.save(config.DATA_DIRECTORY / final_dataset_name, good_layouts)
-    np.save(config.DATA_DIRECTORY / final_results_name, good_results)
-    np.save(config.DATA_DIRECTORY / final_positions_name, good_positions)
-    return
 
 
 def SQP_dataset_combination(version):
@@ -130,44 +64,46 @@ def SQP_dataset_combination(version):
 
 # SQP_dataset_combination("v22")
 
-# dataset_combination("v27mstp9", "goodlayouts")
+# pathway = config.DATA_DIRECTORY / "v21_1"
+# dataset_combination(3000, "v21_1th_", pathway, "goodlayouts", save=False)
 
 
 # # Finding the good layouts
-datalist = np.load(
-    config.DATA_DIRECTORY / "v21_1th_D24_m2_candidates.npy", allow_pickle=True
-)
-results = np.load(
-    config.DATA_DIRECTORY / "v21_1th_D24_m2_results.npy", allow_pickle=True
-)
-positions = np.load(
-    config.DATA_DIRECTORY / "v21_1th_D24_m2_positions.npy", allow_pickle=True
-)
-nonzero_results = results[np.where(results > 0)]
-cutoff = 143.957
-# cutoff = 30000
-good_layouts = []
-good_results = []
-good_positions = []
-best_result = cutoff
-print(len(nonzero_results), len(results), len(datalist))
-for i in range(len(results)):
-    if results[i] < cutoff and results[i] > 0:
-        good_layouts.append(datalist[i])
-        good_results.append(results[i])
-        good_positions.append(positions[i])
-        if results[i] < best_result:
-            best_result = results[i]
-            best_layout = datalist[i]
-print(len(good_layouts), len(good_results), len(good_positions))
-print(best_result, best_layout)
-# print(np.mean(good_results))
-good_layouts = np.array(good_layouts, dtype=object)
-good_results = np.array(good_results, dtype=object)
-good_positions = np.array(good_positions, dtype=object)
+# datalist = np.load(
+#     config.DATA_DIRECTORY / "v21_1th_D24_m2_candidates.npy", allow_pickle=True
+# )
+# results = np.load(
+#     config.DATA_DIRECTORY / "v21_1th_D24_m2_results.npy", allow_pickle=True
+# )
+# positions = np.load(
+#     config.DATA_DIRECTORY / "v21_1th_D24_m2_positions.npy", allow_pickle=True
+# )
+# nonzero_results = results[np.where(results > 0)]
+# cutoff = 143.957
+# # cutoff = 30000
+# good_layouts = []
+# good_results = []
+# good_positions = []
+# best_result = cutoff
+# print(len(nonzero_results), len(results), len(datalist))
+# for i in range(len(results)):
+#     if results[i] < cutoff and results[i] > 0:
+#         good_layouts.append(datalist[i])
+#         good_results.append(results[i])
+#         good_positions.append(positions[i])
+#         if results[i] < best_result:
+#             best_result = results[i]
+#             best_layout = datalist[i]
+# print(len(good_layouts), len(good_results), len(good_positions))
+# print(best_result, best_layout)
+# # print(np.mean(good_results))
+# good_layouts = np.array(good_layouts, dtype=object)
+# good_results = np.array(good_results, dtype=object)
+# good_positions = np.array(good_positions, dtype=object)
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2.npy", good_layouts)
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2_results.npy", good_results)
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2_positions.npy", good_positions)
+
 quit()
 
 # layouts = good_layouts

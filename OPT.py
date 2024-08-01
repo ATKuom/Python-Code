@@ -1,4 +1,5 @@
 # Splitter/mixer sitatuion will create different m values which necessitates unit_type more complex approach to the hx.
+# Why there is a check for enthalpy values?
 # ------------Completed Tasks------------
 # More than one heater fg_out and exergy analysis maybe necessary?
 # At least unit_type partioning between the heaters based on their share on the total heat duty is unit_type reasonable appraoch?
