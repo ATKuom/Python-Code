@@ -197,9 +197,7 @@ class LSTMtry(nn.Module):
 
         return out
 
-
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
-model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D10_m1.pt"))
 criterion = nn.CrossEntropyLoss()
 
 # Define the optimizer
@@ -208,9 +206,9 @@ optimizer = optim.Adam(
     model.parameters(),
     learning_rate,
 )
-
 # 15% of the data is used for validation
 if __name__ == "__main__":
+    model.load_state_dict(torch.load(config.MODEL_DIRECTORY / "v4D10_m1.pt"))
     datalist = np.load(
         config.DATA_DIRECTORY / "v4D8_m2_candidates.npy", allow_pickle=True
     ).tolist()
