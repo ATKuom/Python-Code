@@ -4,6 +4,7 @@ import numpy as np
 import config
 import torch
 import torch.optim as optim
+from split_functions import string_to_equipment, enforced_uniqueness
 from LSTM_batch_pack import (
     LSTMtry,
     training,
@@ -12,14 +13,15 @@ from LSTM_batch_pack import (
 )
 
 if __name__ == "__main__":
+    uniqueness = True
     N = 10000
     datasets = [
-        "D0",
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
+        # "D0",
+        # "D1",
+        # "D2",
+        # "D3",
+        # "D4",
+        # "D5",
         "D6",
         "D7",
         "D8",
@@ -31,12 +33,12 @@ if __name__ == "__main__":
         # "D14",
     ]
     next_datasets = [
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
+        # "D1",
+        # "D2",
+        # "D3",
+        # "D4",
+        # "D5",
+        # "D6",
         "D7",
         "D8",
         "D9",
@@ -47,7 +49,7 @@ if __name__ == "__main__":
         # "D14",
         # "D15",
     ]
-    version = "v27ms"
+    version = "v28"
     model_phase = "_m1"
 
     for dataset, next_dataset in zip(datasets, next_datasets):
@@ -73,6 +75,9 @@ if __name__ == "__main__":
         # ML Generation
         model.load_state_dict(torch.load(config.MODEL_DIRECTORY / model_name))
         layout_list = generation(N, model)
+        if uniqueness:
+            equipments = string_to_equipment(layout_list)
+            layout_list, _ = enforced_uniqueness(equipments)
         np.save(config.DATA_DIRECTORY / generated_name, layout_list)
 
         # Validity Filter

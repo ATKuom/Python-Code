@@ -56,7 +56,8 @@ s = time.time()
 #     allow_pickle=True,
 # )
 # layout = layouts[9550]
-layout = "GTaAC-1H1a1HE"
+# layout = "GTaAC-1H1a1HE"
+layout = "GTHaH-1aHTA1TA1CTHE"
 layout = string_to_layout(layout)
 print(layout)
 equipment, bounds, x, splitter = bound_creation(layout)
