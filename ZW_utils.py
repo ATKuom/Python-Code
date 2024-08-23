@@ -52,6 +52,7 @@ def T_integer_data_loaders(
     dataset, batch_size, data_split_ratio, classes, block_size, augmentation
 ):
     if augmentation == False:
+        print("No augmentation")
         data = GPTDataset(dataset, classes, block_size, training_type="standard")
         training_set, validation_set = torch.utils.data.random_split(
             data,
@@ -60,7 +61,8 @@ def T_integer_data_loaders(
                 len(data) - int(data_split_ratio * len(data)),
             ],
         )
-    else:
+    if augmentation == True:
+        print("Training set augmentation")
         t_data = dataset[: int(data_split_ratio * len(dataset))]
         v_data = dataset[int(data_split_ratio * len(dataset)) :]
         training_set = GPTDataset(
@@ -68,6 +70,16 @@ def T_integer_data_loaders(
         )
         validation_set = GPTDataset(
             v_data, classes, block_size, training_type="standard"
+        )
+    if augmentation == "val_aug":
+        print("Fully Augmented")
+        data = GPTDataset(dataset, classes, block_size, training_type="augmented")
+        training_set, validation_set = torch.utils.data.random_split(
+            data,
+            [
+                int(data_split_ratio * len(data)),
+                len(data) - int(data_split_ratio * len(data)),
+            ],
         )
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False)
