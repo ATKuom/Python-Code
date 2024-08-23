@@ -183,12 +183,12 @@ def objective_function(x, equipment):
             ):
                 # print("Infeasible HX1")
                 return PENALTY_VALUE
-            if (
-                mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
-                < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
-            ):
-                # print("Infeasible HX2")
-                return PENALTY_VALUE
+            # if (
+            #     mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
+            #     < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
+            # ):
+            #     # print("Infeasible HX2")
+            #     return PENALTY_VALUE
             try:
                 (
                     Temperatures[hotside_index],

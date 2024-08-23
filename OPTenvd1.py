@@ -4,6 +4,7 @@ from gymnasium import spaces
 import numpy as np
 import torch
 from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3 import A2C, PPO
 import thermo_validity
 from econ import economics
@@ -147,12 +148,12 @@ def objective_function(x, equipment):
             ):
                 # print("Infeasible HX1")
                 return PENALTY_VALUE
-            if (
-                mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
-                < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
-            ):
-                # print("Infeasible HX2")
-                return PENALTY_VALUE
+            # if (
+            #     mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
+            #     < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
+            # ):
+            #     # print("Infeasible HX2")
+            #     return PENALTY_VALUE
             try:
                 (
                     Temperatures[hotside_index],
@@ -566,9 +567,14 @@ class OptEnv(gym.Env):
 env = OptEnv()
 check_env(env, warn=True)
 
-max_episodes = 5
-model = PPO("MlpPolicy", env, verbose=1).learn(total_timesteps=150_000)
 
+model = PPO("MlpPolicy", env, verbose=1).learn(total_timesteps=1_000)
+eval_env = OptEnv()
+
+mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10)
+print(f"Mean reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+
+max_episodes = 5
 for episode in range(1, max_episodes + 1):
     state = env.reset()
     done = False
