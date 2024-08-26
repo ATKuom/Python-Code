@@ -20,8 +20,8 @@ dropout = 0.1  # 0.1
 vocab_size = len(classes)
 model = GPT(vocab_size, n_embd, n_head, n_layer, block_size, dropout)
 loss_function = std_loss
-augmentation = True
-uniqueness = True
+augmentation = "val_aug"
+uniqueness = False
 N1 = 10_000
 cycles1 = 11
 N2 = 3_000
@@ -35,12 +35,12 @@ cutoff = 143.957
 # )
 # dataset = dataloading(dataset_id)
 
-save_path = "GPT_NA_to_A"
+save_path = "202408222227_GPT_batch100_lr1e-03"
 
 
 # dataset = np.load(f"{save_path}/generated+1_data.npy", allow_pickle=True).tolist()
-if uniqueness:
-    dataset, _ = uniqueness_check(dataset)
+# if uniqueness:
+#     dataset, _ = uniqueness_check(dataset)
 
 # breakpoint()
 
@@ -193,7 +193,6 @@ def optimization_filter(results, datalist, cutoff, save_name):
 if __name__ == "__main__":
     # M1_model = Transformer_training_cycle("M1", N1, save_path, dataset, cycles1)
     # model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
-    # M1_model = model
     # initial_10k = transformer_generation(M1_model, classes, N1)
     # if uniqueness:
     #     initial_10k, _ = uniqueness_check(initial_10k)
@@ -202,14 +201,14 @@ if __name__ == "__main__":
     # print(len(initial_10k))
     # np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
     # results = optimization(initial_10k, classes, save_path, savefile_name)
-    # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
-    # results = np.load(f"{save_path}/results_initial_10k.npy")
+    # # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
+    # # results = np.load(f"{save_path}/results_initial_10k.npy")
     # initial_good_layouts, initial_good_results = optimization_filter(
     #     results, initial_10k, cutoff, savefile_name
     # )
     # print(np.sort(np.array(initial_good_results), axis=0))
-    initial_good_layouts = np.load(f"{save_path}/M2_data_3.npy", allow_pickle=True)
+    initial_good_layouts = np.load(f"{save_path}/M2_data_2.npy", allow_pickle=True)
     print(len(initial_good_layouts))
     M2_model = Transformer_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=3
+        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=2
     )
