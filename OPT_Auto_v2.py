@@ -444,8 +444,8 @@ class PSO:
 # ------------------------------------------------------------------------------
 # Main PSO
 if __name__ == "__main__":
-    N = 500
-    version = "v21_2th_"
+    N = 100
+    version = "v21_4th_"
     model_phase = "_m2"
     number_of_generation = 24_000
     dataset_number = number_of_generation // N
@@ -453,7 +453,7 @@ if __name__ == "__main__":
     datasets = []
     next_datasets = []
     previous_datasets = []
-    for i in range(0, dataset_number):
+    for i in range(20, dataset_number):
         datasets.append("D" + str(i))
         next_datasets.append("D" + str(i + 1))
         previous_datasets.append("D" + str(i - 1))
