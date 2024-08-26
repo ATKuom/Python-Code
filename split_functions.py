@@ -95,13 +95,18 @@ def enforced_uniqueness(equipments):
     returns a list of designs and a list of equipment lists.
     """
     for i, equipment in enumerate(equipments):
-        if equipment[0] == 0:
-            equipment = equipment[1:-1]
-        indexes_of_T = np.where(np.array(equipment) == 1)[0]
-        possible_rotations = np.array([np.roll(equipment, -i) for i in indexes_of_T])
-        second_equipment = possible_rotations[:, 1]
-        rotation = np.argmin(second_equipment)
-        equipments[i] = possible_rotations[rotation].tolist()
+        try:
+            if equipment[0] == 0:
+                equipment = equipment[1:-1]
+            indexes_of_T = np.where(np.array(equipment) == 1)[0]
+            possible_rotations = np.array(
+                [np.roll(equipment, -i) for i in indexes_of_T]
+            )
+            second_equipment = possible_rotations[:, 1]
+            rotation = np.argmin(second_equipment)
+            equipments[i] = possible_rotations[rotation].tolist()
+        except:
+            continue
     designs = equipments_to_strings(equipments)
     for i, design in enumerate(designs):
         designs[i] = "G" + design + "E"
@@ -109,6 +114,12 @@ def enforced_uniqueness(equipments):
         equipment.insert(0, 0)
         equipment.append(11)
     return designs, equipments
+
+
+def uniqueness_check(layouts):
+    equipments = string_to_equipment(layouts)
+    layouts, equipments = enforced_uniqueness(equipments)
+    return layouts, equipments
 
 
 def dataset_combination(N, version, pathway, style, save=False):

@@ -93,6 +93,7 @@ def objective_function(x, equipment):
         enthalpies[index], entropies[index] = enthalpy_entropy(
             Temperatures[index], Pressures[index]
         )
+    hx_position = [i for i, j in enumerated_equipment if j == 5]
 
     while_counter = 0
     while Temperatures.prod() == 0:
@@ -126,7 +127,6 @@ def objective_function(x, equipment):
                 Temperatures, Pressures, enthalpies, entropies, mass_flow, equipment
             )
 
-        hx_position = [i for i, j in enumerated_equipment if j == 5]
         if (
             hx_position != []
             and Temperatures[hx_position[0] - 1] != 0
@@ -139,12 +139,12 @@ def objective_function(x, equipment):
             ):
                 # print("Infeasible HX1")
                 return PENALTY_VALUE
-            if (
-                mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
-                < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
-            ):
-                # print("Infeasible HX2")
-                return PENALTY_VALUE
+            # if (
+            #     mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
+            #     < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
+            # ):
+            #     # print("Infeasible HX2")
+            #     return PENALTY_VALUE
             try:
                 (
                     Temperatures[hotside_index],

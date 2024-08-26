@@ -8,11 +8,10 @@ from ZW_Opt import *
 from split_functions import (
     one_hot_encoding,
     bound_creation,
-    string_to_equipment,
-    enforced_uniqueness,
+    uniqueness_check,
 )
 
-dataset_id = "v21D0_m1.npy"
+dataset_id = "v28D0_m1.npy"
 classes = std_classes
 data_split_ratio = 0.85
 batch_size = 100
@@ -22,21 +21,104 @@ model = LSTM()
 loss_function = std_loss
 augmentation = False
 uniqueness = True
-N = 10_000
+N1 = 10_000
+cycles1 = 11
+N2 = 3_000
+cycles2 = 8
 cutoff = 143.957
 
-# save_path = make_dir(
-#     model,
-#     batch_size,
-#     learning_rate,
-# )
-# dataset = dataloading(dataset_id)
+save_path = make_dir(
+    model,
+    batch_size,
+    learning_rate,
+)
+dataset = dataloading(dataset_id)
 
-save_path = "202407151014_LSTM_NA"
-dataset = np.load(f"{save_path}/generated+7_data.npy", allow_pickle=True).tolist()
+# save_path = "LSTM_U"
+# dataset = np.load(f"{save_path}/generated+7_data.npy", allow_pickle=True).tolist()
 if uniqueness:
-    equipments = string_to_equipment(dataset)
-    dataset, _ = enforced_uniqueness(equipments)
+    dataset, _ = uniqueness_check(dataset)
+
+
+def LSTM_training_cycle(mode, N, save_path, dataset, cycles, starting_cycle=0):
+    if mode == "M1":
+        for i in range(starting_cycle, cycles):
+            train_loader, val_loader = data_loaders(
+                dataset, batch_size, data_split_ratio, classes, augmentation
+            )
+            model = LSTM()
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+            best_model, last_model, t_loss, v_loss = packed_training(
+                model, optimizer, loss_function, train_loader, val_loader, max_epochs
+            )
+            plot_name = mode + "_loss_" + str(i) + ".png"
+            model_name = mode + "_model_" + str(i) + ".pt"
+            data_name = mode + "_data_" + str(i + 1) + ".npy"
+            plt.plot(t_loss, label="Training Loss")
+            plt.plot(v_loss, label="Validation Loss")
+            plt.legend()
+            plt.savefig(f"{save_path}/{plot_name}")
+            plt.clf()
+            torch.save(best_model, f"{save_path}/{model_name}")
+            model.load_state_dict(best_model)
+            layout_list = generation(N, model=model)
+            if uniqueness:
+                layout_list, _ = uniqueness_check(layout_list)
+            np.save(f"{save_path}/generated_{mode}_{i}.npy", layout_list)
+            new_strings = np.array(validity(layout_list), dtype=object)
+            prev_strings = np.array(dataset, dtype=object)
+            new_dataset = np.unique(np.concatenate((prev_strings, new_strings), axis=0))
+            np.save(f"{save_path}/{data_name}", new_dataset)
+            dataset = new_dataset.tolist()
+            print("Dataset Length:", len(dataset))
+    else:
+        for i in range(starting_cycle, cycles):
+            train_loader, val_loader = data_loaders(
+                dataset, batch_size, data_split_ratio, classes, augmentation
+            )
+            model = LSTM()
+            model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+            best_model, last_model, t_loss, v_loss = packed_training(
+                model, optimizer, loss_function, train_loader, val_loader, max_epochs
+            )
+            plot_name = mode + "_loss_" + str(i) + ".png"
+            model_name = mode + "_model_" + str(i) + ".pt"
+            data_name = mode + "_data_" + str(i + 1) + ".npy"
+            plt.plot(t_loss, label="Training Loss")
+            plt.plot(v_loss, label="Validation Loss")
+            plt.legend()
+            plt.savefig(f"{save_path}/{plot_name}")
+            plt.clf()
+            torch.save(best_model, f"{save_path}/{model_name}")
+            model.load_state_dict(best_model)
+            # Generation from new model
+            generated_layouts = generation(N, model=model)
+            if uniqueness:
+                generated_layouts, _ = uniqueness_check(generated_layouts)
+            np.save(f"{save_path}/generated_{mode}_{i}.npy", generated_layouts)
+            unique_strings = np.unique(
+                np.array(validity(generated_layouts), dtype=object)
+            )
+            p_datalist = dataset
+            datalist = np.unique(np.concatenate((p_datalist, unique_strings), axis=0))
+            # Separating the new strings from the old ones
+            candidates = datalist[
+                np.where(np.isin(datalist, p_datalist, invert=True))[0]
+            ]
+            # Optimization of the new strings
+            candidates_results = optimization(
+                candidates, classes, save_path, "candidates_" + str(i)
+            )
+            # Filtering the results above the threshold
+            good_layouts, good_results = optimization_filter(
+                candidates_results, candidates, cutoff, "M2_" + str(i)
+            )
+            print(np.sort(np.array(good_results), axis=0)[:10])
+            # Saving the good layouts of new and old as the new dataset
+            dataset = np.unique(np.concatenate((p_datalist, good_layouts), axis=0))
+            np.save(f"{save_path}/{data_name}", dataset)
+    return model
 
 
 def optimization(data_array, classes, save_path, save_name):
@@ -103,46 +185,27 @@ def optimization_filter(results, datalist, cutoff, save_name):
     return good_layouts, good_results
 
 
-for i in range(8, 11):
-    train_loader, val_loader = data_loaders(
-        dataset, batch_size, data_split_ratio, classes, augmentation
-    )
-    model = LSTM()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    best_model, last_model, t_loss, v_loss = packed_training(
-        model, optimizer, loss_function, train_loader, val_loader, max_epochs
-    )
-    plot_name = str(i) + "_loss.png"
-    model_name = str(i) + "_model.pt"
-    data_name = str(i) + "_data.npy"
-    plt.plot(t_loss, label="Training Loss")
-    plt.plot(v_loss, label="Validation Loss")
-    plt.legend()
-    plt.savefig(f"{save_path}/{plot_name}")
-    plt.clf()
-    torch.save(best_model, f"{save_path}/{model_name}")
-    model.load_state_dict(best_model)
-    layout_list = generation(N, model=model)
+if __name__ == "__main__":
+    M1_model = LSTM_training_cycle("M1", N1, save_path, dataset, cycles1)
+    model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
+    M1_model = model
+    initial_10k = generation(10_000, model=model)
     if uniqueness:
-        equipments = string_to_equipment(layout_list)
-        layout_list, _ = enforced_uniqueness(equipments)
-    np.save(f"{save_path}/generated+{data_name}", layout_list)
-    new_strings = np.array(validity(layout_list), dtype=object)
-    prev_strings = np.array(dataset, dtype=object)
-    new_dataset = np.unique(np.concatenate((prev_strings, new_strings), axis=0))
-    np.save(f"{save_path}/generated+{data_name}", new_dataset)
-    dataset = new_dataset.tolist()
-
-model.load_state_dict(torch.load(f"{save_path}/10_model.pt"))
-initial_10k = generation(N, model=model)
-initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
-savefile_name = "initial_10k"
-np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
-# initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
-print(len(initial_10k))
-results = optimization(initial_10k, classes, save_path, savefile_name)
-# results = np.load(f"{save_path}/results_initial_10k.npy")
-initial_good_layouts, initial_good_results = optimization_filter(
-    results, initial_10k, cutoff, savefile_name
-)
-print(np.sort(np.array(initial_good_results), axis=0))
+        initial_10k, _ = uniqueness_check(initial_10k)
+    initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
+    savefile_name = "initial_10k"
+    print(len(initial_10k))
+    np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
+    results = optimization(initial_10k, classes, save_path, savefile_name)
+    # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
+    # results = np.load(f"{save_path}/results_initial_10k.npy")
+    initial_good_layouts, initial_good_results = optimization_filter(
+        results, initial_10k, cutoff, savefile_name
+    )
+    print(np.sort(np.array(initial_good_results), axis=0))
+    initial_good_layouts = np.load(
+        f"{save_path}/initial_10k_good_layouts.npy", allow_pickle=True
+    )
+    M2_model = LSTM_training_cycle(
+        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=0
+    )

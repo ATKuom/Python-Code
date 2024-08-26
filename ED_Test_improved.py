@@ -56,7 +56,8 @@ s = time.time()
 #     allow_pickle=True,
 # )
 # layout = layouts[9550]
-layout = "GTaAC-1H1a1HE"
+# layout = "GTaAC-1H1a1HE"
+layout = "GTHaH-1aHTA1TA1CTHE"
 layout = string_to_layout(layout)
 print(layout)
 equipment, bounds, x, splitter = bound_creation(layout)
@@ -182,12 +183,12 @@ def objective_function(x, equipment):
             ):
                 # print("Infeasible HX1")
                 return PENALTY_VALUE
-            if (
-                mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
-                < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
-            ):
-                # print("Infeasible HX2")
-                return PENALTY_VALUE
+            # if (
+            #     mass_flow[hotside_index - 1] * enthalpies[hotside_index - 1]
+            #     < mass_flow[coldside_index - 1] * enthalpies[coldside_index - 1]
+            # ):
+            #     # print("Infeasible HX2")
+            #     return PENALTY_VALUE
             try:
                 (
                     Temperatures[hotside_index],

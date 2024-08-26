@@ -90,10 +90,10 @@ if __name__ == "__main__":
     #     "G" + string + "E" for string in randomly_generated_strings
     # ]
     # print(len(validity(randomly_generated_strings)))
-    N = 100
+    N = 1000
     randomly_generated_strings = []
     i = 0
-    uniqueness = False
+    uniqueness = True
     while len(randomly_generated_strings) < N:
         design = word_creation()
         string = "G" + design + "E"
@@ -127,4 +127,4 @@ if __name__ == "__main__":
         if "-1" in string:
             k += 1
     print(j, k, l)
-    # np.save(config.DATA_DIRECTORY / "v27_D0.npy", randomly_generated_strings)
+    np.save(config.DATA_DIRECTORY / "v28D0_m1.npy", randomly_generated_strings)
