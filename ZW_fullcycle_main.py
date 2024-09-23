@@ -11,7 +11,7 @@ from split_functions import (
     uniqueness_check,
 )
 
-dataset_id = "D0_50k.npy"
+dataset_id = "D0_100.npy"
 classes = std_classes
 data_split_ratio = 0.85
 batch_size = 100
@@ -22,19 +22,19 @@ loss_function = std_loss
 augmentation = False
 uniqueness = False
 N1 = 10_000
-cycles1 = 11
+cycles1 = 16
 N2 = 3_000
 cycles2 = 8
 cutoff = 143.957
 
-# save_path = make_dir(
-#     model,
-#     batch_size,
-#     learning_rate,
-# )
+save_path = make_dir(
+    model,
+    batch_size,
+    learning_rate,
+)
 dataset = dataloading(dataset_id)
 
-save_path = "LSTM_initial_50k"
+# save_path = "LSTM_initial_50k"
 # dataset = np.load(f"{save_path}/M2_data_6.npy", allow_pickle=True).tolist()
 if uniqueness:
     dataset, _ = uniqueness_check(dataset)
@@ -186,25 +186,25 @@ def optimization_filter(results, datalist, cutoff, save_name):
 
 
 if __name__ == "__main__":
-    # M1_model = LSTM_training_cycle(
-    #     "M1", N1, save_path, dataset, cycles1, starting_cycle=10
+    M1_model = LSTM_training_cycle(
+        "M1", N1, save_path, dataset, cycles1, starting_cycle=0
+    )
+    # model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
+    # initial_10k = generation(10_000, model=model)
+    # if uniqueness:
+    #     initial_10k, _ = uniqueness_check(initial_10k)
+    # initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
+    # savefile_name = "initial_10k"
+    # print(len(initial_10k))
+    # np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
+    # results = optimization(initial_10k, classes, save_path, savefile_name)
+    # # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
+    # # results = np.load(f"{save_path}/results_initial_10k.npy")
+    # initial_good_layouts, initial_good_results = optimization_filter(
+    #     results, initial_10k, cutoff, savefile_name
     # )
-    model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
-    initial_10k = generation(10_000, model=model)
-    if uniqueness:
-        initial_10k, _ = uniqueness_check(initial_10k)
-    initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
-    savefile_name = "initial_10k"
-    print(len(initial_10k))
-    np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
-    results = optimization(initial_10k, classes, save_path, savefile_name)
-    # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
-    # results = np.load(f"{save_path}/results_initial_10k.npy")
-    initial_good_layouts, initial_good_results = optimization_filter(
-        results, initial_10k, cutoff, savefile_name
-    )
-    print(np.sort(np.array(initial_good_results), axis=0))
-    # initial_good_layouts = np.load(f"{save_path}/M2_data_7.npy", allow_pickle=True)
-    M2_model = LSTM_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=0
-    )
+    # print(np.sort(np.array(initial_good_results), axis=0))
+    # # initial_good_layouts = np.load(f"{save_path}/M2_data_7.npy", allow_pickle=True)
+    # M2_model = LSTM_training_cycle(
+    #     "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=0
+    # )

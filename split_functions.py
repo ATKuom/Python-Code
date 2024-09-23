@@ -518,7 +518,7 @@ def Pressure_calculation(
                             Pressures[i + 1] = Pressures[i]
                             Pressures[mixer1] = Pressures[i]
             cycle += 1
-        if cycle == 3:
+        if cycle == 5:
             break
 
     return Pressures
@@ -740,7 +740,11 @@ def splitter_mixer_calc(
 
 
 def bound_creation(layout):
-    units = layout[1:-1]
+    if layout[0][0]:
+        layout = layout[1:]
+    if layout[-1][-1]:
+        layout = layout[:-1]
+    units = layout
     # print(units)
     x = []
     splitter = False
