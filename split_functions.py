@@ -791,6 +791,11 @@ def bound_creation(layout):
     if splitter == True:
         equipment = np.roll(equipment, -branch_start, axis=0).tolist()
         bounds = np.roll(bounds, -branch_start, axis=0).tolist()
+    # else:
+    #     if equipment[0] == 5:
+    #         print("No splitter, hx in the beginning")
+    #         equipment = np.roll(equipment, -1, axis=0).tolist()
+    #         bounds = np.roll(bounds, -1, axis=0).tolist()
     bounds.append((50, 160))
     # print(equipment)
     # print(bounds)
@@ -878,12 +883,18 @@ def exergoeconomic_calculation(
             heater_aux[0][len(equipment) + 1 + order] = -1
             m1 = np.concatenate((m1, heater_aux), axis=0)
         elif j == 5 and hx_token == 1:
-            m1[i][hotside_index - 1] = -1 * exergies[hotside_index - 1]
+            hotside_inlet = hotside_index - 1
+            coldside_inlet = coldside_index - 1
+            if hotside_index == 0:
+                hotside_inlet = len(Temperatures) - 1
+            if coldside_index == 0:
+                coldside_inlet = len(Temperatures) - 1
+            m1[i][hotside_inlet] = -1 * exergies[hotside_inlet]
             m1[i][hotside_index] = exergies[hotside_index]
-            m1[i][coldside_index - 1] = -1 * exergies[coldside_index - 1]
+            m1[i][coldside_inlet] = -1 * exergies[coldside_inlet]
             m1[i][coldside_index] = exergies[coldside_index]
             hxer_aux = np.copy(zero_row)
-            hxer_aux[0][hotside_index - 1] = 1
+            hxer_aux[0][hotside_inlet] = 1
             hxer_aux[0][hotside_index] = -1
             m1 = np.concatenate((m1, hxer_aux), axis=0)
             hx_token = 0
