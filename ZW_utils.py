@@ -37,11 +37,24 @@ def data_loaders(dataset, batch_size, data_split_ratio, classes, augmentation):
                 len(data) - int(data_split_ratio * len(data)),
             ],
         )
-    else:
+
+    if augmentation == True:
         t_data = dataset[: int(data_split_ratio * len(dataset))]
         v_data = dataset[int(data_split_ratio * len(dataset)) :]
         training_set = LSTMDataset(t_data, classes, training_type="augmented")
         validation_set = LSTMDataset(v_data, classes, training_type="standard")
+
+    if augmentation == "val_aug":
+        print("Fully Augmented")
+        data = LSTMDataset(dataset, classes, training_type="augmented")
+        training_set, validation_set = torch.utils.data.random_split(
+            data,
+            [
+                int(data_split_ratio * len(data)),
+                len(data) - int(data_split_ratio * len(data)),
+            ],
+        )
+
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False)
     print("Training set size:", len(training_set))
