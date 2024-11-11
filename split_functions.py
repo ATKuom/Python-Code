@@ -775,7 +775,6 @@ def bound_creation(layout):
                 bounds[i] = (4, 11)
                 # TH
                 # bounds[i] = (3, 20)
-                # hx_token = 0
             else:
                 bounds[i] = (0, 0)
         elif unit_type == 7:
@@ -791,11 +790,6 @@ def bound_creation(layout):
     if splitter == True:
         equipment = np.roll(equipment, -branch_start, axis=0).tolist()
         bounds = np.roll(bounds, -branch_start, axis=0).tolist()
-    # else:
-    #     if equipment[0] == 5:
-    #         print("No splitter, hx in the beginning")
-    #         equipment = np.roll(equipment, -1, axis=0).tolist()
-    #         bounds = np.roll(bounds, -1, axis=0).tolist()
     bounds.append((50, 160))
     # print(equipment)
     # print(bounds)

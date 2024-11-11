@@ -51,19 +51,17 @@ s = time.time()
 
 # layout = ED1
 
-# layouts = np.load(
-#     config.DATA_DIRECTORY / "len20m2_d0.npy",
-#     allow_pickle=True,
-# )
-# layout = layouts[9550]
-# ED1
-layout = "GTaACaHE"
-# ED2
-layout = "GTaAC-1H1a1HE"
-# ED3
-layout = "GTaACH-1H1a1HE"
-layout = string_to_layout(layout)
+layouts = np.load("GPT_NA_psitest/initial_10k.npy", allow_pickle=True)
+layout = layouts[9256]
+# layout = "GaHACHaHTE"
+# # ED1
+# layout = "GTaACaHE"
+# # # ED2
+# layout = "GTaAC-1H1a1HE"
+# # # ED3
+# layout = "GTaACH-1H1a1HE"
 print(layout)
+layout = string_to_layout(layout)
 equipment, bounds, x, splitter = bound_creation(layout)
 print(equipment)
 
@@ -335,6 +333,9 @@ def objective_function(x, equipment):
     except:
         # print("Matrix solution problem")
         return PENALTY_VALUE
+    # if np.any(costs < 0):
+    #     print("Negative Cost")
+    #     return PENALTY_VALUE
     Closs = costs[equipment_length + 1] * min(x for x in e_fgout if x != 0)
     Cfuel = costs[equipment_length] * FGINLETEXERGY
     Ztot = sum(zk)

@@ -25,22 +25,22 @@ uniqueness = True
 N1 = 10_000
 cycles1 = 11
 N2 = 3_000
-cycles2 = 8
+cycles2 = 9
 cutoff = 143.957
 
-save_path = make_dir(
-    model,
-    batch_size,
-    learning_rate,
-)
-dataset = dataloading(dataset_id)
+# save_path = make_dir(
+#     model,
+#     batch_size,
+#     learning_rate,
+# )
+# dataset = dataloading(dataset_id)
 
-# save_path = "GPT_NA_to_FA"
+save_path = "GPT_NA_psitest"
 
 
 # dataset = np.load(f"{save_path}/generated+1_data.npy", allow_pickle=True).tolist()
-if uniqueness:
-    dataset, _ = uniqueness_check(dataset)
+# if uniqueness:
+#     dataset, _ = uniqueness_check(dataset)
 
 # breakpoint()
 
@@ -97,6 +97,7 @@ def Transformer_training_cycle(mode, N, save_path, dataset, cycles, starting_cyc
             plt.clf()
             torch.save(best_model, f"{save_path}/{model_name}")
             model.load_state_dict(best_model)
+            torch.load(f"{save_path}/M2_model_{i}.pt")
             # Generation from new model
             generated_layouts = transformer_generation(model, classes, N)
             if uniqueness:
@@ -117,7 +118,7 @@ def Transformer_training_cycle(mode, N, save_path, dataset, cycles, starting_cyc
             )
             # Filtering the results above the threshold
             good_layouts, good_results = optimization_filter(
-                candidates_results, candidates, cutoff, "M2_" + str(i)
+                candidates_results, candidates, cutoff, save_path, "M2_" + str(i)
             )
             print(np.sort(np.array(good_results), axis=0)[:10])
             # Saving the good layouts of new and old as the new dataset
@@ -172,7 +173,7 @@ def optimization(data_array, classes, save_path, save_name):
     return results
 
 
-def optimization_filter(results, datalist, cutoff, save_name):
+def optimization_filter(results, datalist, cutoff, save_path, save_name):
     nonzero_results = results[np.where(results > 0)]
     good_layouts = []
     good_results = []
@@ -191,26 +192,27 @@ def optimization_filter(results, datalist, cutoff, save_name):
 
 
 if __name__ == "__main__":
-    M1_model = Transformer_training_cycle("M1", N1, save_path, dataset, cycles1)
-    model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
-    initial_10k = transformer_generation(M1_model, classes, N1)
-    if uniqueness:
-        initial_10k, _ = uniqueness_check(initial_10k)
-    initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
-    savefile_name = "initial_10k"
-    print(len(initial_10k))
-    np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
-    results = optimization(initial_10k, classes, save_path, savefile_name)
-    # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
-    # results = np.load(f"{save_path}/results_initial_10k.npy")
-    initial_good_layouts, initial_good_results = optimization_filter(
-        results, initial_10k, cutoff, savefile_name
-    )
-    print(np.sort(np.array(initial_good_results), axis=0))
-    initial_good_layouts = np.load(
-        f"{save_path}/initial_10k_good_layouts.npy", allow_pickle=True
-    )
+    # M1_model = Transformer_training_cycle("M1", N1, save_path, dataset, cycles1)
+    # model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
+    # initial_10k = transformer_generation(M1_model, classes, N1)
+    # if uniqueness:
+    #     initial_10k, _ = uniqueness_check(initial_10k)
+    # initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
+    # savefile_name = "initial_10k"
+    # print(len(initial_10k))
+    # np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
+    # results = optimization(initial_10k, classes, save_path, savefile_name)
+    # # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
+    # # results = np.load(f"{save_path}/results_initial_10k.npy")
+    # initial_good_layouts, initial_good_results = optimization_filter(
+    #     results, initial_10k, cutoff, savefile_name
+    # )
+    # print(np.sort(np.array(initial_good_results), axis=0))
+    # initial_good_layouts = np.load(
+    #     f"{save_path}/initial_10k_good_layouts.npy", allow_pickle=True
+    # )
+    initial_good_layouts = np.load(f"{save_path}/M2_data_8.npy", allow_pickle=True)
     print(len(initial_good_layouts))
     M2_model = Transformer_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=0
+        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=8
     )
