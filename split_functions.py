@@ -518,7 +518,7 @@ def Pressure_calculation(
                             Pressures[i + 1] = Pressures[i]
                             Pressures[mixer1] = Pressures[i]
             cycle += 1
-        if cycle == 3:
+        if cycle == 5:
             break
 
     return Pressures
@@ -740,7 +740,11 @@ def splitter_mixer_calc(
 
 
 def bound_creation(layout):
-    units = layout[1:-1]
+    if layout[0][0]:
+        layout = layout[1:]
+    if layout[-1][-1]:
+        layout = layout[:-1]
+    units = layout
     # print(units)
     x = []
     splitter = False
@@ -771,7 +775,6 @@ def bound_creation(layout):
                 bounds[i] = (4, 11)
                 # TH
                 # bounds[i] = (3, 20)
-                # hx_token = 0
             else:
                 bounds[i] = (0, 0)
         elif unit_type == 7:
@@ -874,12 +877,18 @@ def exergoeconomic_calculation(
             heater_aux[0][len(equipment) + 1 + order] = -1
             m1 = np.concatenate((m1, heater_aux), axis=0)
         elif j == 5 and hx_token == 1:
-            m1[i][hotside_index - 1] = -1 * exergies[hotside_index - 1]
+            hotside_inlet = hotside_index - 1
+            coldside_inlet = coldside_index - 1
+            if hotside_index == 0:
+                hotside_inlet = len(Temperatures) - 1
+            if coldside_index == 0:
+                coldside_inlet = len(Temperatures) - 1
+            m1[i][hotside_inlet] = -1 * exergies[hotside_inlet]
             m1[i][hotside_index] = exergies[hotside_index]
-            m1[i][coldside_index - 1] = -1 * exergies[coldside_index - 1]
+            m1[i][coldside_inlet] = -1 * exergies[coldside_inlet]
             m1[i][coldside_index] = exergies[coldside_index]
             hxer_aux = np.copy(zero_row)
-            hxer_aux[0][hotside_index - 1] = 1
+            hxer_aux[0][hotside_inlet] = 1
             hxer_aux[0][hotside_index] = -1
             m1 = np.concatenate((m1, hxer_aux), axis=0)
             hx_token = 0

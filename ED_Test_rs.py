@@ -323,24 +323,24 @@ def results_analysis(x, equipment):
 
 
 if __name__ == "__main__":
-    layout = string_to_layout("GT1AT1CaHTaA-1E")
+    layouts = np.load("GPT_NA_psitest/generated_M2_0.npy", allow_pickle=True)
+    # layout = layouts[1519]
+    layout = "GTaHACHaHE"
+    print(layout)
+    layout = string_to_layout(layout)
     # layout = ED1
     equipment, bounds, x, splitter = bound_creation(layout)
-
+    print(equipment)
     x = [
-        0.8331321476642084,
-        7400000.0,
-        0.0,
-        32.0,
-        7400000.0,
-        0.0,
-        24870364.745278634,
-        11.0,
-        381.54252009222853,
-        7973375.533590103,
-        11.0,
-        33.108183738287146,
-        119.94762691370104,
+        7863325.997178896,
+        7.816205350800149,
+        187.85838182390415,
+        32,
+        30000000.0,
+        180,
+        7.816205350800149,
+        455.90718799602803,
+        78.24811884148697,
     ]
     if torch.equal(layout, ED1):
         x = [

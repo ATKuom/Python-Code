@@ -11,7 +11,7 @@ from split_functions import (
     uniqueness_check,
 )
 
-dataset_id = "v28D0_m1.npy"
+dataset_id = "D0_500.npy"
 classes = std_classes
 data_split_ratio = 0.85
 batch_size = 100
@@ -20,22 +20,24 @@ learning_rate = 0.001
 model = LSTM()
 loss_function = std_loss
 augmentation = False
-uniqueness = True
+uniqueness = False
 N1 = 10_000
 cycles1 = 11
 N2 = 3_000
 cycles2 = 8
 cutoff = 143.957
 
+save_path = "LSTM_500"
 # save_path = make_dir(
 #     model,
 #     batch_size,
 #     learning_rate,
 # )
-# dataset = dataloading(dataset_id)
 
-save_path = "LSTM_U_MS"
-dataset = np.load(f"{save_path}/M2_data_6.npy", allow_pickle=True).tolist()
+dataset = dataloading(dataset_id)
+
+
+# dataset = np.load(f"{save_path}/M2_data_6.npy", allow_pickle=True).tolist()
 if uniqueness:
     dataset, _ = uniqueness_check(dataset)
 
@@ -186,7 +188,9 @@ def optimization_filter(results, datalist, cutoff, save_name):
 
 
 if __name__ == "__main__":
-    M1_model = LSTM_training_cycle("M1", N1, save_path, dataset, cycles1)
+    # M1_model = LSTM_training_cycle(
+    #     "M1", N1, save_path, dataset, cycles1, starting_cycle=0
+    # )
     model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
     initial_10k = generation(10_000, model=model)
     if uniqueness:
@@ -202,7 +206,7 @@ if __name__ == "__main__":
         results, initial_10k, cutoff, savefile_name
     )
     print(np.sort(np.array(initial_good_results), axis=0))
-    initial_good_layouts = np.load(f"{save_path}/M2_data_7.npy", allow_pickle=True)
+    # initial_good_layouts = np.load(f"{save_path}/M2_data_7.npy", allow_pickle=True)
     M2_model = LSTM_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=7
+        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=0
     )

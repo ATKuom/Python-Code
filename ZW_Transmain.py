@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from ZW_Opt import *
 from split_functions import one_hot_encoding, bound_creation, uniqueness_check
 
-dataset_id = "v21D0_m1.npy"
+dataset_id = "v28D0_m1.npy"
 classes = std_classes
-data_split_ratio = 0.85
+data_split_ratio = 0.80
 batch_size = 100
 max_epochs = 30
 learning_rate = 1e-3
@@ -20,12 +20,12 @@ dropout = 0.1  # 0.1
 vocab_size = len(classes)
 model = GPT(vocab_size, n_embd, n_head, n_layer, block_size, dropout)
 loss_function = std_loss
-augmentation = "val_aug"
-uniqueness = False
+augmentation = False
+uniqueness = True
 N1 = 10_000
 cycles1 = 11
 N2 = 3_000
-cycles2 = 8
+cycles2 = 9
 cutoff = 143.957
 
 # save_path = make_dir(
@@ -35,7 +35,7 @@ cutoff = 143.957
 # )
 # dataset = dataloading(dataset_id)
 
-save_path = "202408222227_GPT_batch100_lr1e-03"
+save_path = "GPT_NA_psitest"
 
 
 # dataset = np.load(f"{save_path}/generated+1_data.npy", allow_pickle=True).tolist()
@@ -97,6 +97,7 @@ def Transformer_training_cycle(mode, N, save_path, dataset, cycles, starting_cyc
             plt.clf()
             torch.save(best_model, f"{save_path}/{model_name}")
             model.load_state_dict(best_model)
+            torch.load(f"{save_path}/M2_model_{i}.pt")
             # Generation from new model
             generated_layouts = transformer_generation(model, classes, N)
             if uniqueness:
@@ -117,7 +118,7 @@ def Transformer_training_cycle(mode, N, save_path, dataset, cycles, starting_cyc
             )
             # Filtering the results above the threshold
             good_layouts, good_results = optimization_filter(
-                candidates_results, candidates, cutoff, "M2_" + str(i)
+                candidates_results, candidates, cutoff, save_path, "M2_" + str(i)
             )
             print(np.sort(np.array(good_results), axis=0)[:10])
             # Saving the good layouts of new and old as the new dataset
@@ -172,7 +173,7 @@ def optimization(data_array, classes, save_path, save_name):
     return results
 
 
-def optimization_filter(results, datalist, cutoff, save_name):
+def optimization_filter(results, datalist, cutoff, save_path, save_name):
     nonzero_results = results[np.where(results > 0)]
     good_layouts = []
     good_results = []
@@ -207,8 +208,11 @@ if __name__ == "__main__":
     #     results, initial_10k, cutoff, savefile_name
     # )
     # print(np.sort(np.array(initial_good_results), axis=0))
-    initial_good_layouts = np.load(f"{save_path}/M2_data_2.npy", allow_pickle=True)
+    # initial_good_layouts = np.load(
+    #     f"{save_path}/initial_10k_good_layouts.npy", allow_pickle=True
+    # )
+    initial_good_layouts = np.load(f"{save_path}/M2_data_8.npy", allow_pickle=True)
     print(len(initial_good_layouts))
     M2_model = Transformer_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=2
+        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=8
     )

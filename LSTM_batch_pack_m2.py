@@ -197,6 +197,7 @@ class LSTMtry(nn.Module):
 
         return out
 
+
 model = LSTMtry(input_size=len(classes), hidden_size=32, num_classes=len(classes))
 criterion = nn.CrossEntropyLoss()
 
