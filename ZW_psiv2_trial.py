@@ -197,10 +197,11 @@ class LSTM_packed(nn.Module):
 phi = GPT(vocab_size, n_embd, n_head, n_layer, block_size, dropout)
 
 # predicor
-psi = LSTM_packed(128, 1024)
+psi = LSTM_packed(64, 256)
 
-phi.load_state_dict(torch.load("GPT_NA_psitest/M2_model_6.pt"))
-psi.load_state_dict(torch.load("psi_norm_128_1024_4_143.957_6.pt"))
+
+phi.load_state_dict(torch.load("GPT_NA_psitest/M2_model_8.pt"))
+psi.load_state_dict(torch.load("psi_norm_min_aug_100max64_256_4_300_8.pt"))
 
 phi.eval()
 psi.eval()
@@ -224,7 +225,7 @@ for i in range(N):
         # product = (phi_logits.flatten() + 1 * (1 - psi_logits.flatten())).reshape(1, 12)
         # product2 = torch.mul(phi_logits.flatten(), (1 - psi_logits.flatten()))
         phi_prob = F.softmax(phi_logits.flatten(), dim=-1)
-        product3 = torch.mul(phi_prob, (1 - psi_logits.flatten()))
+        product3 = torch.mul(phi_prob, (100 - psi_logits.flatten()))
         # probs = F.softmax(product, dim=-1)
         # secondway
         # probs = F.softmax(product2, dim=-1).reshape(1, 12)
@@ -251,18 +252,18 @@ from thermo_validity import validity
 
 cutoff = 143.957
 save_path = "GPT_NA_psitest"
-dataset = np.load("GPT_NA_psitest/M2_data_6.npy", allow_pickle=True)
+dataset = np.load("GPT_NA_psitest/M2_data_8.npy", allow_pickle=True)
 generated_layouts = string_list
 print("Number of generated layouts: ", len(generated_layouts))
 print("Number of valid layouts: ", len(validity(generated_layouts)))
 print("Number of unique valid layouts: ", len(np.unique(validity(generated_layouts))))
 unique_strings = np.unique(np.array(validity(generated_layouts), dtype=object))
-p_datalist = dataset
-datalist = np.unique(np.concatenate((p_datalist, unique_strings), axis=0))
-# Separating the new strings from the old ones
-candidates = datalist[np.where(np.isin(datalist, p_datalist, invert=True))[0]]
-print("Number of unique valid new layouts: ", len(candidates))
-np.save(f"{save_path}/psiphi_generated_M2_6_3rdway_144.npy", generated_layouts)
+# p_datalist = dataset
+# datalist = np.unique(np.concatenate((p_datalist, unique_strings), axis=0))
+# # Separating the new strings from the old ones
+# candidates = datalist[np.where(np.isin(datalist, p_datalist, invert=True))[0]]
+# print("Number of unique valid new layouts: ", len(candidates))
+np.save(f"{save_path}/psiphi_generated_M2_0_min_aug_300_100max.npy", generated_layouts)
 # for e,s in zip(equipment_list,string_list):
 #     print(e,s)
 # for e,s in zip(equipment_list,string_list):
@@ -272,15 +273,20 @@ np.save(f"{save_path}/psiphi_generated_M2_6_3rdway_144.npy", generated_layouts)
 # )
 from ZW_Transmain import optimization, optimization_filter
 
+candidates = unique_strings
 i = 0
 # Separating the new strings from the old ones
-print("previous data length:", len(p_datalist))
+# print("previous data length:", len(p_datalist))
 print("candidates length:", len(candidates))
 # Optimization of the new strings
 candidates_results = optimization(
-    candidates, classes, save_path, "candidates_6_psi_144" + str(i)
+    candidates, classes, save_path, "candidates_0_psi_min_aug_300_100max" + str(i)
 )
 # Filtering the results above the threshold
 good_layouts, good_results = optimization_filter(
-    candidates_results, candidates, cutoff, save_path, "M2_6_psi_144" + str(i)
+    candidates_results,
+    candidates,
+    cutoff,
+    save_path,
+    "M2_0_psi_min_aug_300_100max" + str(i),
 )
