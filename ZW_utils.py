@@ -96,7 +96,12 @@ def T_integer_data_loaders(
         )
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False)
-    print("Training set size:", len(training_set))
+    print(
+        "Training set size:",
+        len(training_set),
+        "Validation set size:",
+        len(validation_set),
+    )
     return train_loader, val_loader
 
 

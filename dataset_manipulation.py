@@ -104,17 +104,26 @@ def SQP_dataset_combination(version):
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2_results.npy", good_results)
 # # np.save(config.DATA_DIRECTORY / "v27msD0_m2_positions.npy", good_positions)
 
-quit()
-
 # layouts = good_layouts
 # results = good_results
 
 ##Final good layouts graphical analysis
-layouts = np.load(config.DATA_DIRECTORY / "v24LDF_m2_layouts.npy", allow_pickle=True)
-results = np.load(
-    config.DATA_DIRECTORY / "v24LDF_m2_results.npy",
-    allow_pickle=True,
+# layouts = np.load(config.DATA_DIRECTORY / "v24LDF_m2_layouts.npy", allow_pickle=True)
+# results = np.load(
+#     config.DATA_DIRECTORY / "v24LDF_m2_results.npy",
+#     allow_pickle=True,
+# )
+layouts = np.load(
+    "GPT_NA_psitest/psiphi_generated_M2_8_3rdway_144_min.npy", allow_pickle=True
 )
+results = np.load("GPT_NA_psitest/results_candidates_8_psi_1441.npy", allow_pickle=True)
+past_datest = np.load("GPT_NA_psitest/M2_data_8.npy", allow_pickle=True)
+from thermo_validity import validity
+
+valid = validity(layouts)
+unique = np.unique(valid)
+print(len(valid), len(unique))
+layouts = unique
 print(len(layouts), len(results))
 
 layouts2 = []
@@ -180,7 +189,7 @@ xlabel = "Normalized Exergo-economic cost"
 ylabel = "Frequency"
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
-plt.title("Top-k (3) Sampling")
+plt.title("PHI-PSI Min M2 8th Generation")
 plt.axvline(ed2, color="red", linestyle="dashed", linewidth=1, label="ED2")
 plt.axvline(ed1, color="black", linestyle="dashed", linewidth=1, label="ED1")
 plt.axvline(ed3, color="blue", linestyle="dashed", linewidth=1, label="ED3")

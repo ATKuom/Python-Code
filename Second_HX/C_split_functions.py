@@ -337,7 +337,9 @@ def NG_exergy():
     return Pexergy + Cexergy
 
 
-def decision_variable_placement(x, enumerated_equipment, equipment_length):
+def decision_variable_placement(
+    x, enumerated_equipment, equipment_length, looping=False
+):
     approach_temp = 1
     approach_temp_2nd = 1
     split_ratio = 1
@@ -347,6 +349,9 @@ def decision_variable_placement(x, enumerated_equipment, equipment_length):
     Temperatures = np.zeros(equipment_length)
     Pressures = np.zeros(equipment_length)
     mass_flow = np.ones(equipment_length) * x[-1]
+    assumed_temperature = 1
+    # if looping == True:
+    #     assumed_temperature = x[-2]
     for index, equip in enumerated_equipment:
         if equip == 1:
             Pressures[index] = x[index]
@@ -399,6 +404,7 @@ def decision_variable_placement(x, enumerated_equipment, equipment_length):
         split_ratio,
         split_ratio_2nd,
         mass_flow,
+        assumed_temperature,
     )
 
 
@@ -471,7 +477,7 @@ def Pressure_calculation(
                             Pressures[i + 1] = Pressures[i]
                             Pressures[mixer3] = Pressures[i]
             cycle += 1
-        if cycle == 8:
+        if cycle == 5:
             break
 
     return Pressures
@@ -633,6 +639,7 @@ def splitter_mixer_calc(
 
     equipment = np.asarray(equipment)
     splitter = np.where(equipment == 9)[0]
+    # Even though splitter -1 is equal to 0?
     Temperatures[splitter] = Temperatures[splitter - 1]
     enthalpies[splitter] = enthalpies[splitter - 1]
     entropies[splitter] = entropies[splitter - 1]
@@ -765,8 +772,12 @@ def splitter_mixer_calc_2(
     return (Temperatures, enthalpies, entropies)
 
 
-def bound_creation(layout):
-    units = layout[1:-1]
+def bound_creation(layout, looping=False):
+    if layout[0][0]:
+        layout = layout[1:]
+    if layout[-1][-1]:
+        layout = layout[:-1]
+    units = layout
     # print(units)
     x = []
     splitter = False
@@ -826,10 +837,11 @@ def bound_creation(layout):
             bounds[i] = (0.01, 0.99)
             # TH
             # bounds[i] = (0.1, 0.9)
-
     if splitter == True:
         equipment = np.roll(equipment, -branch_start, axis=0).tolist()
         bounds = np.roll(bounds, -branch_start, axis=0).tolist()
+    if looping == True:
+        bounds.append((50, 500))
     bounds.append((50, 160))
     # print(equipment)
     # print(bounds)

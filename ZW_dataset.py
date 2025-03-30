@@ -10,6 +10,7 @@ class LSTMDataset(Dataset):
         print("Designs in the dataset:", len(self.base))
         self.data = data
         self.classes = classes
+        max_length = max([len(i) for i in self.data])
         # Perform one-hot encoding for the sequences
         self.data = self.one_hot_encoding(self.data, self.classes)
         if training_type == "augmented":
@@ -20,8 +21,9 @@ class LSTMDataset(Dataset):
         self.data, self.labels, self.lengths = self.input_output_prep(self.data)
         # Padding
         print("Padding")
-        self.data = torch.nn.utils.rnn.pad_sequence(
-            self.data, batch_first=True, padding_value=0
+
+        self.data = torch.tensor(
+            [i.tolist() + [12 * [0]] * (max_length - len(i)) for i in self.data]
         ).float()
         # Output classes
         print("labels")
@@ -268,4 +270,4 @@ if __name__ == "__main__":
     std_classes = ["G", "T", "A", "C", "H", "a", "b", "1", "2", "-1", "-2", "E"]
     datapath = DATA_DIRECTORY / "v21D0_m1.npy"
     data = np.load(datapath, allow_pickle=True)
-    dataset = GPTDataset(data, std_classes, 22, training_type="augmented")
+    dataset = LSTMDataset(data, std_classes, training_type="val_aug")

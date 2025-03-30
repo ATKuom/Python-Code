@@ -211,3 +211,22 @@ class PSI(GPT):
             loss = F.cross_entropy(logits, targets)
 
         return logits
+
+
+class PSI_LSTM(nn.Module):
+    def __init__(self, embd_size, hidden_size):
+        super().__init__()
+        self.embedding = nn.Embedding(13, embd_size)
+        self.lstm = nn.LSTM(
+            embd_size, hidden_size, num_layers=2, batch_first=True, dropout=0.1
+        )
+        self.fc = nn.Linear(hidden_size, 1)
+
+    def forward(self, x, lengths):
+        x = self.embedding(x.long())
+        x = nn.utils.rnn.pack_padded_sequence(
+            x, lengths, batch_first=True, enforce_sorted=False
+        )
+        output, (hidden, _) = self.lstm(x)
+        x = self.fc(hidden[-1])
+        return x

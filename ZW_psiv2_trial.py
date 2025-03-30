@@ -201,7 +201,7 @@ psi = LSTM_packed(64, 256)
 
 
 phi.load_state_dict(torch.load("GPT_NA_psitest/M2_model_8.pt"))
-psi.load_state_dict(torch.load("psi_norm_min_aug_100max64_256_4_300_8.pt"))
+psi.load_state_dict(torch.load("PSI_models/psi_norm_min_aug_100max64_256_4_300_8.pt"))
 
 phi.eval()
 psi.eval()
@@ -221,6 +221,9 @@ for i in range(N):
         idx_stack = idx.repeat(12, 1)
         idx_stack = torch.cat((idx_stack, psi_token_stack), 1).float()
         lengths = torch.tensor([idx_stack.size(1)] * idx_stack.size(0))
+        print(idx_stack, idx_stack.shape)
+        print(lengths, lengths.shape)
+        quit()
         psi_logits = psi(idx_stack, lengths)
         # product = (phi_logits.flatten() + 1 * (1 - psi_logits.flatten())).reshape(1, 12)
         # product2 = torch.mul(phi_logits.flatten(), (1 - psi_logits.flatten()))

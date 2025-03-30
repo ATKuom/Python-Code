@@ -19,7 +19,7 @@ max_epochs = 30
 learning_rate = 0.001
 model = LSTM()
 loss_function = std_loss
-augmentation = False
+augmentation = "val_aug"
 uniqueness = False
 N1 = 10_000
 cycles1 = 11
@@ -27,21 +27,21 @@ N2 = 3_000
 cycles2 = 8
 cutoff = 143.957
 
-save_path = "LSTM_500"
+
+save_path = "LSTM_FA"
 # save_path = make_dir(
 #     model,
 #     batch_size,
 #     learning_rate,
 # )
 
-dataset = dataloading(dataset_id)
-
-
-# dataset = np.load(f"{save_path}/M2_data_6.npy", allow_pickle=True).tolist()
+# dataset = dataloading(dataset_id)
+dataset = np.load(f"{save_path}/M1_data_8.npy", allow_pickle=True).tolist()
 if uniqueness:
     dataset, _ = uniqueness_check(dataset)
 
 
+# do not forget to change the inside
 def LSTM_training_cycle(mode, N, save_path, dataset, cycles, starting_cycle=0):
     if mode == "M1":
         for i in range(starting_cycle, cycles):
@@ -82,7 +82,12 @@ def LSTM_training_cycle(mode, N, save_path, dataset, cycles, starting_cycle=0):
             model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
             optimizer = optim.Adam(model.parameters(), lr=learning_rate)
             best_model, last_model, t_loss, v_loss = packed_training(
-                model, optimizer, loss_function, train_loader, val_loader, max_epochs
+                model,
+                optimizer,
+                loss_function,
+                train_loader,
+                val_loader,
+                max_epochs,
             )
             plot_name = mode + "_loss_" + str(i) + ".png"
             model_name = mode + "_model_" + str(i) + ".pt"
@@ -189,24 +194,24 @@ def optimization_filter(results, datalist, cutoff, save_name):
 
 if __name__ == "__main__":
     # M1_model = LSTM_training_cycle(
-    #     "M1", N1, save_path, dataset, cycles1, starting_cycle=0
+    #     "M1", N1, save_path, dataset, cycles1, starting_cycle=8
     # )
-    model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
-    initial_10k = generation(10_000, model=model)
-    if uniqueness:
-        initial_10k, _ = uniqueness_check(initial_10k)
-    initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
-    savefile_name = "initial_10k"
-    print(len(initial_10k))
-    np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
-    results = optimization(initial_10k, classes, save_path, savefile_name)
-    # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
-    # results = np.load(f"{save_path}/results_initial_10k.npy")
-    initial_good_layouts, initial_good_results = optimization_filter(
-        results, initial_10k, cutoff, savefile_name
-    )
-    print(np.sort(np.array(initial_good_results), axis=0))
-    # initial_good_layouts = np.load(f"{save_path}/M2_data_7.npy", allow_pickle=True)
+    # model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
+    # initial_10k = generation(10_000, model=model)
+    # if uniqueness:
+    #     initial_10k, _ = uniqueness_check(initial_10k)
+    # initial_10k = np.unique(np.array(validity(initial_10k), dtype=object))
+    # savefile_name = "initial_10k"
+    # print(len(initial_10k))
+    # np.save(f"{save_path}/{savefile_name}.npy", initial_10k)
+    # results = optimization(initial_10k, classes, save_path, savefile_name)
+    # # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
+    # # results = np.load(f"{save_path}/results_initial_10k.npy")
+    # initial_good_layouts, initial_good_results = optimization_filter(
+    #     results, initial_10k, cutoff, savefile_name
+    # )
+    # print(np.sort(np.array(initial_good_results), axis=0))
+    initial_good_layouts = np.load(f"{save_path}/M2_data_6.npy", allow_pickle=True)
     M2_model = LSTM_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=0
+        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=6
     )

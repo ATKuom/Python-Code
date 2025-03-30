@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from ZW_Opt import *
 from split_functions import one_hot_encoding, bound_creation, uniqueness_check
 
-dataset_id = "v28D0_m1.npy"
+dataset_id = "v21D0_m1.npy"
 classes = std_classes
 data_split_ratio = 0.80
 batch_size = 100
@@ -20,22 +20,22 @@ dropout = 0.1  # 0.1
 vocab_size = len(classes)
 model = GPT(vocab_size, n_embd, n_head, n_layer, block_size, dropout)
 loss_function = std_loss
-augmentation = False
-uniqueness = True
+augmentation = "val_aug"
+uniqueness = False
 N1 = 10_000
 cycles1 = 11
 N2 = 3_000
 cycles2 = 9
 cutoff = 143.957
 
-# save_path = make_dir(
-#     model,
-#     batch_size,
-#     learning_rate,
-# )
-# dataset = dataloading(dataset_id)
+save_path = make_dir(
+    model,
+    batch_size,
+    learning_rate,
+)
+dataset = dataloading(dataset_id)
 
-save_path = "GPT_NA_psitest"
+# save_path = "GPT_FA_rererun"
 
 
 # dataset = np.load(f"{save_path}/generated+1_data.npy", allow_pickle=True).tolist()
@@ -192,7 +192,7 @@ def optimization_filter(results, datalist, cutoff, save_path, save_name):
 
 
 if __name__ == "__main__":
-    # M1_model = Transformer_training_cycle("M1", N1, save_path, dataset, cycles1)
+    M1_model = Transformer_training_cycle("M1", N1, save_path, dataset, cycles1)
     # model.load_state_dict(torch.load(f"{save_path}/M1_model_10.pt"))
     # initial_10k = transformer_generation(M1_model, classes, N1)
     # if uniqueness:
@@ -205,14 +205,14 @@ if __name__ == "__main__":
     # # initial_10k = np.load(f"{save_path}/initial_10k.npy", allow_pickle=True)
     # # results = np.load(f"{save_path}/results_initial_10k.npy")
     # initial_good_layouts, initial_good_results = optimization_filter(
-    #     results, initial_10k, cutoff, savefile_name
+    #     results, initial_10k, cutoff, save_path, savefile_name
     # )
     # print(np.sort(np.array(initial_good_results), axis=0))
     # initial_good_layouts = np.load(
     #     f"{save_path}/initial_10k_good_layouts.npy", allow_pickle=True
     # )
-    initial_good_layouts = np.load(f"{save_path}/M2_data_8.npy", allow_pickle=True)
-    print(len(initial_good_layouts))
-    M2_model = Transformer_training_cycle(
-        "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=8
-    )
+    # initial_good_layouts = np.load(f"{save_path}/M2_data_3.npy", allow_pickle=True)
+    # print(len(initial_good_layouts))
+    # M2_model = Transformer_training_cycle(
+    #     "M2", N2, save_path, initial_good_layouts, cycles2, starting_cycle=3
+    # )
