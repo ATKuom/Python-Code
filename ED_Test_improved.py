@@ -51,15 +51,24 @@ s = time.time()
 
 # layout = ED1
 
-layouts = np.load("GPT_NA_psitest/initial_10k.npy", allow_pickle=True)
-layout = layouts[9256]
+# layouts = np.load("GPT_NA_psitest/initial_10k.npy", allow_pickle=True)
+# layout = layouts[9256]
 # layout = "GaHACHaHTE"
 # # ED1
-# layout = "GTaACaHE"
+layout = "GTaACaHE"
 # # # ED2
 # layout = "GTaAC-1H1a1HE"
 # # # ED3
 # layout = "GTaACH-1H1a1HE"
+
+# layout = "GTaA1TC-1HT1aHE"
+answ0_086 = [
+    [0, 4, 3, 1, 3, 2, 3, 1, 2, 3, 11],
+]
+from split_functions import equipments_to_strings
+
+layout = equipments_to_strings(answ0_086)[0]
+# layout = "G1HaT-1H1TACHaTACHACE"
 print(layout)
 layout = string_to_layout(layout)
 equipment, bounds, x, splitter = bound_creation(layout)
@@ -472,7 +481,8 @@ class PSO:
         print("Result:")
         print("Optimal solutions:", global_best_particle_position)
         print("Objective function value:", fitness_global_best_particle_position)
-        self.result = results_analysis(global_best_particle_position, equipment)
+        if not fitness_global_best_particle_position == PENALTY_VALUE:
+            self.result = results_analysis(global_best_particle_position, equipment)
         self.points = global_best_particle_position
         print(total_number_of_particle_evaluation)
         # plt.plot(A)

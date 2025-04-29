@@ -37,9 +37,6 @@ def evaluation(layout):
     reward = 0
     layout = layout.astype(int)
 
-    def reward_scaling(reward):
-        return 2 * ((reward + 1) / (5)) - 1
-
     # no equipment repetition back to back
     for i in range(1, len(layout) - 2):
         if layout[i] != layout[i + 1]:
@@ -70,15 +67,16 @@ def evaluation(layout):
     reward = reward + 1 if len(valid_string) > 0 else reward - 1
 
     if len(valid_string) == 0:
-        return reward_scaling(reward)
+        # scale validitiy rewards -1,4 to -1,0
+        reward = -1 + (reward - (-1)) * (0 - (-1)) / (4 - (-1))
+        return reward
 
     if valid_string[0] in new_layouts:
         value = new_results[new_layouts.index(valid_string[0])]
-        return reward_scaling(reward + value)
-
+        return value
     if valid_string[0] in layouts:
         value = results[layouts.index(valid_string[0])]
-        return reward_scaling(reward + value)
+        return value
 
     ohe = np.zeros((len(layout), len(classes)))
     for i, l in enumerate(layout):
@@ -95,16 +93,20 @@ def evaluation(layout):
     try:
         a = PSO(objective_function, bounds, particle_size, iterations, nv, equipment)
         if a.result < 300:
-            # standardization between 125 and 300 to 1 and 0
-            value = 1 - (a.result - 125) / 175
+            # standardization between 125 and 300 to 1 and 0.5
+            value = 1 - (a.result - 125) * (1 - 0.5) / 175
             new_layouts.append(valid_string[0])
             new_results.append(value)
-            print(value, valid_string[0])
+        elif a.result < 1e6:
+            # standardization between 300 and 1e6 to 0.5 and 0.25
+            value = 0.5 - (a.result - 300) * (0.5 - 0.25) / (1e6 - 300)
+            new_layouts.append(valid_string[0])
+            new_results.append(value)
         else:
-            value = -0.25
+            value = 0 + (reward - (-1)) * (0.25 - 0) / (4 - (-1))
     except:
-        value = -0.5
-    return reward_scaling(reward + value)
+        value = 0
+    return value
 
 
 class Flowsheet:
@@ -365,6 +367,8 @@ class Alphazero:
                 self.optimizer.state_dict(),
                 f"{save_path}/optimizer_{iteration}_{self.game}.pt",
             )
+            np.save(f"{save_path}/new_layouts.npy", new_layouts)
+            np.save(f"{save_path}/new_results.npy", new_results)
             # 5 example inference
             for i in range(5):
                 state = self.game.get_initial_state()
@@ -447,51 +451,64 @@ class LSTMemb(nn.Module):
         return policy, value
 
 
-game = Flowsheet()
-# # model = LSTM_packed(64, 256)
-model = LSTMemb()
-model.load_state_dict(torch.load("RL/policy_value_model_trials/model_11_Flowsheet.pt"))
-optimizer = torch.optim.Adam(model.parameters(), lr=0.00025, weight_decay=1e-4)
-args = {
-    "C": 1.5,
-    "num_searches": 100,
-    "num_iterations": 25,
-    "num_selfPlay_iterations": 500,
-    "num_epochs": 5,
-    "batch_size": 64,
-    "temperature": 1.5,
-    "dirichlet_epsilon": 0.3,
-    "dirichlet_alpha": 0.3,
-    "starting_iteration": 12,
-    "save_path": "./RL/policy_value_model_trials",
-}
-alphazero = Alphazero(model, optimizer, game, args)
-alphazero.learn()
+if __name__ == "__main__":
+    new_layouts = np.load(
+        "RL/policy_value_model_trials/new_layouts.npy", allow_pickle=True
+    ).tolist()
+    new_results = np.load(
+        "RL/policy_value_model_trials/new_results.npy", allow_pickle=True
+    ).tolist()
+    game = Flowsheet()
+    # # model = LSTM_packed(64, 256)
+    model = LSTMemb(hidden_size=256, emb_size=32)
+    model.load_state_dict(
+        torch.load("RL/policy_value_model_trials/model_14_Flowsheet.pt")
+    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.00025, weight_decay=1e-4)
+    args = {
+        "C": 1.5,
+        "num_searches": 20,
+        "num_iterations": 25,
+        "num_selfPlay_iterations": 500,
+        "num_epochs": 5,
+        "batch_size": 64,
+        "temperature": 1.5,
+        "dirichlet_epsilon": 0.3,
+        "dirichlet_alpha": 0.3,
+        "starting_iteration": 15,
+        "save_path": "./RL/policy_value_model_trials",
+    }
+    alphazero = Alphazero(model, optimizer, game, args)
+    alphazero.learn()
 
-# inference
-fw = Flowsheet()
-model.load_state_dict(torch.load("RL/policy_value_model_trials/model_24_Flowsheet.pt"))
-mcts = MCTS(fw, args, model)
-best_value = -np.inf
-generated_designs = []
-for i in range(5):
-    state = fw.get_initial_state()
-    while True:
-        mcts_probs = mcts.search(state)
-        action = np.argmax(mcts_probs)
-        state = fw.get_next_state(state, action)
-        value, is_terminal = fw.get_value_and_terminated(state, action)
+    # inference
+    fw = Flowsheet()
+    model.load_state_dict(
+        torch.load("RL/policy_value_model_trials/model_21_Flowsheet.pt")
+    )
+    mcts = MCTS(fw, args, model)
+    best_value = -np.inf
+    generated_designs = []
+    for i in range(5):
+        state = fw.get_initial_state()
+        while True:
+            mcts_probs = mcts.search(state)
+            action = np.argmax(mcts_probs)
+            state = fw.get_next_state(state, action)
+            value, is_terminal = fw.get_value_and_terminated(state, action)
 
-        if is_terminal:
-            if value > best_value:
-                best_value = value
-            if i % 50 == 0:
-                print(i, "Best Value Found:", best_value)
-            generated_designs.append((value, fw.get_encoded_state(state)))
-            break
-for v, l in generated_designs:
-    print(v, l)
-valid_designs = [layout for value, layout in generated_designs if value > 0]
-for v, l in valid_designs:
-    print(v, l)
-print(len(valid_designs))
+            if is_terminal:
+                if value > best_value:
+                    best_value = value
+                if i % 50 == 0:
+                    print(i, "Best Value Found:", best_value)
+                generated_designs.append((value, fw.get_encoded_state(state)))
+                break
+    for v, l in generated_designs:
+        print(v, l)
+    valid_designs = [
+        (value, layout) for value, layout in generated_designs if value > 0
+    ]
+    for v, l in valid_designs:
+        print(v, l)
+    print(len(valid_designs))
