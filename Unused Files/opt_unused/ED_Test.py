@@ -16,7 +16,7 @@ import torch
 import random
 import matplotlib.pyplot as plt
 import time
-from empty import string_to_layout
+from matlab_trial_info import string_to_layout
 from ED_Test_rs import results_analysis
 from First_year_version.econ import economics
 from split_functions import (
