@@ -1,6 +1,6 @@
 import numpy as np
 import config
-from designs import expert_designs
+from UnusedFiles.etc.designs import expert_designs
 
 
 def splthxnmbrcheck(datalist):
