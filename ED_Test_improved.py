@@ -16,7 +16,6 @@ import torch
 import random
 import matplotlib.pyplot as plt
 import time
-from designs import ED1, ED2, ED3, bestfourthrun
 from ED_Test_rs import results_analysis
 from econ import economics
 from split_functions import (
@@ -69,7 +68,9 @@ from split_functions import equipments_to_strings
 
 layout = equipments_to_strings(answ0_086)[0]
 # layout = "G1HaT-1H1TACHaTACHACE"
+layout = "G-1A1T1HaAaTACHE"
 print(layout)
+
 layout = string_to_layout(layout)
 equipment, bounds, x, splitter = bound_creation(layout)
 print(equipment)
