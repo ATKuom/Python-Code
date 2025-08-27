@@ -1,3 +1,6 @@
+import csv
+import os
+from torch.utils.tensorboard import SummaryWriter  # Add this with other imports
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,7 +22,9 @@ layouts = np.load("M2_data_300_8_augmented_layouts.npy", allow_pickle=True)
 results = np.load("M2_data_300_8_augmented_results.npy", allow_pickle=True)
 print(len(layouts), len(results))
 layouts = equipments_to_strings(layouts, classes)
-results = 1 - (results - 125) / 175
+# standardization between 125 and 300 to 1 and 0.5 if reward scales are subject to change. DO NOT FORGET TO CHANGE THIS!
+print("min:", np.min(results), "max:", np.max(results))
+results = 1 - (results - 125) * (1 - 0.5) / 175
 indices = np.argsort(results)
 sorted_results = np.array(results)[indices]
 sorted_layouts = np.array(layouts)[indices]
@@ -27,6 +32,7 @@ unique, indices = np.unique(sorted_layouts, return_index=True)
 unique_results = sorted_results[indices]
 unique_layouts = sorted_layouts[indices]
 print(len(unique_layouts), len(unique_results))
+print("min:", np.min(unique_results), "max:", np.max(unique_results))
 layouts = unique_layouts.tolist()
 results = unique_results
 new_layouts = []
@@ -36,7 +42,9 @@ new_results = []
 def evaluation(layout):
     reward = 0
     layout = layout.astype(int)
-
+    max_validity_reward = 5.7
+    min_validity_reward = -1
+    # reward -= len(layout) * 0.05
     # no equipment repetition back to back
     for i in range(1, len(layout) - 2):
         if layout[i] != layout[i + 1]:
@@ -50,15 +58,16 @@ def evaluation(layout):
     if 1 in layout and 2 in layout and 3 in layout and 4 in layout:
         reward += 0.4
     # if it has a hx, it has 2 of them
+    # doubling the reward for 5,7,9 to incentivize them in final designs
     if 5 in layout:
         if np.count_nonzero(layout == 5) == 2:
-            reward += 0.2
+            reward += 0.6  # 0.2
     # if it has a splitter, it has 1 of them
     if 9 in layout:
         if np.count_nonzero(layout == 9) == 1:
-            reward += 0.1
+            reward += 0.2  # 0.1
         if np.count_nonzero(layout == 7) == 2:
-            reward += 0.2
+            reward += 0.4  # 0.2
     # validity check
     stringlist = [
         layout_to_string_single_1d(layout),
@@ -67,8 +76,9 @@ def evaluation(layout):
     reward = reward + 1 if len(valid_string) > 0 else reward - 1
 
     if len(valid_string) == 0:
-        # scale validitiy rewards -1,4 to -1,0
-        reward = -1 + (reward - (-1)) * (0 - (-1)) / (4 - (-1))
+        reward = -1 + (reward - (min_validity_reward)) * (0 - (-1)) / (
+            max_validity_reward - min_validity_reward
+        )
         return reward
 
     if valid_string[0] in new_layouts:
@@ -103,10 +113,15 @@ def evaluation(layout):
             new_layouts.append(valid_string[0])
             new_results.append(value)
         else:
-            value = 0 + (reward - (-1)) * (0.25 - 0) / (4 - (-1))
+            # standardization between 0.25 and 0
+            value = 0 + (reward - (-1)) * (0.25 - 0) / (max_validity_reward - (-1))
     except:
         value = 0
-    return value
+    if valid_string[0] not in layouts and valid_string[0] not in new_layouts:
+        novelty_bonus = 0.1
+    else:
+        novelty_bonus = 0
+    return min(1.0, value + novelty_bonus)
 
 
 class Flowsheet:
@@ -225,6 +240,11 @@ class MCTS:
 
     @torch.no_grad()
     def search(self, state):
+        printing = False
+        if random.random() < 0.0001:
+            printing = True
+            print(f"\n--- MCTS Search Report ---")
+            print(f"Current state: {self.game.get_encoded_state(state)}")
         root = Node(self.game, self.args, state, visit_count=1)
         lengths = torch.tensor(
             len(self.game.get_encoded_state(state)), dtype=torch.long
@@ -232,6 +252,7 @@ class MCTS:
         x = torch.tensor(state).reshape(1, -1, 1)
         policy, _ = self.model(x, lengths)
         policy = torch.softmax(policy, axis=-1).squeeze(0).detach().numpy()
+
         policy = (1 - self.args["dirichlet_epsilon"]) * policy + self.args[
             "dirichlet_epsilon"
         ] * np.random.dirichlet([self.args["dirichlet_alpha"]] * self.game.action_size)
@@ -255,13 +276,18 @@ class MCTS:
                 ).reshape(1)
                 x = torch.tensor(node.state).reshape(1, -1, 1)
                 policy, value = self.model(x, lengths)
+                policy = (1 - self.args["dirichlet_epsilon"]) * policy + self.args[
+                    "dirichlet_epsilon"
+                ] * np.random.dirichlet(
+                    [self.args["dirichlet_alpha"]] * self.game.action_size
+                )
                 policy = torch.softmax(policy, axis=-1).squeeze(0).detach().numpy()
                 valid_move = self.valid_moves.copy()
                 valid_move[int(x.squeeze()[lengths - 1].item())] = 0
                 policy *= valid_move
                 policy /= np.sum(policy)
                 # step value penalty of -0.1
-                value = value.item() - 0.1
+                value = value.item()
                 node.expand(policy)
             node.backpropagate(value)
 
@@ -270,6 +296,11 @@ class MCTS:
         for child in root.children:
             action_probs[child.action_taken] = child.visit_count
         action_probs /= np.sum(action_probs)
+        if printing:
+            top_actions = np.argsort(-action_probs)[:3]
+            print(f"Top actions: {top_actions} Probs: {action_probs[top_actions]}")
+            print(f"Root value estimate: {root.value_sum/(root.visit_count+1e-5):.3f}")
+            printing = False
         return action_probs
 
 
@@ -281,7 +312,18 @@ class Alphazero:
         self.args = args
         self.mcts = MCTS(game, args, model)
 
-    def selfPlay(self):
+        self.loss_file = os.path.join(args["save_path"], "loss.csv")
+        with open(self.loss_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                ["Iteration", "Epoch", "Policy Loss", "Value Loss", "Total Loss"]
+            )
+
+        self.tb_writer = SummaryWriter(
+            log_dir=os.path.join(args["save_path"], "tb_logs")
+        )
+
+    def selfPlay(self, selfplay_iteration):
         memory = []
         state = self.game.get_initial_state()
 
@@ -289,7 +331,12 @@ class Alphazero:
             action_probs = self.mcts.search(state)
             memory.append((state.copy(), action_probs.copy()))
             # Temperature lim 0 exploiation, lim inf exploration (more randomness)
-            temperature_action_probs = action_probs ** (1 / self.args["temperature"])
+            progress = min(1, selfplay_iteration / self.args["num_iterations"])
+            temperature = (
+                self.args["max_temp"]
+                - (self.args["max_temp"] - self.args["min_temp"]) * progress
+            )
+            temperature_action_probs = action_probs ** (1 / temperature)
             temperature_action_probs /= np.sum(temperature_action_probs)
 
             action = np.random.choice(self.game.action_size, p=temperature_action_probs)
@@ -310,7 +357,9 @@ class Alphazero:
 
     def train(self, memory):
         random.shuffle(memory)
-        epoch_loss = 0
+        total_policy_loss = 0
+        total_value_loss = 0
+        batch_count = 0
         for batchIdx in range(0, len(memory), self.args["batch_size"]):
             sample = memory[
                 batchIdx : min(len(memory) - 1, batchIdx + self.args["batch_size"])
@@ -338,27 +387,55 @@ class Alphazero:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            epoch_loss += loss.item()
-        print("Epoch Loss:", epoch_loss / len(memory))
+
+            total_policy_loss += policy_loss.item()
+            total_value_loss += value_loss.item()
+            batch_count += 1
+        avg_policy_loss = total_policy_loss / batch_count
+        avg_value_loss = total_value_loss / batch_count
+        avg_total_loss = avg_policy_loss + avg_value_loss
+
+        return avg_total_loss, avg_policy_loss, avg_value_loss
 
     def learn(self):
         for iteration in range(
             self.args["starting_iteration"], self.args["num_iterations"]
         ):
-            print(f"Iteration {iteration} of {self.args['num_iterations']}")
             memory = []
-
             for selfPlay_iteration in trange(self.args["num_selfPlay_iterations"]):
-                memory += self.selfPlay()
-                if selfPlay_iteration % 50 == 0:
-                    print(
-                        f"Self Play Iteration {selfPlay_iteration}:",
-                        len(memory),
-                        "samples",
-                    )
+                memory += self.selfPlay(selfPlay_iteration)
             self.model.train()
+            print("\n=== Training Summary ===")
+            print(f"Total unique designs: {len(new_layouts)}")
+            # Action distribution analysis
+            all_actions = np.concatenate([m[1] for m in memory]).reshape(-1, 12)
+            action_dist = np.bincount(np.argmax(all_actions, axis=1))
+            print("\nAction Distribution:")
+            print(action_dist)
             for epoch in trange(self.args["num_epochs"]):
-                self.train(memory)
+                total_loss, policy_loss, value_loss = self.train(memory)
+
+            # logging
+            with open(self.loss_file, "a", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        iteration,
+                        epoch,
+                        policy_loss,
+                        value_loss,
+                        total_loss,
+                    ]
+                )
+            step = iteration * self.args["num_epochs"] + epoch
+            self.tb_writer.add_scalar("Loss/Total", total_loss, step)
+            self.tb_writer.add_scalar("Loss/Policy", policy_loss, step)
+            self.tb_writer.add_scalar("Loss/Value", value_loss, step)
+            print(
+                f"Epoch {epoch} - Policy Loss: {policy_loss:.4f}, "
+                f"Value Loss: {value_loss:.4f}, Total Loss: {total_loss:.4f}"
+            )
+            self.tb_writer.close()
             save_path = self.args["save_path"]
             torch.save(
                 self.model.state_dict(), f"{save_path}/model_{iteration}_{self.game}.pt"
@@ -452,63 +529,73 @@ class LSTMemb(nn.Module):
 
 
 if __name__ == "__main__":
-    new_layouts = np.load(
-        "RL/policy_value_model_trials/new_layouts.npy", allow_pickle=True
-    ).tolist()
-    new_results = np.load(
-        "RL/policy_value_model_trials/new_results.npy", allow_pickle=True
-    ).tolist()
+    try:
+        new_layouts = np.load(
+            "RL/policy_value_model_trials/new_layouts.npy", allow_pickle=True
+        ).tolist()
+        new_results = np.load(
+            "RL/policy_value_model_trials/new_results.npy", allow_pickle=True
+        ).tolist()
+        print("Previous new layouts are loaded", len(new_layouts))
+    except:
+        pass
     game = Flowsheet()
     # # model = LSTM_packed(64, 256)
     model = LSTMemb(hidden_size=256, emb_size=32)
     model.load_state_dict(
-        torch.load("RL/policy_value_model_trials/model_14_Flowsheet.pt")
+        torch.load("RL/policy_value_model_trials/model_21_Flowsheet.pt")
     )
+
     optimizer = torch.optim.Adam(model.parameters(), lr=0.00025, weight_decay=1e-4)
     args = {
-        "C": 1.5,
-        "num_searches": 20,
-        "num_iterations": 25,
-        "num_selfPlay_iterations": 500,
+        "C": 2.5,  # 1.5
+        "num_searches": 10,
+        "num_iterations": 30,
+        "num_selfPlay_iterations": 3000,  # 1000
         "num_epochs": 5,
         "batch_size": 64,
-        "temperature": 1.5,
-        "dirichlet_epsilon": 0.3,
-        "dirichlet_alpha": 0.3,
-        "starting_iteration": 15,
+        "max_temp": 2.5,
+        "min_temp": 0.5,
+        "dirichlet_epsilon": 0.5,  # 0.5 # 0.3
+        "dirichlet_alpha": 0.7,  # 0.3
+        "starting_iteration": 22,
         "save_path": "./RL/policy_value_model_trials",
     }
     alphazero = Alphazero(model, optimizer, game, args)
     alphazero.learn()
 
-    # inference
-    fw = Flowsheet()
-    model.load_state_dict(
-        torch.load("RL/policy_value_model_trials/model_21_Flowsheet.pt")
-    )
-    mcts = MCTS(fw, args, model)
-    best_value = -np.inf
-    generated_designs = []
-    for i in range(5):
-        state = fw.get_initial_state()
-        while True:
-            mcts_probs = mcts.search(state)
-            action = np.argmax(mcts_probs)
-            state = fw.get_next_state(state, action)
-            value, is_terminal = fw.get_value_and_terminated(state, action)
+    # # inference
+    # fw = Flowsheet()
+    # model.load_state_dict(
+    #     torch.load("RL/policy_value_model_trials/model_20_Flowsheet.pt")
+    # )
+    # mcts = MCTS(fw, args, model)
+    # best_value = -np.inf
+    # best_design = None
+    # generated_designs = []
+    # for i in range(100):
+    #     state = fw.get_initial_state()
+    #     while True:
+    #         mcts_probs = mcts.search(state)
+    #         action = np.argmax(mcts_probs)
+    #         state = fw.get_next_state(state, action)
+    #         value, is_terminal = fw.get_value_and_terminated(state, action)
 
-            if is_terminal:
-                if value > best_value:
-                    best_value = value
-                if i % 50 == 0:
-                    print(i, "Best Value Found:", best_value)
-                generated_designs.append((value, fw.get_encoded_state(state)))
-                break
-    for v, l in generated_designs:
-        print(v, l)
-    valid_designs = [
-        (value, layout) for value, layout in generated_designs if value > 0
-    ]
-    for v, l in valid_designs:
-        print(v, l)
-    print(len(valid_designs))
+    #         if is_terminal:
+    #             if value > best_value:
+    #                 best_value = value
+    #                 best_design = fw.get_encoded_state(state)
+    #             if i % 50 == 0:
+    #                 print(
+    #                     i, "Best Value Found:", best_value, "Best Design:", best_design
+    #                 )
+    #             generated_designs.append((value, fw.get_encoded_state(state)))
+    #             break
+    # for v, l in generated_designs:
+    #     print(v, l)
+    # valid_designs = [
+    #     (value, layout) for value, layout in generated_designs if value > 0
+    # ]
+    # for v, l in valid_designs:
+    #     print(v, l)
+    # print(len(valid_designs))

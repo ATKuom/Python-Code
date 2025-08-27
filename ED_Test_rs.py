@@ -29,12 +29,12 @@ from split_functions import (
     K,
     FGINLETEXERGY,
 )
-from designs import ED1, ED2, ED3, bestfourthrun
+
 
 np.set_printoptions(precision=2, suppress=True)
 
 
-def results_analysis(x, equipment):
+def results_analysis(x, equipment, printing=True):
     ntur = 85  # 2019 Nabil 93
     ncomp = 82  #  89
     fg_tin = 539.76  # °C 630
@@ -280,106 +280,77 @@ def results_analysis(x, equipment):
         j = 100 * (0.30 - thermal_efficiency)
     else:
         j = c + 1 * max(0, 0.1 - sum(q_hx) / sum(q_heater))
-    print(
-        f"""
-    Equipment = {equipment}
-    Turbine Pratio = {tur_pratio[np.where(tur_pratio>1.0001)[0]]}
-    Turbine Output = {w_tur[np.where(w_tur>0)[0]]/1e6}MW
-    Compressor Pratio = {comp_pratio[np.where(comp_pratio>1.0001)[0]]}
-    Compressor Input = {w_comp[np.where(w_comp>0)[0]]/1e6}MW
-    Split Ratio = {split_ratio:.2f} mass_flow = {mass_flow[:5]}
-    Temperatures = {Temperatures}   Tstack = {min(fg_toutlist[np.where(fg_toutlist>0)[0]]):.2f}    DT = {approach_temp}
-    Pressures =    {Pressures/1e5} bar
-    Equipment Cost = {pec/1e3}
-    Equipment Duty = Qheater={q_heater[np.where(q_heater>0)[0]]/1e6}MW   Qcooler={q_cooler[np.where(q_cooler>0)[0]]/1e6}MW   Qhx={q_hx[np.where(q_hx>0)[0]]/1e6}MW
-    Objective Function value = {c:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
-    Exergy of streams = {exergies/1e6}MW
-    Exergy of FG streams = {e_fgin[np.where(e_fgin>0)]/1e6}
-                           {e_fgout[np.where(e_fgout>0)]/1e6}
-                           {fg_mlist[np.where(e_fgout>0)]}
-    Exergy costing of streams = {costs/3600*1e9} $/GJ
-    Total PEC = {sum(pec):.2f} $
-    Total Zk  = {sum(zk):.2f} $/h
-    Cdiss = {Cdiss:.2f} Cl = {Closs:.2f} Cp ={costs[-1]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
-    Cp/Ep = {Cproduct/(Ep/1e6):.2f}
-    Thermal efficiency = {thermal_efficiency*100:.2f}%
-    Heat recuperation ratio = {sum(q_hx)/(sum(q_heater))*100:.2f}
-    j = {j:.2f}
-        """
+    if printing:
+        print(
+            f"""
+        Equipment = {equipment}
+        Turbine Pratio = {tur_pratio[np.where(tur_pratio>1.0001)[0]]}
+        Turbine Output = {w_tur[np.where(w_tur>0)[0]]/1e6}MW
+        Compressor Pratio = {comp_pratio[np.where(comp_pratio>1.0001)[0]]}
+        Compressor Input = {w_comp[np.where(w_comp>0)[0]]/1e6}MW
+        Split Ratio = {split_ratio:.2f} mass_flow = {mass_flow[:5]}
+        Temperatures = {Temperatures}   Tstack = {min(fg_toutlist[np.where(fg_toutlist>0)[0]]):.2f}    DT = {approach_temp}
+        Pressures =    {Pressures/1e5} bar
+        Equipment Cost = {pec/1e3}
+        Equipment Duty = Qheater={q_heater[np.where(q_heater>0)[0]]/1e6}MW   Qcooler={q_cooler[np.where(q_cooler>0)[0]]/1e6}MW   Qhx={q_hx[np.where(q_hx>0)[0]]/1e6}MW
+        Objective Function value = {c:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
+        Exergy of streams = {exergies/1e6}MW
+        Exergy of FG streams = {e_fgin[np.where(e_fgin>0)]/1e6}
+                            {e_fgout[np.where(e_fgout>0)]/1e6}
+                            {fg_mlist[np.where(e_fgout>0)]}
+        Exergy costing of streams = {costs/3600*1e9} $/GJ
+        Total PEC = {sum(pec):.2f} $
+        Total Zk  = {sum(zk):.2f} $/h
+        Cdiss = {Cdiss:.2f} Cl = {Closs:.2f} Cp ={costs[-1]*Ep:.2f} LCOE = {lcoe:.2f} LCOEX = {lcoe_calculated:.2f}
+        Cp/Ep = {Cproduct/(Ep/1e6):.2f}
+        Thermal efficiency = {thermal_efficiency*100:.2f}%
+        Heat recuperation ratio = {sum(q_hx)/(sum(q_heater))*100:.2f}
+        j = {j:.2f}
+            """
+        )
+        return [
+            sum(w_tur) / 1e6,
+            sum(w_comp) / 1e6,
+            (sum(w_tur) / 1e6 - sum(w_comp) / 1e6),
+            sum(q_heater) / 1e6,
+            sum(q_cooler) / 1e6,
+            sum(q_hx) / 1e6,
+            thermal_efficiency,
+            sum(zk),
+            lcoe,
+            lcoe_calculated,
+            j,
+        ]
+    return (
+        -(sum(w_tur) - sum(w_comp)) / 1e6,
+        (sum(q_heater) - sum(q_cooler)) / 1e6,
+        Temperatures,
     )
-    return [
-        sum(w_tur) / 1e6,
-        sum(w_comp) / 1e6,
-        (sum(w_tur) / 1e6 - sum(w_comp) / 1e6),
-        sum(q_heater) / 1e6,
-        sum(q_cooler) / 1e6,
-        sum(q_hx) / 1e6,
-        thermal_efficiency,
-        sum(zk),
-        lcoe,
-        lcoe_calculated,
-        j,
-    ]
 
 
 if __name__ == "__main__":
-    layouts = np.load("GPT_NA_psitest/generated_M2_0.npy", allow_pickle=True)
-    # layout = layouts[1519]
-    layout = "GTaHACHaHE"
-    print(layout)
-    layout = string_to_layout(layout)
-    # layout = ED1
-    equipment, bounds, x, splitter = bound_creation(layout)
-    print(equipment)
-    x = [
-        7863325.997178896,
-        7.816205350800149,
-        187.85838182390415,
-        32,
-        30000000.0,
-        180,
-        7.816205350800149,
-        455.90718799602803,
-        78.24811884148697,
-    ]
-    if torch.equal(layout, ED1):
-        x = [
-            78.5e5,
-            10.8,
-            32.3,
-            241.3e5,
-            10.8,
-            411.4,
-            93.18,
-        ]
-    if torch.equal(layout, bestfourthrun):
-        x = [
-            0.38689869436572294,
-            258.2316574319786,
-            0.0,
-            11.0,
-            274.1450967589571,
-            0.0,
-            420.6860563418102,
-            7896946.537168221,
-            11.0,
-            32.0,
-            30000000.0,
-            29998432.0682453,
-            95.39715459612655,
-        ]
-    # x = [
-    #     0.01,
-    #     530.0,
-    #     0.0,
-    #     11.0,
-    #     0.0,
-    #     473.7059427076416,
-    #     8506178.458468681,
-    #     11.0,
-    #     32.0,
-    #     17011390.549356423,
-    #     416.88559492368364,
-    #     50,
-    # ]
-    results_analysis(x, equipment)
+    import pandas as pd
+
+    log = []
+    layouts = np.load("LSTM_NA_psitest/M2_data_F8_layouts.npy", allow_pickle=True)
+    results = np.load("LSTM_NA_psitest/M2_data_F8_results.npy", allow_pickle=True)
+    positions = np.load("LSTM_NA_psitest/M2_data_F8_positions.npy", allow_pickle=True)
+    for i in range(len(layouts)):
+        text = layouts[i]
+        print(text)
+        layout = string_to_layout(text)
+        equipment, bounds, x, splitter = bound_creation(layout)
+        x = positions[i]
+        net_wMw, net_q, Ts = results_analysis(x, equipment, printing=False)
+        # checking if any Temperature is less than 32
+        if any(T < 32 for T in Ts):
+            print("Infeasible layout due to low temperature")
+            T_info = 0
+        else:
+            T_info = 1
+        log.append([i, text, net_wMw, net_q, T_info])
+    log = pd.DataFrame(
+        log,
+        columns=["Index", "Layout", "Net Power (MW)", "Net Heat (MW)", "T_info"],
+    )
+    log.to_csv("NA_F8_PSOresults.csv", index=False)
